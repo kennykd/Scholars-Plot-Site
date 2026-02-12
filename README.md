@@ -4,7 +4,7 @@ Course Name: Web Application Development and Security<br>
 Institution: BINUS University International<br>
 
 ## 1. Project Information
-Project Title: [Project Name]<br>
+Project Title: Scholar's Plan Site<br>
 Project Domain: Study Planner & Productivity Tracker
 
 ## 2. Tech Stack
