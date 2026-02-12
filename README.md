@@ -18,6 +18,9 @@ Version Control : GitHub<br>
 
 ## 3. System Architecture
 ### 3.1 Architecture Diagram
-Serverless Service-Oriented Architecture (to be drawn in the coming future)
+Hybrid Monolithic (to be drawn in the coming future).
+
 ### 3.2 Architecture Explanation
-Assigning the authentication functions on firebase cloud service, therefore making it serverless. Meanwhile, the other features of the web app are still in one codebase and uses postgreSQL with PRISMA for backend database handling, hence it makes our website's architecture type: SOA (service oriented architecture).
+The features of the web app are still in one codebase and uses postgreSQL with PRISMA for backend database handling, hence it makes our website's architecture type: Monolithic.
+
+We are however using external services for our authentication with Firebase auth and we're using an external API for AI features
