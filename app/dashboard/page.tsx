@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { adminAuth } from "@/lib/firebase-admin";
-import LogoutButton from "@/components/ui/logout-button";
+import LogoutButton from "@/components/logout-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default async function DashboardPage() {
@@ -43,7 +43,8 @@ export default async function DashboardPage() {
                 <strong>UID:</strong> {decodedToken.uid}
               </p>
               <p>
-                <strong>Email Verified:</strong> {decodedToken.email_verified ? "Yes" : "No"}
+                <strong>Email Verified:</strong>{" "}
+                {decodedToken.email_verified ? "Yes" : "No"}
               </p>
             </CardContent>
           </Card>
@@ -53,7 +54,9 @@ export default async function DashboardPage() {
               <CardTitle>Welcome</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">Successfully login using firebase auth</p>
+              <p className="text-muted-foreground">
+                Successfully login using firebase auth
+              </p>
             </CardContent>
           </Card>
         </div>
