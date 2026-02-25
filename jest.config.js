@@ -7,7 +7,7 @@ const createJestConfig = nextJest({
 const customJestConfig = {
     setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
     testEnvironment: 'jest-environment-jsdom',
-    // This is needed because we need to use @/lib/firebase-admin for the session api
+    // This is needed because we use aliased imports like @/lib/firebase/firebase-admin in tests
     moduleNameMapper: {
         '^@/(.*)$': '<rootDir>/$1',
     },

@@ -1,4 +1,4 @@
-jest.mock("@/lib/firebase-admin", () => ({
+jest.mock("@/lib/firebase/firebase-admin", () => ({
   adminAuth: {
     verifyIdToken: jest.fn(),
   },
@@ -30,7 +30,7 @@ jest.mock("next/server", () => ({
 }));
 
 import { POST } from "./route";
-import { adminAuth } from "@/lib/firebase-admin";
+import { adminAuth } from "@/lib/firebase/firebase-admin";
 
 describe("POST /api/session", () => {
   beforeEach(() => {

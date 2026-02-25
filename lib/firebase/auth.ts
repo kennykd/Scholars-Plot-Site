@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { adminAuth } from "@/lib/firebase-admin";
+import { adminAuth } from "@/lib/firebase/firebase-admin";
 import type { DecodedIdToken } from "firebase-admin/auth";
 
 export async function getSession(): Promise<DecodedIdToken | null> {

@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { adminAuth } from "@/lib/firebase-admin";
-import LogoutButton from "@/app/components/logout-button";
+import { adminAuth } from "@/lib/firebase/firebase-admin";
+import LogoutButton from "@/app/components/auth/logout-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default async function DashboardPage() {
