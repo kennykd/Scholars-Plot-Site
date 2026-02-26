@@ -57,22 +57,13 @@ export default function LandingPage() {
               A study planner forged like a work site: clear plans, solid schedules, and tools that actually get the job done.
             </p>
             
-            <div className="flex items-center gap-6">
-              <Button 
-                asChild
-                size="lg"
-                className="bg-[#FF4D2E] hover:bg-[#e04327] text-white font-semibold px-8 py-6 text-base"
-              >
-                <Link href="/login">Start Building</Link>
-              </Button>
-              
-              <Link 
-                href="/login" 
-                className="text-white font-medium hover:text-white/80 transition-colors"
-              >
-                View Plans
-              </Link>
-            </div>
+            <Button 
+              asChild
+              size="lg"
+              className="bg-[#FF4D2E] hover:bg-[#e04327] text-white font-semibold px-8 py-6 text-base"
+            >
+              <Link href="/login">Start Building</Link>
+            </Button>
           </div>
 
           {/* Right Content - Product Preview */}
