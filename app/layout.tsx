@@ -1,21 +1,30 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Sora, Inter, IBM_Plex_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
+import { Providers } from "./providers";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const sora = Sora({
   subsets: ["latin"],
+  variable: "--font-sora",
+  weight: ["400", "500", "600", "700", "800"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const inter = Inter({
   subsets: ["latin"],
+  variable: "--font-inter",
+  weight: ["400", "500", "600"],
+});
+
+const ibmPlexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  variable: "--font-ibm-plex-mono",
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
-  title: "My App",
-  description: "Firebase Authentication App",
+  title: "Scholar's Plot",
+  description: "Student Planner & Productivity Tracker",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -23,17 +32,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <body
         className={`
-          ${geistSans.variable} 
-          ${geistMono.variable} 
-          antialiased 
-          bg-background 
+          ${sora.variable}
+          ${inter.variable}
+          ${ibmPlexMono.variable}
+          antialiased
+          bg-background
           text-foreground
         `}
       >
-        {children}
+        <Providers>
+          {children}
+        </Providers>
+
+        {/* Grain overlay — fixed texture on dark backgrounds */}
+        <div className="grain-overlay" />
 
         {/* Sonner Toaster */}
-        <Toaster position="top-right" richColors closeButton duration={3000} />
+        <Toaster position="bottom-right" richColors closeButton duration={3000} />
       </body>
     </html>
   );
