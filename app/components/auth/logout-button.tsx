@@ -34,8 +34,8 @@ export default function LogoutButton() {
 
       router.push("/login");
       router.refresh();
-    } catch (error: any) {
-      toast.error(error.message || "Errors");
+    } catch (error: unknown) {
+      toast.error((error as {message?: string})?.message || "Errors");
     } finally {
       setLoading(false);
     }

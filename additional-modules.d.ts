@@ -1,4 +1,4 @@
 declare module "*.css" {
-    const content: { [key: String]: string };
+    const content: { [key: string]: string };
     export default content;
 }

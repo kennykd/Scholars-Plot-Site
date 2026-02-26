@@ -47,15 +47,16 @@ export default function LoginPage() {
 
       router.push("/dashboard");
       router.refresh();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
 
       // If the firebase auth popup is closed by the user, cancel the login
-      if (error?.code === "auth/popup-closed-by-user") {
+      if ((error as {code?: string})?.code === "auth/popup-closed-by-user") {
         toast.error("Google login cancelled");
         return;
       }
-      toast.error(error.message || "Login failed");
+      const err = error as {message?: string};
+      toast.error(err.message || "Login failed");
     } finally {
       setLoading(false);
     }
@@ -74,16 +75,17 @@ export default function LoginPage() {
 
       router.push("/dashboard");
       router.refresh();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
 
       let message = "Login failed";
 
-      if (error.code === "auth/user-not-found") {
+      const err = error as {code?: string; message?: string};
+      if (err.code === "auth/user-not-found") {
         message = "User not found";
-      } else if (error.code === "auth/wrong-password") {
+      } else if (err.code === "auth/wrong-password") {
         message = "wrong password";
-      } else if (error.code === "auth/invalid-email") {
+      } else if (err.code === "auth/invalid-email") {
         message = "invalid email format";
       }
 

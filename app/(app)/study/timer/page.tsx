@@ -26,7 +26,7 @@ function CircularTimer({ seconds, total, phase }: { seconds: number; total: numb
     <div className="relative flex items-center justify-center">
       <svg width="220" height="220" className="-rotate-90">
         <circle cx="110" cy="110" r={radius} fill="none" stroke="currentColor" strokeWidth="8" className="text-muted/30" />
-        <circle cx="110" cy="110" r={radius} fill="none" stroke={phase === "break" ? "#3b82f6" : "#FF4D2E"} strokeWidth="8" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={dashOffset} className="transition-all duration-1000" />
+        <circle cx="110" cy="110" r={radius} fill="none" stroke={phase === "break" ? "#3b82f6" : "var(--accent)"} strokeWidth="8" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={dashOffset} className="transition-all duration-1000" />
       </svg>
       <div className="absolute flex flex-col items-center">
         <span className="font-mono text-5xl font-bold text-foreground tabular-nums">{mins}:{secs}</span>
@@ -41,15 +41,14 @@ export default function StudyTimerPage() {
   const [selectedTaskId, setSelectedTaskId] = useState(mockTasks[0]?.id ?? "");
   const [seconds, setSeconds] = useState(WORK_SECONDS);
   const [running, setRunning] = useState(false);
-  const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
+  const [checklistOverrides, setChecklistOverrides] = useState<Record<string, boolean>>({});
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const selectedTask = mockTasks.find((t) => t.id === selectedTaskId);
   const session = mockStudySessions.find((s) => s.taskId === selectedTaskId);
-
-  useEffect(() => {
-    if (session) setChecklist(session.checklist.map((c) => ({ ...c })));
-    else setChecklist([]);
-  }, [selectedTaskId, session]);
+  const checklist: ChecklistItem[] = (session?.checklist ?? []).map((c) => ({
+    ...c,
+    completed: checklistOverrides[c.id] ?? c.completed,
+  }));
 
   useEffect(() => {
     if (running) {
@@ -72,7 +71,7 @@ export default function StudyTimerPage() {
   const startSession = () => { setPhase("focus"); setSeconds(WORK_SECONDS); setRunning(true); };
   const endSession = () => { setPhase("pre"); setSeconds(WORK_SECONDS); setRunning(false); };
   const reset = () => { setRunning(false); setSeconds(phase === "break" ? BREAK_SECONDS : WORK_SECONDS); };
-  const toggleCheck = (id: string) => setChecklist((prev) => prev.map((c) => c.id === id ? { ...c, completed: !c.completed } : c));
+  const toggleCheck = (id: string) => setChecklistOverrides((prev) => ({ ...prev, [id]: !checklist.find((c) => c.id === id)?.completed }));
 
   if (phase === "pre") return (
     <div className="p-6 max-w-xl mx-auto space-y-6">

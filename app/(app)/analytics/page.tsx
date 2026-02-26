@@ -5,7 +5,7 @@ import { mockAnalytics } from "@/lib/mock-data";
 import { Flame, CheckCircle2, Clock, Target } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area } from "recharts";
 
-const DONUT_COLORS = ["#22c55e", "#3b82f6", "#FF4D2E", "#6b7280"];
+const DONUT_COLORS = ["#22c55e", "#3b82f6", "var(--accent)", "#6b7280"];
 
 export default function AnalyticsPage() {
   const { completionStats, timeBySubject, productivityByDay, streak, totalFocusMinutes, totalTasksCompleted } = mockAnalytics;
@@ -66,7 +66,7 @@ export default function AnalyticsPage() {
                 <XAxis type="number" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
                 <YAxis type="category" dataKey="subject" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" width={80} />
                 <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "8px", fontSize: "12px" }} formatter={(v) => [`${v}h`, "Hours"]} />
-                <Bar dataKey="hours" fill="#1A2DAB" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="hours" fill="var(--primary)" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -76,12 +76,12 @@ export default function AnalyticsPage() {
           <CardContent>
             <ResponsiveContainer width="100%" height={200}>
               <AreaChart data={productivityByDay} margin={{ left: 0, right: 16 }}>
-                <defs><linearGradient id="blueGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#1A2DAB" stopOpacity={0.6} /><stop offset="95%" stopColor="#1A2DAB" stopOpacity={0.05} /></linearGradient></defs>
+                <defs><linearGradient id="blueGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="var(--primary)" stopOpacity={0.6} /><stop offset="95%" stopColor="var(--primary)" stopOpacity={0.05} /></linearGradient></defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis dataKey="day" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
                 <YAxis tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
                 <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "8px", fontSize: "12px" }} />
-                <Area type="monotone" dataKey="tasksCompleted" stroke="#FF4D2E" fill="url(#blueGrad)" strokeWidth={2} name="Tasks Completed" />
+                <Area type="monotone" dataKey="tasksCompleted" stroke="var(--accent)" fill="url(#blueGrad)" strokeWidth={2} name="Tasks Completed" />
               </AreaChart>
             </ResponsiveContainer>
           </CardContent>
