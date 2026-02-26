@@ -117,7 +117,7 @@
   --sidebar-foreground: oklch(0.12 0 0);
   --sidebar-primary: oklch(0.38 0.18 264);
   --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.65 0.22 28);
+  --sidebar-accent: oklch(0.38 0.18 264 / 15%);     /* blueprint blue transparent for hover */
   --sidebar-accent-foreground: oklch(1 0 0);
   --sidebar-border: oklch(0.83 0 0);
   --sidebar-ring: oklch(0.38 0.18 264);

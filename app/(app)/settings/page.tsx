@@ -20,10 +20,11 @@ export default function SettingsPage() {
         <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">SETTINGS</h1>
         <p className="font-mono text-xs text-muted-foreground mt-1 tracking-widest">PREFERENCES & PROFILE</p>
       </div>
-      <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-        <CardHeader className="border-t-2 border-accent rounded-t-xl pb-2"><CardTitle className="font-display text-lg">Profile</CardTitle></CardHeader>
+      
+      <Card className="bg-card border-0 shadow-sm">
+        <CardHeader className="pb-2"><CardTitle className="font-display text-lg">Profile</CardTitle></CardHeader>
         <CardContent className="flex items-center gap-4 pt-4">
-          <Avatar className="h-14 w-14 ring-2 ring-accent/40">
+          <Avatar className="h-14 w-14">
             <AvatarImage src={mockUser.avatarUrl} alt={displayName ?? ""} />
             <AvatarFallback className="bg-accent text-accent-foreground text-lg font-bold">{initials}</AvatarFallback>
           </Avatar>
@@ -33,8 +34,9 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
-      <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-        <CardHeader className="border-t-2 border-accent rounded-t-xl pb-2"><CardTitle className="font-display text-lg">Appearance</CardTitle></CardHeader>
+      
+      <Card className="bg-card border-0 shadow-sm">
+        <CardHeader className="pb-2"><CardTitle className="font-display text-lg">Appearance</CardTitle></CardHeader>
         <CardContent className="flex items-center justify-between pt-4">
           <div>
             <p className="text-sm font-medium">Theme</p>
@@ -45,6 +47,7 @@ export default function SettingsPage() {
           </Toggle>
         </CardContent>
       </Card>
+      
       <div className="flex justify-end"><LogoutButton /></div>
     </div>
   );
