@@ -21,8 +21,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       {/* Desktop sidebar */}
       <Sidebar />
 
-      {/* Main content area */}
-      <main className="flex-1 overflow-y-auto blueprint-grid relative">
+      {/* Main content area - solid background, no grid pattern for readability */}
+      <main className="flex-1 overflow-y-auto bg-background relative">
         <div className="min-h-full pb-16 lg:pb-0">
           {children}
         </div>

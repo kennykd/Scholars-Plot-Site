@@ -18,8 +18,8 @@ export function TaskCard({ task }: TaskCardProps) {
   const [done, setDone] = useState(task.status === "done");
 
   const getDeadlineBadge = (date: Date) => {
-    if (isPast(date) && !isToday(date)) return { label: "Overdue", cls: "bg-destructive/20 text-destructive border-destructive/30" };
-    if (isToday(date)) return { label: "Today", cls: "bg-accent/20 text-accent border-accent/30" };
+    if (isPast(date) && !isToday(date)) return { label: "Overdue", cls: "bg-red-500/20 text-red-400 border-red-500/30" };
+    if (isToday(date)) return { label: "Today", cls: "bg-orange-500/20 text-orange-400 border-orange-500/30" };
     if (isTomorrow(date)) return { label: "Tomorrow", cls: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" };
     return { label: format(date, "MMM d"), cls: "bg-muted text-muted-foreground border-border" };
   };
@@ -29,8 +29,8 @@ export function TaskCard({ task }: TaskCardProps) {
   return (
     <div
       className={cn(
-        "flex items-center gap-3 rounded-lg px-4 py-3 border-l-4 bg-card/60 backdrop-blur-sm",
-        "hover:bg-card/80 transition-all duration-150 group",
+        "flex items-center gap-3 rounded-lg px-4 py-3.5 border-l-4 bg-card",
+        "hover:bg-card/90 transition-all duration-150 group shadow-sm",
         `priority-${Math.round(task.priority)}`,
         done && "opacity-60"
       )}
