@@ -10,6 +10,7 @@ interface SessionUser {
   image: string | null;
 }
 
+// TODO: DELETE User from database if Session is not found or the user is no longer in the firebase console
 export async function getSession(): Promise<SessionUser | null> {
   const cookieStore = await cookies();
   const session = cookieStore.get("session")?.value;
@@ -35,6 +36,9 @@ export async function getSession(): Promise<SessionUser | null> {
       image: user.image,
     };
   } catch {
+    console.log(
+      "WARNING: User not authenticated through firebase yet, check the firebase console!",
+    );
     return null;
   }
 }
