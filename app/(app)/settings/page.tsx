@@ -12,7 +12,7 @@ export default async function SettingsPage() {
     redirect("/login");
   }
 
-  const displayName = user?.name ?? user?.email ?? "User";
+  const displayName = user?.name ?? user?.email.split("@")[0] ?? "User";
   const avatarSrc = user?.image?.trim() || undefined;
   const initials = (displayName ?? "U")
     .split(" ")

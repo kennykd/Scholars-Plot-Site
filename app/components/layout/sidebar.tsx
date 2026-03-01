@@ -82,7 +82,7 @@ export function Sidebar({ user }: { user: SidebarUser }) {
     }
   };
 
-  const displayName = user?.name ?? user?.email ?? "User";
+  const displayName = user?.name ?? user?.email.split("@")[0] ?? "User";
   const avatarSrc = user?.image?.trim() || undefined;
   const initials = (displayName ?? "U")
     .split(" ")
