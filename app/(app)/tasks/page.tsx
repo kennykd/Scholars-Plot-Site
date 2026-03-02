@@ -4,7 +4,13 @@ import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { TaskCard } from "@/app/components/tasks/task-card";
 import { mockTasks } from "@/lib/mock-data";
 import { Task } from "@/lib/types";
@@ -35,12 +41,17 @@ export default function TasksPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">TASKS</h1>
+          <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">
+            TASKS
+          </h1>
           <p className="font-mono text-xs text-muted-foreground mt-1 tracking-widest">
             {filtered.length} task{filtered.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <Button asChild className="bg-accent hover:bg-accent/90 text-accent-foreground font-semibold">
+        <Button
+          asChild
+          className="bg-accent hover:bg-accent/90 text-accent-foreground font-semibold"
+        >
           <Link href="/tasks/new">
             <Plus className="h-4 w-4 mr-1" /> New Task
           </Link>
@@ -48,12 +59,24 @@ export default function TasksPage() {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-        <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterTab)} className="flex-1">
+        <Tabs
+          value={filter}
+          onValueChange={(v) => setFilter(v as FilterTab)}
+          className="flex-1"
+        >
           <TabsList className="bg-muted/50">
-            <TabsTrigger value="all" className="font-mono text-xs">All</TabsTrigger>
-            <TabsTrigger value="todo" className="font-mono text-xs">To Do</TabsTrigger>
-            <TabsTrigger value="in-progress" className="font-mono text-xs">In Progress</TabsTrigger>
-            <TabsTrigger value="done" className="font-mono text-xs">Done</TabsTrigger>
+            <TabsTrigger value="all" className="font-mono text-xs">
+              All
+            </TabsTrigger>
+            <TabsTrigger value="todo" className="font-mono text-xs">
+              To Do
+            </TabsTrigger>
+            <TabsTrigger value="in-progress" className="font-mono text-xs">
+              In Progress
+            </TabsTrigger>
+            <TabsTrigger value="done" className="font-mono text-xs">
+              Done
+            </TabsTrigger>
           </TabsList>
         </Tabs>
 

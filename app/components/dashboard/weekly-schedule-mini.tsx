@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { mockCalendarEvents } from "@/lib/mock-data";
@@ -22,22 +20,31 @@ export function WeeklyScheduleMini() {
         <Link href="/calendar" className="block">
           <div className="grid grid-cols-7 gap-1">
             {days.map((day) => {
-              const dayEvents = mockCalendarEvents.filter((e) => isSameDay(e.date, day));
+              const dayEvents = mockCalendarEvents.filter((e) =>
+                isSameDay(e.date, day),
+              );
               const isCurrentDay = isToday(day);
               return (
-                <div key={day.toISOString()} className="flex flex-col items-center gap-1">
-                  <span className={cn(
-                    "font-mono text-[10px] font-medium",
-                    isCurrentDay ? "text-accent" : "text-muted-foreground"
-                  )}>
+                <div
+                  key={day.toISOString()}
+                  className="flex flex-col items-center gap-1"
+                >
+                  <span
+                    className={cn(
+                      "font-mono text-[10px] font-medium",
+                      isCurrentDay ? "text-accent" : "text-muted-foreground",
+                    )}
+                  >
                     {format(day, "EEE")}
                   </span>
-                  <div className={cn(
-                    "flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-colors",
-                    isCurrentDay
-                      ? "bg-accent text-accent-foreground"
-                      : "text-foreground hover:bg-muted"
-                  )}>
+                  <div
+                    className={cn(
+                      "flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-colors",
+                      isCurrentDay
+                        ? "bg-accent text-accent-foreground"
+                        : "text-foreground hover:bg-muted",
+                    )}
+                  >
                     {format(day, "d")}
                   </div>
                   <div className="flex flex-col gap-0.5 items-center">

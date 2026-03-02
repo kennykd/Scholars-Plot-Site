@@ -3,12 +3,10 @@ import { WeeklyScheduleMini } from "@/app/components/dashboard/weekly-schedule-m
 import { QuickStatsBar } from "@/app/components/dashboard/quick-stats-bar";
 import { ActiveStudySession } from "@/app/components/dashboard/active-study-session";
 import { UpcomingDeadlines } from "@/app/components/dashboard/upcoming-deadlines";
-import { DemoNotification } from "@/app/components/common/notification-toast";
 
 export default function DashboardPage() {
   return (
     <div className="p-6 space-y-6">
-      <DemoNotification />
       <div>
         <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">
           COMMAND CENTER

@@ -15,11 +15,11 @@ export interface Task {
   /** Priority rating from 1-5, supports 0.5 increments (e.g., 2.5, 3.5) */
   priority: number;
   /** Current status of the task */
-  status: 'todo' | 'in-progress' | 'done';
+  status: "todo" | "in-progress" | "done";
   /** Optional file names for attachments (visual only, no actual upload) */
   attachments?: string[];
   /** Reminder frequency/timing */
-  reminder?: 'daily' | 'every-3-days' | 'weekly' | 'none';
+  reminder?: "daily" | "every-3-days" | "weekly" | "none";
   /** Timestamp when task was created */
   createdAt: Date;
   /** Timestamp when task was completed (if applicable) */
@@ -49,7 +49,7 @@ export interface StudySession {
   /** List of items to study, automatically extracted from task description */
   checklist: ChecklistItem[];
   /** Current status of the study session */
-  status: 'pending' | 'active' | 'completed';
+  status: "pending" | "active" | "completed";
   /** Optional scheduled date/time for the study session */
   scheduledAt?: Date;
 }
@@ -60,7 +60,7 @@ export interface CalendarEvent {
   /** Name/title of the event (task or study session name) */
   title: string;
   /** Type of calendar event */
-  type: 'task-deadline' | 'study-session';
+  type: "task-deadline" | "study-session";
   /** Date of the event */
   date: Date;
   /** Optional start time in HH:mm format */
@@ -130,5 +130,60 @@ export interface Notification {
   /** Optional deadline associated with the notification */
   deadline?: Date;
   /** Type of notification */
-  type: 'reminder' | 'timer-complete' | 'deadline-approaching';
+  type: "reminder" | "timer-complete" | "deadline-approaching";
+}
+
+export type ProjectRole = "owner" | "moderator" | "member";
+
+export interface ProjectMember {
+  /** Unique identifier for the member */
+  id: string;
+  /** Display name for the member */
+  name: string;
+  /** Optional email or username */
+  handle?: string;
+  /** Role within the project */
+  role: ProjectRole;
+}
+
+export type ProjectTaskStatus = "not-done" | "pending" | "done";
+export type ProjectTaskPriority = "low" | "medium" | "high";
+
+export interface ProjectTask {
+  /** Unique identifier for the task */
+  id: string;
+  /** Task title */
+  title: string;
+  /** Optional description */
+  description?: string;
+  /** Optional attachments */
+  attachments?: string[];
+  /** Reminder frequency/timing */
+  reminder?: "daily" | "every-3-days" | "weekly" | "none";
+
+  /** Priority level */
+  priority: ProjectTaskPriority;
+  /** Status column */
+  status: ProjectTaskStatus;
+  /** Assigned member id (if any) */
+  assignedTo?: string;
+  /** Timestamp when task was created */
+  createdAt: Date;
+}
+
+export interface Project {
+  /** Unique identifier for the project */
+  id: string;
+  /** Project name */
+  name: string;
+  /** Optional project description */
+  description?: string;
+  /** Owner member id */
+  ownerId: string;
+  /** Members in the project */
+  members: ProjectMember[];
+  /** Tasks in the project */
+  tasks: ProjectTask[];
+  /** Timestamp when project was created */
+  createdAt: Date;
 }
