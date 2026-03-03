@@ -50,11 +50,11 @@ export default function LoginPage() {
       console.error(error);
 
       // If the firebase auth popup is closed by the user, cancel the login
-      if ((error as {code?: string})?.code === "auth/popup-closed-by-user") {
+      if ((error as { code?: string })?.code === "auth/popup-closed-by-user") {
         toast.error("Google login cancelled");
         return;
       }
-      const err = error as {message?: string};
+      const err = error as { message?: string };
       toast.error(err.message || "Login failed");
     } finally {
       setLoading(false);
@@ -79,7 +79,7 @@ export default function LoginPage() {
 
       let message = "Login failed";
 
-      const err = error as {code?: string; message?: string};
+      const err = error as { code?: string; message?: string };
       if (err.code === "auth/user-not-found") {
         message = "User not found";
       } else if (err.code === "auth/wrong-password") {
@@ -104,7 +104,7 @@ export default function LoginPage() {
             SCHOLAR&apos;S PLOT
           </h1>
           <p className="font-mono text-xs tracking-[0.2em] text-white/60">
-            V1.0 — STUDENT PLANNER
+            LOGIN ACCOUNT
           </p>
         </div>
 
@@ -124,7 +124,9 @@ export default function LoginPage() {
               <div className="w-full border-t border-white/10" />
             </div>
             <div className="relative flex justify-center text-xs">
-              <span className="bg-[#0f1a66] px-2 text-white/40 font-mono">OR</span>
+              <span className="bg-[#0f1a66] px-2 text-white/40 font-mono">
+                OR
+              </span>
             </div>
           </div>
 
@@ -165,13 +167,16 @@ export default function LoginPage() {
         <div className="text-center space-y-4 mt-8">
           <p className="text-sm text-white/60">
             Don&apos;t have an account?{" "}
-            <Link href="/register" className="text-[#FF4D2E] hover:text-[#FF4D2E]/80 font-medium transition-colors">
+            <Link
+              href="/register"
+              className="text-[#FF4D2E] hover:text-[#FF4D2E]/80 font-medium transition-colors"
+            >
               Register
             </Link>
           </p>
-          
-          <Link 
-            href="/" 
+
+          <Link
+            href="/"
             className="text-xs text-white/40 hover:text-white/60 transition-colors"
           >
             ← Back to home

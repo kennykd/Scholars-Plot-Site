@@ -10,6 +10,7 @@ import {
   Timer,
   BarChart3,
   Settings,
+  PersonStanding,
   ChevronLeft,
   ChevronRight,
   LogOut,
@@ -40,7 +41,8 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/tasks", label: "Tasks", icon: CheckSquare },
   { href: "/calendar", label: "Calendar", icon: Calendar },
-  { href: "/study/timer", label: "Study", icon: Timer },
+  { href: "/projects", label: "Projects", icon: PersonStanding },
+  { href: "/study", label: "Study", icon: Timer },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
