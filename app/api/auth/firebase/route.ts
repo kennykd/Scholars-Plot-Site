@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   const idToken = authorization.split("Bearer ")[1];
 
   try {
-    const decodedToken = await adminAuth.verifyIdToken(idToken, true);
+    const decodedToken = await adminAuth.verifyIdToken(idToken);
     // EDIT: added three constants to help the process of checking if the username or image already exist in the database, even if it is not in the firebase console
     const tokenName = decodedToken.name?.trim();
     const tokenImage = decodedToken.picture?.trim();
