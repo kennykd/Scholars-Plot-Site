@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StarRating } from "@/app/components/common/star-rating";
-import { TaskDeleteButton } from "./task-delete-button";
+import { TaskDeleteButton } from "../../../components/tasks/task-delete-button";
 import { mockTasks } from "@/lib/mock-data";
 import { format, formatDistanceToNow } from "date-fns";
 import { ArrowLeft, Paperclip, Timer } from "lucide-react";
