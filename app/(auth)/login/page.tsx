@@ -18,6 +18,8 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
 
   const createSession = async (idToken: string) => {
     const res = await fetch("/api/auth/firebase", {
@@ -83,9 +85,9 @@ export default function LoginPage() {
       if (err.code === "auth/user-not-found") {
         message = "User not found";
       } else if (err.code === "auth/wrong-password") {
-        message = "wrong password";
+        message = "Wrong password";
       } else if (err.code === "auth/invalid-email") {
-        message = "invalid email format";
+        message = "Invalid email format";
       }
 
       toast.error(message);
@@ -141,6 +143,7 @@ export default function LoginPage() {
               type="email"
               placeholder="Email address"
               value={email}
+              required
               onChange={(e) => setEmail(e.target.value)}
               className="bg-white/5 border-white/20 text-white placeholder:text-white/40 h-12 focus:border-[#FF4D2E] focus:ring-[#FF4D2E]"
             />
@@ -149,6 +152,7 @@ export default function LoginPage() {
               type="password"
               placeholder="Password"
               value={password}
+              required
               onChange={(e) => setPassword(e.target.value)}
               className="bg-white/5 border-white/20 text-white placeholder:text-white/40 h-12 focus:border-[#FF4D2E] focus:ring-[#FF4D2E]"
             />

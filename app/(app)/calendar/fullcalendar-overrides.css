@@ -1,0 +1,138 @@
+/* ============================================================
+   FullCalendar – Blueprint Theme Overrides
+   ============================================================ */
+
+/* Hide FullCalendar's built-in toolbar (we use our own header) */
+.fc .fc-header-toolbar {
+  display: none !important;
+}
+
+/* Container wrapper */
+.fc-calendar-wrapper {
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  background: var(--card);
+  backdrop-filter: blur(12px);
+  overflow: hidden;
+}
+
+/* Core FullCalendar variables */
+.fc {
+  --fc-border-color: var(--border);
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: transparent;
+  --fc-today-bg-color: var(--accent) / 10%;
+  --fc-event-border-color: transparent;
+}
+
+/* Today highlight */
+.fc .fc-day-today {
+  background: oklch(0.65 0.22 28 / 10%) !important;
+}
+
+/* Column header cells (Mon, Tue, etc.) */
+.fc .fc-col-header-cell {
+  background: transparent;
+  border-color: var(--border);
+  padding: 0.5rem 0;
+}
+.fc .fc-col-header-cell-cushion {
+  color: var(--muted-foreground);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+
+/* Time slot labels (7am, 8am, etc.) */
+.fc .fc-timegrid-slot-label-cushion {
+  color: var(--muted-foreground);
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+}
+
+/* Day number in month view */
+.fc .fc-daygrid-day-number {
+  color: var(--foreground);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+/* Today's day number */
+.fc .fc-day-today .fc-daygrid-day-number {
+  color: var(--accent);
+}
+
+/* Days outside current month */
+.fc .fc-day-other .fc-daygrid-day-number {
+  opacity: 0.3;
+}
+
+/* Events */
+.fc .fc-event {
+  border-radius: 4px;
+  font-size: 0.625rem;
+  font-weight: 500;
+  padding: 1px 4px;
+  border: none;
+  cursor: pointer;
+}
+.fc .fc-event-title {
+  font-size: 0.625rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Time grid event text */
+.fc .fc-timegrid-event .fc-event-main {
+  padding: 2px 4px;
+}
+
+/* Table borders */
+.fc .fc-scrollgrid {
+  border-color: var(--border);
+}
+.fc td,
+.fc th {
+  border-color: var(--border);
+}
+
+/* Timegrid slot borders (lighter) */
+.fc .fc-timegrid-slot {
+  border-color: oklch(from var(--border) l c h / 50%);
+}
+
+/* All-day section */
+.fc .fc-daygrid-body {
+  border-color: var(--border);
+}
+
+/* Now indicator (red line for current time) */
+.fc .fc-timegrid-now-indicator-line {
+  border-color: var(--accent);
+}
+.fc .fc-timegrid-now-indicator-arrow {
+  border-color: var(--accent);
+}
+
+/* More events link in month view */
+.fc .fc-more-link {
+  color: var(--muted-foreground);
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+}
+
+/* Scrollbar styling */
+.fc .fc-scroller::-webkit-scrollbar {
+  width: 6px;
+}
+.fc .fc-scroller::-webkit-scrollbar-track {
+  background: transparent;
+}
+.fc .fc-scroller::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}

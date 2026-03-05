@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/dialog";
 
 import { StarRating } from "@/app/components/common/star-rating";
-import { mockProjects, mockUser } from "@/lib/mock-data";
+import { mockProjects } from "@/lib/mock-data";
 import {
   Project,
   ProjectMember,
@@ -37,7 +37,6 @@ import {
 import { cn } from "@/lib/utils";
 
 import {
-  ClipboardList,
   Crown,
   Paperclip,
   Plus,
@@ -132,14 +131,8 @@ const priorityFromRating = (value: number): ProjectTaskPriority => {
   return "low";
 };
 
-const currentUser: CurrentUser = {
-  id: mockUser.uid,
-  email: mockUser.email,
-  name: mockUser.displayName ?? null,
-  image: mockUser.avatarUrl ?? null,
-};
-
 export default function ProjectsPage() {
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [projects, setProjects] = useState<StoredProject[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
@@ -159,6 +152,22 @@ export default function ProjectsPage() {
   const [taskPriorityRating, setTaskPriorityRating] = useState(3);
   const [taskReminder, setTaskReminder] = useState("none");
   const [taskAttachment, setTaskAttachment] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/users/me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((user) => {
+        if (user) {
+          setCurrentUser({
+            id: user.id,
+            email: user.email,
+            name: user.name ?? null,
+            image: user.image ?? null,
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const stored =
@@ -193,7 +202,7 @@ export default function ProjectsPage() {
   );
 
   const currentMember = useMemo(() => {
-    if (!activeProject) return null;
+    if (!activeProject || !currentUser) return null;
     return (
       activeProject.members.find(
         (member) =>
@@ -202,7 +211,7 @@ export default function ProjectsPage() {
             member.handle.toLowerCase() === currentUser.email.toLowerCase()),
       ) ?? null
     );
-  }, [activeProject]);
+  }, [activeProject, currentUser]);
 
   const isOwnerOrModerator =
     currentMember?.role === "owner" || currentMember?.role === "moderator";
@@ -220,7 +229,7 @@ export default function ProjectsPage() {
   };
 
   const handleCreateProject = () => {
-    if (!newProjectName.trim()) return;
+    if (!newProjectName.trim() || !currentUser) return;
     const newProject: StoredProject = {
       id: `project-${Date.now()}`,
       name: newProjectName.trim(),
@@ -239,7 +248,7 @@ export default function ProjectsPage() {
   };
 
   const handleJoinProject = () => {
-    if (!activeProject) return;
+    if (!activeProject || !currentUser) return;
     updateProject(activeProject.id, (project) => {
       const alreadyMember = project.members.some(
         (member) =>
@@ -386,7 +395,13 @@ export default function ProjectsPage() {
         <div className="flex flex-wrap items-center gap-3">
           <Select
             value={projectSelectValue}
-            onValueChange={(value) => setActiveProjectId(value)}
+            onValueChange={(value) => {
+              if (value === "__new_project__") {
+                setCreateProjectOpen(true);
+              } else {
+                setActiveProjectId(value);
+              }
+            }}
           >
             <SelectTrigger className="min-w-[220px] font-mono text-xs">
               <SelectValue
@@ -401,16 +416,19 @@ export default function ProjectsPage() {
                   {project.name}
                 </SelectItem>
               ))}
+              <SelectItem
+                value="__new_project__"
+                className="font-mono text-xs text-accent"
+              >
+                <span className="flex items-center gap-1">
+                  <Plus className="h-3 w-3" />
+                  New Project
+                </span>
+              </SelectItem>
             </SelectContent>
           </Select>
 
           <Dialog open={createProjectOpen} onOpenChange={setCreateProjectOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                <Plus className="h-4 w-4 mr-2" />
-                New Project
-              </Button>
-            </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Create Project</DialogTitle>
@@ -538,8 +556,8 @@ export default function ProjectsPage() {
           {activeProject && isOwnerOrModerator && (
             <Dialog open={createTaskOpen} onOpenChange={setCreateTaskOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline">
-                  <ClipboardList className="h-4 w-4 mr-2" />
+                <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                  <Plus className="h-4 w-4 mr-2" />
                   New Task
                 </Button>
               </DialogTrigger>

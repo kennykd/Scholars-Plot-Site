@@ -1,30 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { mockCalendarEvents, mockStudySessions } from "@/lib/mock-data";
-import { cn } from "@/lib/utils";
-import {
-  startOfWeek,
-  endOfWeek,
-  startOfMonth,
-  endOfMonth,
-  addDays,
-  addWeeks,
-  subWeeks,
-  addMonths,
-  subMonths,
-  addMinutes,
-  format,
-  isToday,
-  isSameDay,
-  eachDayOfInterval,
-  isSameMonth,
-  parseISO,
-} from "date-fns";
-
-const HOURS = Array.from({ length: 15 }, (_, i) => i + 7);
+import { addDays, addMinutes, format, startOfWeek, parseISO } from "date-fns";
+import FullCalendar from "@fullcalendar/react";
+import dayGridPlugin from "@fullcalendar/daygrid";
+import timeGridPlugin from "@fullcalendar/timegrid";
+import { toFullCalendarEvents } from "@/lib/utils/calendar-adapters";
+import "./fullcalendar-overrides.css";
 
 type StoredSession = {
   id: string;
@@ -44,11 +29,12 @@ const seedSessions = (): StoredSession[] =>
   }));
 
 export default function CalendarPage() {
+  const calendarRef = useRef<FullCalendar>(null);
   const [view, setView] = useState<"week" | "month">("week");
   const [anchor, setAnchor] = useState(new Date());
   const [storedSessions, setStoredSessions] = useState<StoredSession[]>([]);
+
   const weekStart = startOfWeek(anchor, { weekStartsOn: 1 });
-  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
   useEffect(() => {
     const stored =
@@ -66,6 +52,12 @@ export default function CalendarPage() {
 
     setStoredSessions(seedSessions());
   }, []);
+
+  useEffect(() => {
+    if (storedSessions.length > 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(storedSessions));
+    }
+  }, [storedSessions]);
 
   const calendarEvents = useMemo(() => {
     const baseEvents = mockCalendarEvents.filter(
@@ -88,20 +80,44 @@ export default function CalendarPage() {
 
     return [...baseEvents, ...studyEvents];
   }, [storedSessions]);
-  const monthStart = startOfMonth(anchor);
-  const monthEnd = endOfMonth(anchor);
-  const calStart = startOfWeek(monthStart, { weekStartsOn: 1 });
-  const calEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
-  const monthDays = eachDayOfInterval({ start: calStart, end: calEnd });
-  const prev = () =>
-    view === "week"
-      ? setAnchor(subWeeks(anchor, 1))
-      : setAnchor(subMonths(anchor, 1));
-  const next = () =>
-    view === "week"
-      ? setAnchor(addWeeks(anchor, 1))
-      : setAnchor(addMonths(anchor, 1));
-  const goToday = () => setAnchor(new Date());
+
+  const fcEvents = useMemo(
+    () => toFullCalendarEvents(calendarEvents),
+    [calendarEvents],
+  );
+
+  const prev = () => {
+    const api = calendarRef.current?.getApi();
+    if (api) {
+      api.prev();
+      setAnchor(api.getDate());
+    }
+  };
+
+  const next = () => {
+    const api = calendarRef.current?.getApi();
+    if (api) {
+      api.next();
+      setAnchor(api.getDate());
+    }
+  };
+
+  const goToday = () => {
+    const api = calendarRef.current?.getApi();
+    if (api) {
+      api.today();
+      setAnchor(new Date());
+    }
+  };
+
+  const handleViewChange = (newView: "week" | "month") => {
+    setView(newView);
+    const api = calendarRef.current?.getApi();
+    if (api) {
+      api.changeView(newView === "week" ? "timeGridWeek" : "dayGridMonth");
+      setAnchor(api.getDate());
+    }
+  };
 
   return (
     <div className="p-6 space-y-4">
@@ -143,7 +159,7 @@ export default function CalendarPage() {
           </Button>
           <Tabs
             value={view}
-            onValueChange={(v) => setView(v as "week" | "month")}
+            onValueChange={(v) => handleViewChange(v as "week" | "month")}
           >
             <TabsList className="bg-muted/50">
               <TabsTrigger value="week" className="font-mono text-xs">
@@ -157,139 +173,32 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {view === "week" ? (
-        <div className="rounded-xl border border-border/50 bg-card/60 backdrop-blur-sm overflow-hidden">
-          <div className="grid grid-cols-8 border-b border-border/50">
-            <div className="py-3 px-2 font-mono text-xs text-muted-foreground text-center">
-              TIME
-            </div>
-            {weekDays.map((day) => (
-              <div
-                key={day.toISOString()}
-                className={cn(
-                  "py-3 px-2 text-center border-l border-border/30",
-                  isToday(day) && "bg-accent/10",
-                )}
-              >
-                <p
-                  className={cn(
-                    "font-mono text-xs",
-                    isToday(day)
-                      ? "text-accent font-bold"
-                      : "text-muted-foreground",
-                  )}
-                >
-                  {format(day, "EEE")}
-                </p>
-                <p
-                  className={cn(
-                    "font-display text-lg font-bold",
-                    isToday(day) ? "text-accent" : "text-foreground",
-                  )}
-                >
-                  {format(day, "d")}
-                </p>
-              </div>
-            ))}
-          </div>
-          <div className="overflow-y-auto max-h-[60vh]">
-            {HOURS.map((hour) => (
-              <div
-                key={hour}
-                className="grid grid-cols-8 border-b border-border/20 min-h-[48px]"
-              >
-                <div className="py-1 px-2 font-mono text-[10px] text-muted-foreground/60 text-right pr-3 pt-2">
-                  {hour < 12
-                    ? `${hour}am`
-                    : hour === 12
-                      ? "12pm"
-                      : `${hour - 12}pm`}
-                </div>
-                {weekDays.map((day) => {
-                  const events = calendarEvents.filter((e) => {
-                    if (!isSameDay(e.date, day) || !e.startTime) return false;
-                    const [h] = e.startTime.split(":").map(Number);
-                    return h === hour;
-                  });
-                  return (
-                    <div
-                      key={day.toISOString()}
-                      className={cn(
-                        "border-l border-border/20 px-1 py-0.5",
-                        isToday(day) && "bg-accent/5",
-                      )}
-                    >
-                      {events.map((ev) => (
-                        <div
-                          key={ev.id}
-                          className="rounded px-1.5 py-0.5 text-[10px] font-medium text-white truncate mb-0.5"
-                          style={{ backgroundColor: ev.color }}
-                        >
-                          {ev.title}
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="rounded-xl border border-border/50 bg-card/60 backdrop-blur-sm overflow-hidden">
-          <div className="grid grid-cols-7 border-b border-border/50">
-            {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-              <div
-                key={d}
-                className="py-2 text-center font-mono text-xs text-muted-foreground"
-              >
-                {d}
-              </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7">
-            {monthDays.map((day) => {
-              const dayEvents = calendarEvents.filter((e) =>
-                isSameDay(e.date, day),
-              );
-              const inMonth = isSameMonth(day, anchor);
-              return (
-                <div
-                  key={day.toISOString()}
-                  className={cn(
-                    "min-h-[80px] border-b border-r border-border/20 p-1.5",
-                    !inMonth && "opacity-30",
-                    isToday(day) && "bg-accent/10",
-                  )}
-                >
-                  <p
-                    className={cn(
-                      "font-mono text-xs font-bold mb-1",
-                      isToday(day) ? "text-accent" : "text-foreground",
-                    )}
-                  >
-                    {format(day, "d")}
-                  </p>
-                  <div className="flex flex-wrap gap-0.5">
-                    {dayEvents.slice(0, 3).map((ev) => (
-                      <span
-                        key={ev.id}
-                        className="h-1.5 w-1.5 rounded-full"
-                        style={{ backgroundColor: ev.color }}
-                      />
-                    ))}
-                    {dayEvents.length > 3 && (
-                      <span className="font-mono text-[8px] text-muted-foreground">
-                        +{dayEvents.length - 3}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      <div className="fc-calendar-wrapper">
+        <FullCalendar
+          ref={calendarRef}
+          plugins={[dayGridPlugin, timeGridPlugin]}
+          initialView="timeGridWeek"
+          headerToolbar={false}
+          events={fcEvents}
+          firstDay={1}
+          height="90vh"
+          slotMinTime="00:00:00"
+          slotMaxTime="24:00:00"
+          allDaySlot={true}
+          allDayText="All Day"
+          nowIndicator={true}
+          dayMaxEvents={3}
+          eventDisplay="block"
+          slotLabelFormat={{
+            hour: "numeric",
+            minute: "2-digit",
+            meridiem: "short",
+          }}
+          datesSet={(dateInfo) => {
+            setAnchor(dateInfo.start);
+          }}
+        />
+      </div>
     </div>
   );
 }
