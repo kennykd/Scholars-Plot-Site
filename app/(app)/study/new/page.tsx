@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -8,47 +8,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { mockStudySessions } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ArrowLeft, CalendarIcon, Paperclip, X } from "lucide-react";
 import { format } from "date-fns";
-
-type StudySessionLocal = {
-  id: string;
-  title: string;
-  notes: string;
-  attachments: string[];
-  scheduledAt: string;
-  focusMinutes: number;
-  breakMinutes: number;
-  totalMinutes: number;
-  status: "planned" | "in-progress" | "completed";
-  createdAt: string;
-  isTimerOnly?: boolean;
-};
-
-const STORAGE_KEY = "scholarsPlot.studySessions";
-
-const seedSessions = (): StudySessionLocal[] =>
-  mockStudySessions.map((session) => ({
-    id: session.id,
-    title: session.taskTitle ?? "Study Session",
-    notes: "",
-    attachments: [],
-    scheduledAt: (session.scheduledAt ?? new Date()).toISOString(),
-    focusMinutes: session.duration ?? 25,
-    breakMinutes: session.breakDuration ?? 5,
-    totalMinutes: 60,
-    status: session.status === "completed" ? "completed" : "planned",
-    createdAt: new Date().toISOString(),
-  }));
 
 const combineDateTime = (date: Date, time: string) => {
   const [hours, minutes] = time.split(":").map(Number);
@@ -61,48 +31,23 @@ const combineDateTime = (date: Date, time: string) => {
 
 export default function StudyNewPage() {
   const router = useRouter();
-  const [sessions, setSessions] = useState<StudySessionLocal[]>([]);
-  const [hydrated, setHydrated] = useState(false);
 
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
-  const [attachments, setAttachments] = useState<string[]>([]);
   const [scheduledDate, setScheduledDate] = useState<Date | undefined>();
   const [scheduledTime, setScheduledTime] = useState("");
   const [focusMinutes, setFocusMinutes] = useState(25);
   const [breakMinutes, setBreakMinutes] = useState(5);
-  const [totalMinutes, setTotalMinutes] = useState(60);
+  const [totalPomodoro, setTotalPomodoro] = useState(2);
+  const [descriptionAsChecklist, setDescriptionAsChecklist] = useState(true);
   const [calOpen, setCalOpen] = useState(false);
 
-  useEffect(() => {
-    const stored =
-      typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
-    if (stored) {
-      try {
-        setSessions(JSON.parse(stored));
-      } catch {
-        setSessions(seedSessions());
-      }
-    } else {
-      setSessions(seedSessions());
-    }
-    setHydrated(true);
-  }, []);
+  const totalMinutesComputed =
+    (Math.max(1, Number(focusMinutes) || 0) +
+      Math.max(1, Number(breakMinutes) || 0)) *
+    Math.max(1, Number(totalPomodoro) || 0);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
-    if (!files.length) return;
-    setAttachments((prev) => [...prev, ...files.map((file) => file.name)]);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const files = Array.from(e.dataTransfer.files ?? []);
-    if (!files.length) return;
-    setAttachments((prev) => [...prev, ...files.map((file) => file.name)]);
-  };
-
-  const handleCreateSession = (e: React.FormEvent) => {
+  const handleCreateSession = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
       toast.error("Session title is required");
@@ -113,33 +58,52 @@ export default function StudyNewPage() {
       return;
     }
 
-    const scheduledAt = combineDateTime(scheduledDate, scheduledTime);
-    const newSession: StudySessionLocal = {
-      id: `session-${Date.now()}`,
-      title: title.trim(),
-      notes: notes.trim(),
-      attachments,
-      scheduledAt: scheduledAt.toISOString(),
-      focusMinutes: Math.max(1, Number(focusMinutes) || 25),
-      breakMinutes: Math.max(1, Number(breakMinutes) || 5),
-      totalMinutes: Math.max(1, Number(totalMinutes) || 60),
-      status: "planned",
-      isTimerOnly: false,
-      createdAt: new Date().toISOString(),
+    const payload = {
+      study_session_name: title.trim(),
+      study_session_description: notes.trim() || undefined,
+      focus_minutes: Math.max(1, Number(focusMinutes) || 25),
+      break_minutes: Math.max(0, Number(breakMinutes) || 5),
+      total_pomodoros: Math.max(1, Number(totalPomodoro) || 2),
+      total_minutes: totalMinutesComputed,
+      // First it checks if the user wants the description to be written as a checklist, if not then the checklist will be null
+      checklist_json: descriptionAsChecklist
+        ? notes
+            .split("\n")
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .map((text) => ({
+              id: crypto.randomUUID(),
+              text,
+              completed: false,
+            }))
+        : null,
+      study_session_scheduled_at: combineDateTime(
+        scheduledDate,
+        scheduledTime,
+      ).toISOString(),
     };
 
-    const nextSessions = [newSession, ...sessions].sort(
-      (a, b) =>
-        new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime(),
-    );
+    try {
+      const response = await fetch("/api/study", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
 
-    if (hydrated) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextSessions));
+      const data = await response.json();
+
+      if (!response.ok) {
+        toast.error(data?.message ?? "Failed to create study session");
+        return;
+      }
+
+      toast.success("Study session created");
+      router.push("/study");
+    } catch {
+      toast.error("Network error while creating study session");
     }
-
-    setSessions(nextSessions);
-    toast.success("Study session created");
-    router.push("/study");
   };
 
   return (
@@ -168,15 +132,17 @@ export default function StudyNewPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleCreateSession} className="space-y-5 pt-2">
+            {/* Insert Title */}
             <div className="space-y-1.5">
               <Label className="font-mono text-xs tracking-wider">TITLE</Label>
               <Input
-                placeholder="e.g. Biology Chapter 6 Review"
+                placeholder="e.g. Website Application Design and Security Self-Study"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
               />
             </div>
 
+            {/* Insert Date and Time (using calendar popup for date) */}
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1.5">
                 <Label className="font-mono text-xs tracking-wider">
@@ -192,6 +158,7 @@ export default function StudyNewPage() {
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
+                      {/* Displays the value of the date with format "PPP" (e.g. April 1st, 2026) */}
                       {scheduledDate
                         ? format(scheduledDate, "PPP")
                         : "Pick a date"}
@@ -205,12 +172,12 @@ export default function StudyNewPage() {
                         setScheduledDate(value);
                         setCalOpen(false);
                       }}
-                      initialFocus
                     />
                   </PopoverContent>
                 </Popover>
               </div>
 
+              {/* Setting the time */}
               <div className="space-y-1.5">
                 <Label className="font-mono text-xs tracking-wider">TIME</Label>
                 <Input
@@ -221,6 +188,7 @@ export default function StudyNewPage() {
               </div>
             </div>
 
+            {/* Insert Focus Minutes and Break Minutes (For Pomodoro) */}
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1.5">
                 <Label className="font-mono text-xs tracking-wider">
@@ -249,75 +217,50 @@ export default function StudyNewPage() {
               </p>
             </div>
 
+            {/* Insert total duration of study session */}
             <div className="space-y-2">
               <Label className="font-mono text-xs tracking-wider">
-                TOTAL DURATION (MINUTES)
+                How many Pomodoro sessions?
               </Label>
               <Input
                 type="number"
                 min={1}
-                value={totalMinutes}
-                onChange={(e) => setTotalMinutes(Number(e.target.value))}
+                value={totalPomodoro}
+                onChange={(e) => setTotalPomodoro(Number(e.target.value))}
               />
               <p className="text-xs text-muted-foreground">
-                Total: {totalMinutes}m
+                Total Minutes: {totalMinutesComputed}m
               </p>
             </div>
 
+            {/* Insert Notes (If the study session is derived from task/project, AI will fill this with a checklist of what to do) */}
             <div className="space-y-1.5">
               <Label className="font-mono text-xs tracking-wider">NOTES</Label>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="description-as-checklist"
+                  checked={descriptionAsChecklist}
+                  onCheckedChange={(checked) =>
+                    setDescriptionAsChecklist(checked === true)
+                  }
+                />
+                <Label
+                  htmlFor="description-as-checklist"
+                  className="font-mono text-xs tracking-wider"
+                >
+                  Make the description a checklist
+                </Label>
+              </div>
               <Textarea
-                placeholder="Add goals or notes for this session..."
+                placeholder={
+                  descriptionAsChecklist
+                    ? "Make a checklist by separating each checklist item with a newline, e.g.\n\nRead chapter 3\nSolve 10 questions\nReview mistakes"
+                    : "Add notes for this study session..."
+                }
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="resize-y min-h-[90px]"
+                className="resize-y min-h-22.5"
               />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="font-mono text-xs tracking-wider">
-                ATTACHMENTS
-              </Label>
-              {attachments.length ? (
-                <div className="space-y-2">
-                  {attachments.map((file, index) => (
-                    <div
-                      key={`${file}-${index}`}
-                      className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/30 px-3 py-2"
-                    >
-                      <Paperclip className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm flex-1 truncate">{file}</span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setAttachments((prev) =>
-                            prev.filter((_, i) => i !== index),
-                          )
-                        }
-                      >
-                        <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <label
-                  className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border/50 bg-muted/20 px-4 py-6 cursor-pointer hover:border-accent/50 transition-colors"
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={handleDrop}
-                >
-                  <Paperclip className="h-6 w-6 text-muted-foreground" />
-                  <span className="font-mono text-xs text-muted-foreground">
-                    Drop files here or click to browse
-                  </span>
-                  <input
-                    type="file"
-                    className="hidden"
-                    multiple
-                    onChange={handleFileSelect}
-                  />
-                </label>
-              )}
             </div>
 
             <div className="flex gap-3 pt-2">

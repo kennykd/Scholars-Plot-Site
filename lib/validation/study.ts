@@ -1,52 +1,69 @@
 import { z } from 'zod';
 
 export const createStudySchema = z.object({
-  taskId: z.string()
+  study_session_name: z.string()
+  .min(1, 'Study session name is required')
+  .max(100, 'Study session name cannot exceed 100 characters'),
+  study_session_description: z.string()
   .optional(),
-  taskTitle: z.string()
-  .min(1, 'Task title is required')
-  .max(100, 'Task title cannot exceed 100 characters')
-  .optional(),
-  duration: z.coerce.number()
-  .min(1, 'Duration must be at least 1 minute'),
-  breakDuration: z.coerce.number()
-  .min(0, 'Break duration cannot be negative'),
-  checklist: z.array(z.object({
+  focus_minutes: z.coerce.number()
+  .int('Focus minutes must be a whole number')
+  .min(1, 'Focus minutes must be at least 1 minute'),
+  break_minutes: z.coerce.number()
+  .int('Break minutes must be a whole number')
+  .min(0, 'Break minutes cannot be negative'),
+  total_pomodoros: z.coerce.number()
+  .int('Total pomodoros must be a whole number')
+  .min(1, 'Total pomodoros must be at least 1'),
+  total_minutes: z.coerce.number()
+  .int('Total minutes must be a whole number')
+  .min(1, 'Total minutes must be at least 1 minute'),
+  checklist_json: z.array(z.object({
     id: z.uuid(),
     text: z.string()
     .min(1, 'Checklist item text is required'),
     completed: z.boolean(),
-  })),
-  status: z.enum(["pending", "active", "completed"]),
-  scheduledAt: z.coerce.date()
+  })).nullable(),
+  study_session_scheduled_at: z.coerce.date()
   .refine((date) => date >= new Date(),
-    { message: "Deadline must be in the future" }
+    { message: "Scheduled time must be in the future" }
   )
 });
 
 export const updateStudySchema = z.object({
-  taskId: z.string()
+  study_session_name: z.string()
+  .min(1, 'Study session name is required')
+  .max(100, 'Study session name cannot exceed 100 characters')
   .optional(),
-  taskTitle: z.string()
+  study_session_description: z.string()
   .optional(),
-  duration: z.coerce.number()
-  .min(1, 'Duration must be at least 1 minute')
+  focus_minutes: z.coerce.number()
+  .int('Focus minutes must be a whole number')
+  .min(1, 'Focus minutes must be at least 1 minute')
   .optional(),
-  breakDuration: z.coerce.number()
-  .min(0, 'Break duration cannot be negative')
+  break_minutes: z.coerce.number()
+  .int('Break minutes must be a whole number')
+  .min(0, 'Break minutes cannot be negative')
   .optional(),
-  checklist: z.array(z.object({
+  total_pomodoros: z.coerce.number()
+  .int('Total pomodoros must be a whole number')
+  .min(1, 'Total pomodoros must be at least 1')
+  .optional(),
+  total_minutes: z.coerce.number()
+  .int('Total minutes must be a whole number')
+  .min(1, 'Total minutes must be at least 1 minute')
+  .optional(),
+  checklist_json: z.array(z.object({
     id: z.uuid(),
     text: z.string()
     .min(1, 'Checklist item text is required'),
     completed: z.boolean(),
   }))
+  .nullable()
   .optional(),
-  status: z.enum(["pending", "active", "completed"])
-  .optional(),
-  scheduledAt: z.coerce.date()
+  study_session_scheduled_at: z.coerce.date()
   .refine((date) => date >= new Date(),
-    { message: "Deadline must be in the future" }
+    { message: "Scheduled time must be in the future" }
   )
   .optional()
 });

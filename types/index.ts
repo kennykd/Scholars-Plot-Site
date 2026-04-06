@@ -29,6 +29,7 @@ export interface Task {
   completedAt?: Date;
 }
 
+// LEGACY
 export interface ChecklistItem {
   /** Unique identifier for the checklist item */
   id: string;
@@ -38,6 +39,7 @@ export interface ChecklistItem {
   completed: boolean;
 }
 
+// LEGACY
 export interface StudySession {
   /** Unique identifier for the study session */
   id: string;

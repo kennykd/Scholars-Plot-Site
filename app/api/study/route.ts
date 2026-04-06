@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { StudySession } from '../../../types/index';
-import { mockStudySessions } from '../../../lib/mock-data';
 import { createStudySchema } from '../../../lib/validation/study';
+import { prisma } from '@/lib/prisma';
+import { Prisma } from '@/lib/generated/prisma/client';
 
 /**
  * @swagger
@@ -177,10 +177,14 @@ import { createStudySchema } from '../../../lib/validation/study';
  *                   example: Error creating study session
  */
 
-export const studySessions: StudySession[] = mockStudySessions;
-
 export async function GET() {
   try {
+    const studySessions = await prisma.studySession.findMany({
+      orderBy: {
+        study_session_scheduled_at: 'asc',
+      },
+    });
+
     return NextResponse.json(
       { message: 'Study sessions retrieved successfully', studySessions },
       { status: 200 },
@@ -209,20 +213,30 @@ export async function POST(request: Request) {
       );
     }
 
-    const { taskId, taskTitle, duration, breakDuration, checklist, status, scheduledAt } = parsed.data;
+    const {
+      study_session_name,
+      study_session_description,
+      focus_minutes,
+      break_minutes,
+      total_pomodoros,
+      total_minutes,
+      study_session_scheduled_at,
+      checklist_json,
+    } = parsed.data;
 
-    const newStudySession: StudySession = {
-      id: crypto.randomUUID(),
-      taskId,
-      taskTitle,
-      duration: duration ?? 25,
-      breakDuration: breakDuration ?? 5,
-      checklist,
-      status: status ?? 'pending',
-      scheduledAt,
-    };
-
-    studySessions.push(newStudySession);
+    const newStudySession = await prisma.studySession.create({
+      data: {
+        study_session_name,
+        study_session_description,
+        focus_minutes,
+        break_minutes,
+        total_pomodoros,
+        total_minutes,
+        study_session_scheduled_at,
+        // If the input is null for the json checklist, make the database store SQL NULL in the checklist_json column
+        checklist_json: checklist_json === null ? Prisma.DbNull : checklist_json,
+      },
+    });
 
     return NextResponse.json(
       { message: 'Study session created successfully', studySession: newStudySession },

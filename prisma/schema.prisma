@@ -75,7 +75,7 @@ model User {
   analytics       Analytics?      @relation(fields: [analytics_id], references: [analytics_id])
   project_members ProjectUser[]
   task_users      TaskUser[]
-  session_timer_user SessionTimerUser[]
+  study_session_user StudySessionUser[]
 
   @@map("user")
 }
@@ -121,7 +121,7 @@ model Task {
 
   project        Project?       @relation(fields: [project_id], references: [project_id], onDelete: SetNull)
   task_users     TaskUser[]
-  session_timers SessionTimer[]
+  study_session_user StudySessionUser[]
   task_reminders TaskReminder[]
 
   @@map("task")
@@ -146,7 +146,7 @@ model Attachment {
   file_type              String
   attachment_uploaded_at DateTime @default(now())
 
-  session_timers SessionTimer[]
+  study_session_user StudySessionUser[]
 
   @@map("attachment")
 }
@@ -155,62 +155,51 @@ model StudySession {
   study_session_id            Int      @id @default(autoincrement())
   study_session_name          String
   study_session_description   String?  @db.Text
-  duration                    Int      @default(25)
-  break_duration              Int      @default(5)
+  focus_minutes               Int      @default(25)
+  break_minutes               Int      @default(5)
+  total_pomodoros             Int      @default(2)
+  total_minutes               Int      @default(60)
   study_session_scheduled_at  DateTime
   study_session_created_at    DateTime @default(now())
-  checklist_json              Json
+  checklist_json              Json?
 
-  session_timers   SessionTimer[]
-  session_timer_user SessionTimerUser[]
+  study_session_user      StudySessionUser[]
+  study_session_reminders StudySessionReminder[]
 
   @@map("study_session")
 }
 
-model SessionTimer {
-  session_timer_id  Int      @id @default(autoincrement())
+model StudySessionUser {
   study_session_id  Int
+  user_id           String
   task_id           Int?
   attachment_id     Int?
-  start_time        DateTime
-
-  study_session      StudySession           @relation(fields: [study_session_id], references: [study_session_id])
-  task               Task?                  @relation(fields: [task_id], references: [task_id])
-  attachment         Attachment?            @relation(fields: [attachment_id], references: [attachment_id])
-  session_timer_user SessionTimerUser[]
-  session_reminder   StudySessionReminder[]
-
-  @@map("session_timer")
-}
-
-model SessionTimerUser {
-  study_session_id  Int
-  session_timer_id  Int
-  user_id           String
-  joined_at         DateTime
+  started_at        DateTime?
+  joined_at         DateTime           @default(now())
   current_time      Int                @default(0)
   status            SessionTimerStatus @default(idle)
   completed_at      DateTime?
   actual_duration   Int?
 
   study_session StudySession @relation(fields: [study_session_id], references: [study_session_id])
-  session_timer SessionTimer @relation(fields: [session_timer_id], references: [session_timer_id])
   user          User         @relation(fields: [user_id], references: [user_id])
+  task          Task?        @relation(fields: [task_id], references: [task_id])
+  attachment    Attachment?  @relation(fields: [attachment_id], references: [attachment_id])
 
-  @@id([study_session_id, session_timer_id, user_id])
-  @@map("session_timer_user")
+  @@id([study_session_id, user_id])
+  @@map("study_session_user")
 }
 
 model StudySessionReminder {
   reminder_id      Int                  @id @default(autoincrement())
-  session_timer_id Int
+  study_session_id Int
   interval_type    ReminderIntervalType
   interval_value   Int?
   remind_at        DateTime
   is_active        Boolean              @default(true)
   reminder_created_at DateTime          @default(now())
 
-  session_timer SessionTimer  @relation(fields: [session_timer_id], references: [session_timer_id])
+  study_session StudySession @relation(fields: [study_session_id], references: [study_session_id])
   alerts        Alert[]
 
   @@map("study_session_reminder")
