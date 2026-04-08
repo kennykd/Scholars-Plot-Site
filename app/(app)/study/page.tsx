@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { mockStudySessions } from "@/lib/mock-data";
 import { Bell, Plus } from "lucide-react";
 import {
   differenceInMinutes,
@@ -34,43 +33,59 @@ type StudySessionLocal = {
 
 const STORAGE_KEY = "scholarsPlot.studySessions";
 
-const seedSessions = (): StudySessionLocal[] =>
-  mockStudySessions.map((session) => ({
-    id: session.id,
-    title: session.taskTitle ?? "Study Session",
-    notes: "",
-    attachments: [],
-    scheduledAt: (session.scheduledAt ?? new Date()).toISOString(),
-    focusMinutes: session.duration ?? 25,
-    breakMinutes: session.breakDuration ?? 5,
-    totalMinutes: 60,
-    status: session.status === "completed" ? "completed" : "planned",
-    createdAt: new Date().toISOString(),
-  }));
-
 export default function StudyPage() {
   const router = useRouter();
   const [sessions, setSessions] = useState<StudySessionLocal[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [nowTick, setNowTick] = useState(new Date());
   const [quickTitle, setQuickTitle] = useState("");
   const [quickFocusMinutes, setQuickFocusMinutes] = useState(25);
   const [quickBreakMinutes, setQuickBreakMinutes] = useState(5);
   const [quickTotalMinutes, setQuickTotalMinutes] = useState(60);
 
+  // Fetch user's study sessions from API
   useEffect(() => {
-    const stored =
-      typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
-    if (stored) {
+    const fetchSessions = async () => {
       try {
-        setSessions(JSON.parse(stored));
-      } catch {
-        setSessions(seedSessions());
+        setLoading(true);
+        const response = await fetch("/api/study");
+        const data = await response.json();
+
+        if (!response.ok) {
+          console.error("Failed to fetch sessions:", data.message);
+          setSessions([]);
+          return;
+        }
+
+        // Transform API response to local format
+        const transformedSessions: StudySessionLocal[] = data.studySessions.map(
+          (session: any) => ({
+            id: session.study_session_id.toString(),
+            title: session.study_session_name,
+            notes: session.study_session_description || "",
+            attachments: [], // TODO: handle attachments
+            scheduledAt: session.study_session_scheduled_at,
+            focusMinutes: session.focus_minutes,
+            breakMinutes: session.break_minutes,
+            totalMinutes: session.total_minutes,
+            status: "planned", // TODO: map from database status
+            createdAt: session.study_session_created_at,
+            isTimerOnly: false,
+          }),
+        );
+
+        setSessions(transformedSessions);
+      } catch (error) {
+        console.error("Error fetching study sessions:", error);
+        setSessions([]);
+      } finally {
+        setLoading(false);
+        setHydrated(true);
       }
-    } else {
-      setSessions(seedSessions());
-    }
-    setHydrated(true);
+    };
+
+    fetchSessions();
   }, []);
 
   useEffect(() => {
@@ -180,7 +195,11 @@ export default function StudyPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {upcomingSessions.length === 0 ? (
+              {loading ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Loading study sessions...
+                </p>
+              ) : upcomingSessions.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">
                   No upcoming sessions. Schedule one to get started.
                 </p>

@@ -18,6 +18,8 @@ export const createStudySchema = z.object({
   total_minutes: z.coerce.number()
   .int('Total minutes must be a whole number')
   .min(1, 'Total minutes must be at least 1 minute'),
+  task_id: z.number().int().optional(),
+  attachment_id: z.number().int().optional(),
   checklist_json: z.array(z.object({
     id: z.uuid(),
     text: z.string()

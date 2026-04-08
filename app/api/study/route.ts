@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { createStudySchema } from '../../../lib/validation/study';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@/lib/generated/prisma/client';
+import { getSession } from '@/lib/firebase/auth';
+import { get } from 'http';
 
 /**
  * @swagger
@@ -179,7 +181,23 @@ import { Prisma } from '@/lib/generated/prisma/client';
 
 export async function GET() {
   try {
+    const session = await getSession();
+
+    if (!session) {
+      return NextResponse.json({ message: 'User is not authenticated!' }, { status: 401 });
+    }
+
     const studySessions = await prisma.studySession.findMany({
+      where: {
+        study_session_user: {
+          some: {
+            user_id: session.id,
+          },
+        },
+      },
+      include: {
+        study_session_user: true,
+      },
       orderBy: {
         study_session_scheduled_at: 'asc',
       },
@@ -196,6 +214,15 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    // Get the session to get the userID currently logged in
+    const session = await getSession();
+    
+    if(!session) {
+      return NextResponse.json({ message: "User is not authenticated!" }, { status: 401 })
+    }
+    // Take the authenticated userId
+    const userId = session.id; 
+
     let body: unknown;
 
     try {
@@ -213,6 +240,10 @@ export async function POST(request: Request) {
       );
     }
 
+    if (Object.keys(parsed.data).length === 0) {
+      return NextResponse.json({ message: 'No fields provided for update' }, { status: 400 });
+    }
+
     const {
       study_session_name,
       study_session_description,
@@ -222,6 +253,8 @@ export async function POST(request: Request) {
       total_minutes,
       study_session_scheduled_at,
       checklist_json,
+      task_id,
+      attachment_id,
     } = parsed.data;
 
     const newStudySession = await prisma.studySession.create({
@@ -235,6 +268,19 @@ export async function POST(request: Request) {
         study_session_scheduled_at,
         // If the input is null for the json checklist, make the database store SQL NULL in the checklist_json column
         checklist_json: checklist_json === null ? Prisma.DbNull : checklist_json,
+        // Also create the junction table: study_session_user 
+        // Required field: user_id, 
+        // Optional fields: task_id, attachment_id. Where the option fields are only filled when the Study Session is linked with a task
+        study_session_user: {
+          create: {
+            user_id: userId,
+            task_id: task_id || null,
+            attachment_id: attachment_id || null,
+          },
+        },
+      },
+      include: {
+        study_session_user: true,
       },
     });
 

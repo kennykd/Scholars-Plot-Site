@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { updateStudySchema } from '../../../../lib/validation/study';
-import { studySessions } from '../route';
+import { prisma } from '@/lib/prisma';
+import { Prisma } from '@/lib/generated/prisma/client';
+import { Params } from 'better-auth';
 
 /**
  * @swagger
@@ -159,21 +161,25 @@ type RouteContext = {
   }>;
 };
 
-export async function DELETE(_: Request, context: RouteContext) {
+export async function DELETE(context: RouteContext) {
+
   try {
+    // Takes the Study Session ID
     const { id } = await context.params;
 
-    const index = studySessions.findIndex((session) => session.id === id);
+    // Assigns a variable to the ID
+    const studySessionId = Number(id);
+    // Checks if the ID is numerically valid
+    if (!Number.isInteger(studySessionId) || studySessionId <= 0) {
+      return NextResponse.json({ message: "Invalid Study Session ID" }, { status: 400 });
+    }
 
-    if (index === -1) {
-      return NextResponse.json({ message: 'Study session not found' }, { status: 404 });
-    };
-
-    studySessions.splice(index, 1);
-
-    return NextResponse.json({ message: 'Study session deleted successfully' }, { status: 200 });
+    // await for prisma to delete the study session row where it matches the requested ID
+    await prisma.studySession.delete({
+      where: {study_session_id: studySessionId}
+    })
   } catch (error) {
-    return NextResponse.json({ message: 'Error deleting study session', error }, { status: 500 });
+    NextResponse.json({ message: "Error in deleting study session", error }, { status: 500 })
   }
 }
 
@@ -181,43 +187,55 @@ export async function PATCH(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
 
-    const index = studySessions.findIndex((session) => session.id === id);
-
-    if (index === -1) {
-      return NextResponse.json({ message: 'Study session not found' }, { status: 404 });
-    };
-
+    // Assigns a variable to the ID
+    const studySessionId = Number(id);
+    // Checks if the ID is numerically valid
+    if (!Number.isInteger(studySessionId) || studySessionId <= 0) {
+      return NextResponse.json({ message: "Invalid Study Session ID" }, { status: 400 });
+    }
+    
+    // Parse the requested JSON body
     let body: unknown;
-
     try {
       body = await request.json();
     } catch {
-      return NextResponse.json({ message: 'Invalid JSON body' }, { status: 400 });
-    };
+      return NextResponse.json({ message: "Invalid JSON body" }, { status: 400 });
+    }
 
-    const parsed = updateStudySchema.safeParse(body);
-
+    // Do input validation on the parsed json body, using zod schema, if failed return the error
+    const parsed = updateStudySchema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json(
-        { message: 'Validation failed', errors: z.flattenError(parsed.error).fieldErrors },
-        { status: 400 },
+        { message: "Type Validation failed", erros: z.flattenError(parsed.error).fieldErrors },
+        { status: 400 }
       );
-    };
+    }
 
+    // Check to see that at least one field is provided by the user
     if (Object.keys(parsed.data).length === 0) {
       return NextResponse.json({ message: 'No fields provided for update' }, { status: 400 });
-    };
+    }
 
-    const { ...rest } = parsed.data;
+    // Create the data object to then update into the database (also cast into StudySessionUpdateInput to avoid typescript errors)
+    const data = Object.fromEntries(
+      // Remove fields that are undefined (this is possible because the database schema for StudySesison table allow for optional columns)
+      Object.entries(parsed.data).filter(([, v]) => v !== undefined)
+    ) as Prisma.StudySessionUpdateInput
 
-    studySessions[index] = {
-      ...studySessions[index],
-      ...rest,
-      id: studySessions[index].id
-    };
+    // Handle null checklist_json
+    if (parsed.data.checklist_json === null){
+      data.checklist_json = Prisma.DbNull;
+    }
 
+    // Update the prisma database
+    const updatedStudySession = await prisma.studySession.update({
+      where: { study_session_id: studySessionId },
+      data,
+    });
+
+    // return success message
     return NextResponse.json(
-      { message: 'Study session updated successfully', studySession: studySessions[index] },
+      { message: "Sucessfully updated study session's data",  updatedStudySession},
       { status: 200 },
     );
   } catch (error) {
