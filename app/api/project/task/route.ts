@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { ProjectTask } from '../../../../types/index';
+import { getSession } from '@/lib/firebase/auth';
 import { createProjectTaskSchema } from '../../../../lib/validation/project';
-import { projects } from '../route';
+import { createProjectTask, ProjectServiceError } from '@/lib/services/projectService';
 
 /**
  * @swagger
@@ -110,6 +110,12 @@ import { projects } from '../route';
 
 export async function POST(request: Request) {
   try {
+    const session = await getSession();
+
+    if (!session) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
     let body: unknown;
 
     try {
@@ -127,33 +133,17 @@ export async function POST(request: Request) {
       );
     }
 
-    const { projectId, title, description, priority, status, assignedTo, attachments, reminder } = parsed.data;
-
-    const projectIndex = projects.findIndex((p) => p.id === projectId);
-
-    if (projectIndex === -1) {
-      return NextResponse.json({ message: 'Project not found' }, { status: 404 });
-    };
-
-    const newTask: ProjectTask = {
-      id: crypto.randomUUID(),
-      title,
-      description,
-      priority,
-      status,
-      assignedTo,
-      attachments,
-      reminder,
-      createdAt: new Date(),
-    };
-
-    projects[projectIndex].tasks.push(newTask);
+    const task = await createProjectTask(session.id, parsed.data);
 
     return NextResponse.json(
-      { message: 'Project task created successfully', task: newTask },
+      { message: 'Project task created successfully', task },
       { status: 201 },
     );
   } catch (error) {
+    if (error instanceof ProjectServiceError) {
+      return NextResponse.json({ message: error.message }, { status: error.status });
+    }
+
     return NextResponse.json({ message: 'Error creating project task', error }, { status: 500 });
   }
 }

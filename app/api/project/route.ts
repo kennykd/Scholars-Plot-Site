@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { Project } from '../../../types/index';
-import { mockProjects } from '../../../lib/mock-data';
 import { createProjectSchema } from '../../../lib/validation/project';
+import { createProject, getProjects } from '@/lib/services/projectService';
 
 /**
  * @swagger
@@ -191,10 +190,10 @@ import { createProjectSchema } from '../../../lib/validation/project';
  *                   example: Error creating project
  */
 
-export const projects: Project[] = mockProjects;
-
 export async function GET() {
   try {
+    const projects = await getProjects();
+
     return NextResponse.json(
       { message: 'Projects retrieved successfully', projects },
       { status: 200 },
@@ -223,22 +222,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const { name, description, ownerId, members } = parsed.data;
-
-    const newProject: Project = {
-      id: crypto.randomUUID(),
-      name,
-      description,
-      ownerId,
-      members: members ?? [],
-      tasks: [],
-      createdAt: new Date(),
-    };
-
-    projects.push(newProject);
+    const project = await createProject(parsed.data);
 
     return NextResponse.json(
-      { message: 'Project created successfully', project: newProject },
+      { message: 'Project created successfully', project },
       { status: 201 },
     );
   } catch (error) {

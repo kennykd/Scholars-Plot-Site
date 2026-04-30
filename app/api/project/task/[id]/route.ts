@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { getSession } from '@/lib/firebase/auth';
 import { updateProjectTaskSchema } from '../../../../../lib/validation/project';
-import { projects } from '../../route';
+import {
+  deleteProjectTaskById,
+  ProjectServiceError,
+  updateProjectTaskById,
+} from '@/lib/services/projectService';
 
 /**
  * @swagger
@@ -158,43 +163,45 @@ type RouteContext = {
 
 export async function DELETE(_: Request, context: RouteContext) {
   try {
-    const { id } = await context.params;
+    const session = await getSession();
 
-    for (const project of projects) {
-      const taskIndex = project.tasks.findIndex((task) => task.id === id);
-
-      if (taskIndex !== -1) {
-        project.tasks.splice(taskIndex, 1);
-        return NextResponse.json({ message: 'Project task deleted successfully' }, { status: 200 });
-      }
+    if (!session) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    return NextResponse.json({ message: 'Project task not found' }, { status: 404 });
+    const { id } = await context.params;
+    const parsedTaskId = z.coerce.number().int().positive().safeParse(id);
+
+    if (!parsedTaskId.success) {
+      return NextResponse.json({ message: 'Invalid project task id' }, { status: 400 });
+    }
+
+    await deleteProjectTaskById(parsedTaskId.data, session.id);
+
+    return NextResponse.json({ message: 'Project task deleted successfully' }, { status: 200 });
   } catch (error) {
+    if (error instanceof ProjectServiceError) {
+      return NextResponse.json({ message: error.message }, { status: error.status });
+    }
+
     return NextResponse.json({ message: 'Error deleting project task', error }, { status: 500 });
   }
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
   try {
-    const { id } = await context.params;
+    const session = await getSession();
 
-    let projectIndex = -1;
-    let taskIndex = -1;
-
-    for (let i = 0; i < projects.length; i++) {
-      const idx = projects[i].tasks.findIndex((task) => task.id === id);
-
-      if (idx !== -1) {
-        projectIndex = i;
-        taskIndex = idx;
-        break;
-      }
+    if (!session) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    if (projectIndex === -1 || taskIndex === -1) {
-      return NextResponse.json({ message: 'Project task not found' }, { status: 404 });
-    };
+    const { id } = await context.params;
+    const parsedTaskId = z.coerce.number().int().positive().safeParse(id);
+
+    if (!parsedTaskId.success) {
+      return NextResponse.json({ message: 'Invalid project task id' }, { status: 400 });
+    }
 
     let body: unknown;
 
@@ -217,19 +224,17 @@ export async function PATCH(request: Request, context: RouteContext) {
       return NextResponse.json({ message: 'No fields provided for update' }, { status: 400 });
     };
 
-    const { ...rest } = parsed.data;
-
-    projects[projectIndex].tasks[taskIndex] = {
-      ...projects[projectIndex].tasks[taskIndex],
-      ...rest,
-      id: projects[projectIndex].tasks[taskIndex].id,
-    };
+    const task = await updateProjectTaskById(parsedTaskId.data, session.id, parsed.data);
 
     return NextResponse.json(
-      { message: 'Project task updated successfully', task: projects[projectIndex].tasks[taskIndex] },
+      { message: 'Project task updated successfully', task },
       { status: 200 },
     );
   } catch (error) {
+    if (error instanceof ProjectServiceError) {
+      return NextResponse.json({ message: error.message }, { status: error.status });
+    }
+
     return NextResponse.json({ message: 'Error updating project task', error }, { status: 500 });
   }
 }

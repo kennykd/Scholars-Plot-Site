@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { getSession } from '@/lib/firebase/auth';
 import { addProjectMemberSchema } from '../../../../../lib/validation/project';
-import { projects } from '../../route';
+import { addProjectMember, ProjectServiceError } from '@/lib/services/projectService';
 
 /**
  * @swagger
@@ -115,13 +116,18 @@ type RouteContext = {
 
 export async function POST(request: Request, context: RouteContext) {
   try {
+    const session = await getSession();
+
+    if (!session) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id } = await context.params;
+    const parsedProjectId = z.coerce.number().int().positive().safeParse(id);
 
-    const projectIndex = projects.findIndex((p) => p.id === id);
-
-    if (projectIndex === -1) {
-      return NextResponse.json({ message: 'Project not found' }, { status: 404 });
-    };
+    if (!parsedProjectId.success) {
+      return NextResponse.json({ message: 'Invalid project id' }, { status: 400 });
+    }
 
     let body: unknown;
 
@@ -140,23 +146,17 @@ export async function POST(request: Request, context: RouteContext) {
       );
     }
 
-    const { id: memberId, name, handle, role } = parsed.data;
-
-    const alreadyMember = projects[projectIndex].members.some((m) => m.id === memberId);
-
-    if (alreadyMember) {
-      return NextResponse.json({ message: 'Member already in project' }, { status: 409 });
-    };
-
-    const newMember = { id: memberId, name, handle, role };
-
-    projects[projectIndex].members.push(newMember);
+    const member = await addProjectMember(parsedProjectId.data, session.id, parsed.data);
 
     return NextResponse.json(
-      { message: 'Member added successfully', member: newMember },
+      { message: 'Member added successfully', member },
       { status: 201 },
     );
   } catch (error) {
+    if (error instanceof ProjectServiceError) {
+      return NextResponse.json({ message: error.message }, { status: error.status });
+    }
+
     return NextResponse.json({ message: 'Error adding member', error }, { status: 500 });
   }
 }

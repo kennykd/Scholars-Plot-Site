@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { updateProjectSchema } from '../../../../lib/validation/project';
-import { projects } from '../route';
+import {
+  deleteProjectById,
+  ProjectServiceError,
+  updateProjectById,
+} from '@/lib/services/projectService';
 
 /**
  * @swagger
@@ -143,17 +147,20 @@ type RouteContext = {
 export async function DELETE(_: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
+    const parsedProjectId = z.coerce.number().int().positive().safeParse(id);
 
-    const index = projects.findIndex((project) => project.id === id);
+    if (!parsedProjectId.success) {
+      return NextResponse.json({ message: 'Invalid project id' }, { status: 400 });
+    }
 
-    if (index === -1) {
-      return NextResponse.json({ message: 'Project not found' }, { status: 404 });
-    };
-
-    projects.splice(index, 1);
+    await deleteProjectById(parsedProjectId.data);
 
     return NextResponse.json({ message: 'Project deleted successfully' }, { status: 200 });
   } catch (error) {
+    if (error instanceof ProjectServiceError) {
+      return NextResponse.json({ message: error.message }, { status: error.status });
+    }
+
     return NextResponse.json({ message: 'Error deleting project', error }, { status: 500 });
   }
 }
@@ -161,12 +168,11 @@ export async function DELETE(_: Request, context: RouteContext) {
 export async function PATCH(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
+    const parsedProjectId = z.coerce.number().int().positive().safeParse(id);
 
-    const index = projects.findIndex((project) => project.id === id);
-
-    if (index === -1) {
-      return NextResponse.json({ message: 'Project not found' }, { status: 404 });
-    };
+    if (!parsedProjectId.success) {
+      return NextResponse.json({ message: 'Invalid project id' }, { status: 400 });
+    }
 
     let body: unknown;
 
@@ -189,19 +195,17 @@ export async function PATCH(request: Request, context: RouteContext) {
       return NextResponse.json({ message: 'No fields provided for update' }, { status: 400 });
     };
 
-    const { ...rest } = parsed.data;
-
-    projects[index] = {
-      ...projects[index],
-      ...rest,
-      id: projects[index].id,
-    };
+    const project = await updateProjectById(parsedProjectId.data, parsed.data);
 
     return NextResponse.json(
-      { message: 'Project updated successfully', project: projects[index] },
+      { message: 'Project updated successfully', project },
       { status: 200 },
     );
   } catch (error) {
+    if (error instanceof ProjectServiceError) {
+      return NextResponse.json({ message: error.message }, { status: error.status });
+    }
+
     return NextResponse.json({ message: 'Error updating project', error }, { status: 500 });
   }
 }

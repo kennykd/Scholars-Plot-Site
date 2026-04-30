@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { getSession } from '@/lib/firebase/auth';
 import { updateProjectMemberSchema } from '../../../../../../lib/validation/project';
-import { projects } from '../../../route';
+import {
+  deleteProjectMemberById,
+  ProjectServiceError,
+  updateProjectMemberById,
+} from '@/lib/services/projectService';
 
 /**
  * @swagger
@@ -160,49 +165,45 @@ type RouteContext = {
 
 export async function DELETE(_: Request, context: RouteContext) {
   try {
+    const session = await getSession();
+
+    if (!session) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id, memberId } = await context.params;
+    const parsedProjectId = z.coerce.number().int().positive().safeParse(id);
 
-    const projectIndex = projects.findIndex((p) => p.id === id);
+    if (!parsedProjectId.success) {
+      return NextResponse.json({ message: 'Invalid project id' }, { status: 400 });
+    }
 
-    if (projectIndex === -1) {
-      return NextResponse.json({ message: 'Project not found' }, { status: 404 });
-    };
-
-    const memberIndex = projects[projectIndex].members.findIndex((m) => m.id === memberId);
-
-    if (memberIndex === -1) {
-      return NextResponse.json({ message: 'Member not found' }, { status: 404 });
-    };
-
-    const member = projects[projectIndex].members[memberIndex];
-
-    if (member.role === 'owner') {
-      return NextResponse.json({ message: 'Cannot remove the project owner' }, { status: 403 });
-    };
-
-    projects[projectIndex].members.splice(memberIndex, 1);
+    await deleteProjectMemberById(parsedProjectId.data, session.id, memberId);
 
     return NextResponse.json({ message: 'Member removed successfully' }, { status: 200 });
   } catch (error) {
+    if (error instanceof ProjectServiceError) {
+      return NextResponse.json({ message: error.message }, { status: error.status });
+    }
+
     return NextResponse.json({ message: 'Error removing member', error }, { status: 500 });
   }
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
   try {
+    const session = await getSession();
+
+    if (!session) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id, memberId } = await context.params;
+    const parsedProjectId = z.coerce.number().int().positive().safeParse(id);
 
-    const projectIndex = projects.findIndex((p) => p.id === id);
-
-    if (projectIndex === -1) {
-      return NextResponse.json({ message: 'Project not found' }, { status: 404 });
-    };
-
-    const memberIndex = projects[projectIndex].members.findIndex((m) => m.id === memberId);
-
-    if (memberIndex === -1) {
-      return NextResponse.json({ message: 'Member not found' }, { status: 404 });
-    };
+    if (!parsedProjectId.success) {
+      return NextResponse.json({ message: 'Invalid project id' }, { status: 400 });
+    }
 
     let body: unknown;
 
@@ -221,16 +222,17 @@ export async function PATCH(request: Request, context: RouteContext) {
       );
     };
 
-    projects[projectIndex].members[memberIndex] = {
-      ...projects[projectIndex].members[memberIndex],
-      role: parsed.data.role,
-    };
+    const member = await updateProjectMemberById(parsedProjectId.data, session.id, memberId, parsed.data);
 
     return NextResponse.json(
-      { message: 'Member updated successfully', member: projects[projectIndex].members[memberIndex] },
+      { message: 'Member updated successfully', member },
       { status: 200 },
     );
   } catch (error) {
+    if (error instanceof ProjectServiceError) {
+      return NextResponse.json({ message: error.message }, { status: error.status });
+    }
+
     return NextResponse.json({ message: 'Error updating member', error }, { status: 500 });
   }
 }
