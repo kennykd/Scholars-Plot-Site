@@ -195,6 +195,10 @@ import { aiRequestSchema } from '../../../lib/validation/ai';
  *         description:
  *           type: string
  *           example: "Collaborative project for bio class"
+ *         project_status:
+ *           type: string
+ *           enum: [active, completed, archived]
+ *           example: active
  *         ownerId:
  *           type: string
  *           minLength: 1

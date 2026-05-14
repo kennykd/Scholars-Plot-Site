@@ -12,6 +12,8 @@ export const createProjectSchema = z.object({
   ),
   priority: z.coerce.number()
   .min(0.5).max(5),
+  project_status: z.enum(['active', 'completed', 'archived'])
+  .optional(),
   ownerId: z.string()
   .min(1, 'Owner ID is required'),
   members: z.array(z.object({
@@ -39,6 +41,8 @@ export const updateProjectSchema = z.object({
   .optional(),
   priority: z.coerce.number()
   .min(0.5).max(5)
+  .optional(),
+  project_status: z.enum(['active', 'completed', 'archived'])
   .optional(),
   members: z.array(z.object({
     id: z.string(),

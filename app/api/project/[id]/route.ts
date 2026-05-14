@@ -39,6 +39,10 @@ import {
  *               description:
  *                 type: string
  *                 example: "Updated project description."
+ *               project_status:
+ *                 type: string
+ *                 enum: [active, completed, archived]
+ *                 example: completed
  *               members:
  *                 type: array
  *                 items:

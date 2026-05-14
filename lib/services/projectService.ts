@@ -146,6 +146,7 @@ export async function createProject(data: CreateProjectInput) {
       project_name: data.name,
       project_description: data.description,
       project_deadline: data.deadline,
+      ...(data.project_status !== undefined ? { project_status: data.project_status } : {}),
       project_priority: data.priority,
       project_user: {
         create: [ownerMember, ...additionalMembers],
@@ -177,6 +178,7 @@ export async function updateProjectById(projectId: number, data: UpdateProjectIn
       ...(data.name ? { project_name: data.name } : {}),
       ...(data.description !== undefined ? { project_description: data.description } : {}),
       ...(data.deadline ? { project_deadline: data.deadline } : {}),
+      ...(data.project_status !== undefined ? { project_status: data.project_status } : {}),
       ...(data.priority ? { project_priority: data.priority } : {}),
     },
   });
