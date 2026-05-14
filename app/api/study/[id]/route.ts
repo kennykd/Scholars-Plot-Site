@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { updateStudySchema } from '../../../../lib/validation/study';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@/lib/generated/prisma/client';
-import { Params } from 'better-auth';
+import { getSession } from '@/lib/firebase/auth';
 
 /**
  * @swagger
@@ -161,8 +161,54 @@ type RouteContext = {
   }>;
 };
 
-export async function DELETE(context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
+  try {
+    const { id } = await context.params;
 
+    // Assigns a variable to the ID
+    const studySessionId = Number(id);
+    // Checks if the ID is numerically valid
+    if (!Number.isInteger(studySessionId) || studySessionId <= 0) {
+      return NextResponse.json({ message: "Invalid Study Session ID" }, { status: 400 });
+    }
+
+    // Get the current authenticated user
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    // Fetch the study session with user data
+    const studySession = await prisma.studySession.findUnique({
+      where: { study_session_id: studySessionId },
+      include: {
+        study_session_user: {
+          where: { user_id: session.id },
+        },
+      },
+    });
+
+    if (!studySession) {
+      return NextResponse.json({ message: "Study session not found" }, { status: 404 });
+    }
+
+    // Get the user-specific data
+    const userSessionData = studySession.study_session_user?.[0];
+
+    return NextResponse.json(
+      {
+        message: "Study session retrieved successfully",
+        studySession,
+        userSessionData: userSessionData || null,
+      },
+      { status: 200 },
+    );
+  } catch (error) {
+    return NextResponse.json({ message: "Error retrieving study session", error }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request, context: RouteContext) {
   try {
     // Takes the Study Session ID
     const { id } = await context.params;
@@ -174,12 +220,26 @@ export async function DELETE(context: RouteContext) {
       return NextResponse.json({ message: "Invalid Study Session ID" }, { status: 400 });
     }
 
-    // await for prisma to delete the study session row where it matches the requested ID
+    // Get the current authenticated user
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    // Delete related StudySessionUser records first (due to foreign key constraints)
+    await prisma.studySessionUser.deleteMany({
+      where: { study_session_id: studySessionId }
+    });
+
+    // Then delete the study session
     await prisma.studySession.delete({
-      where: {study_session_id: studySessionId}
+      where: { study_session_id: studySessionId }
     })
+
+    return NextResponse.json({ message: "Study session deleted successfully" }, { status: 200 });
   } catch (error) {
-    NextResponse.json({ message: "Error in deleting study session", error }, { status: 500 })
+    console.error("Delete error:", error);
+    return NextResponse.json({ message: "Error in deleting study session", error }, { status: 500 })
   }
 }
 
@@ -216,26 +276,64 @@ export async function PATCH(request: Request, context: RouteContext) {
       return NextResponse.json({ message: 'No fields provided for update' }, { status: 400 });
     }
 
-    // Create the data object to then update into the database (also cast into StudySessionUpdateInput to avoid typescript errors)
-    const data = Object.fromEntries(
-      // Remove fields that are undefined (this is possible because the database schema for StudySesison table allow for optional columns)
-      Object.entries(parsed.data).filter(([, v]) => v !== undefined)
-    ) as Prisma.StudySessionUpdateInput
-
-    // Handle null checklist_json
-    if (parsed.data.checklist_json === null){
-      data.checklist_json = Prisma.DbNull;
+    // Get the current authenticated user
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    // Update the prisma database
-    const updatedStudySession = await prisma.studySession.update({
-      where: { study_session_id: studySessionId },
-      data,
-    });
+    const userId = session.id;
 
-    // return success message
+    // Separate StudySessionUser fields from StudySession fields
+    const userFields = ['status', 'started_at', 'current_time', 'completed_at', 'actual_duration'];
+    const userUpdates = Object.fromEntries(
+      Object.entries(parsed.data).filter(([key]) => userFields.includes(key))
+    );
+    const sessionUpdates = Object.fromEntries(
+      Object.entries(parsed.data).filter(([key]) => !userFields.includes(key))
+    );
+
+    // Update StudySessionUser if any user fields are provided
+    if (Object.keys(userUpdates).length > 0) {
+      const userDataToUpdate = Object.fromEntries(
+        Object.entries(userUpdates).filter(([, v]) => v !== undefined)
+      ) as Prisma.StudySessionUserUpdateInput;
+
+      await prisma.studySessionUser.update({
+        where: {
+          study_session_id_user_id: {
+            study_session_id: studySessionId,
+            user_id: userId,
+          },
+        },
+        data: userDataToUpdate,
+      });
+    }
+
+    // Update StudySession fields if any remain
+    let updatedStudySession = null;
+    if (Object.keys(sessionUpdates).length > 0) {
+      const data = Object.fromEntries(
+        Object.entries(sessionUpdates).filter(([, v]) => v !== undefined)
+      ) as Prisma.StudySessionUpdateInput;
+
+      // Handle null checklist_json
+      if ('checklist_json' in sessionUpdates && sessionUpdates.checklist_json === null) {
+        data.checklist_json = Prisma.DbNull;
+      }
+
+      updatedStudySession = await prisma.studySession.update({
+        where: { study_session_id: studySessionId },
+        data,
+      });
+    }
+
+    // Return success message
     return NextResponse.json(
-      { message: "Sucessfully updated study session's data",  updatedStudySession},
+      { 
+        message: "Successfully updated study session",
+        updatedStudySession 
+      },
       { status: 200 },
     );
   } catch (error) {

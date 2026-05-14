@@ -7,41 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { mockStudySessions } from "@/lib/mock-data";
 import { toast } from "sonner";
 import { Paperclip, Timer } from "lucide-react";
 import { format, parseISO } from "date-fns";
-
-type Phase = "idle" | "focus" | "break";
-
-type StudySessionLocal = {
-  id: string;
-  title: string;
-  notes: string;
-  attachments: string[];
-  scheduledAt: string;
-  focusMinutes: number;
-  breakMinutes: number;
-  totalMinutes: number;
-  status: "planned" | "in-progress" | "completed";
-  createdAt: string;
-};
-
-const STORAGE_KEY = "scholarsPlot.studySessions";
-
-const seedSessions = (): StudySessionLocal[] =>
-  mockStudySessions.map((session) => ({
-    id: session.id,
-    title: session.taskTitle ?? "Study Session",
-    notes: "",
-    attachments: [],
-    scheduledAt: (session.scheduledAt ?? new Date()).toISOString(),
-    focusMinutes: session.duration ?? 25,
-    breakMinutes: session.breakDuration ?? 5,
-    totalMinutes: 60,
-    status: session.status === "completed" ? "completed" : "planned",
-    createdAt: new Date().toISOString(),
-  }));
+import { StudySession, Phase } from "@/types";
+import { useRouter } from "next/navigation";
 
 const formatDuration = (totalMinutes: number) => {
   const hours = Math.floor(totalMinutes / 60);
@@ -143,9 +113,9 @@ function CircularTimer({
 export default function StudySessionPage() {
   const params = useParams();
   const rawId = params?.id;
+  const router = useRouter();
   const sessionId = Array.isArray(rawId) ? rawId[0] : (rawId ?? "");
-  const [sessions, setSessions] = useState<StudySessionLocal[]>([]);
-  const [session, setSession] = useState<StudySessionLocal | null>(null);
+  const [session, setSession] = useState<StudySession | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [phase, setPhase] = useState<Phase>("idle");
   const [seconds, setSeconds] = useState(0);
@@ -153,33 +123,127 @@ export default function StudySessionPage() {
   const [totalSecondsRemaining, setTotalSecondsRemaining] = useState(0);
   const initializedRef = useRef(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const sessionRef = useRef<StudySession | null>(null);
+  const runningRef = useRef(false);
+  const totalSecondsRemainingRef = useRef(0);
+  const isPausedSessionRef = useRef(false);
 
   useEffect(() => {
-    const stored =
-      typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
-    if (stored) {
+    if (!sessionId) return;
+
+    const fetchSession = async () => {
       try {
-        setSessions(JSON.parse(stored));
-      } catch {
-        setSessions(seedSessions());
+        const response = await fetch(`/api/study/${sessionId}`);
+        if (!response.ok) {
+          setLoaded(true);
+          return;
+        }
+        const data = await response.json();
+        const apiStudy = data.studySession;
+        const userSessionData = data.userSessionData;
+
+        if (!apiStudy) {
+          setLoaded(true);
+          return;
+        }
+
+        const mapped: StudySession = {
+          id: String(apiStudy.study_session_id),
+          title: apiStudy.study_session_name,
+          notes: apiStudy.study_session_description ?? "",
+          attachments: [],
+          scheduledAt: apiStudy.study_session_scheduled_at
+            ? new Date(apiStudy.study_session_scheduled_at).toISOString()
+            : new Date().toISOString(),
+          focusMinutes: apiStudy.focus_minutes ?? 25,
+          breakMinutes: apiStudy.break_minutes ?? 5,
+          totalMinutes: apiStudy.total_minutes ?? 60,
+          sessionStatus: userSessionData?.status ?? "idle",
+          createdAt: apiStudy.study_session_created_at
+            ? new Date(apiStudy.study_session_created_at).toISOString()
+            : new Date().toISOString(),
+          isTimerOnly: false,
+          current_time:
+            userSessionData && userSessionData.current_time !== undefined
+              ? userSessionData.current_time
+              : undefined,
+        };
+
+        console.debug("Fetched session from API", {
+          apiStudy,
+          userSessionData,
+          mapped,
+        });
+        setSession(mapped);
+
+        // If server reports a current_time, initialize the timer state so the UI
+        // immediately reflects the server's elapsed seconds. This applies whether
+        // the server status is 'paused' or 'running' (covers Resume via the list view).
+        if (userSessionData?.current_time !== undefined) {
+          const elapsed = Math.max(0, userSessionData.current_time);
+          const total = (mapped.totalMinutes ?? 0) * 60;
+          const remainingTotal = Math.max(0, total - elapsed);
+          const focusSec = (mapped.focusMinutes ?? 0) * 60;
+          const breakSec = (mapped.breakMinutes ?? 0) * 60;
+          const cycle = Math.max(1, focusSec + breakSec);
+          const elapsedInCycle = cycle > 0 ? elapsed % cycle : 0;
+
+          let restoredPhase: Phase = "focus";
+          let restoredSeconds = focusSec;
+
+          if (breakSec === 0) {
+            restoredPhase = "focus";
+            restoredSeconds = Math.max(0, focusSec - elapsedInCycle);
+          } else {
+            if (elapsedInCycle < focusSec) {
+              restoredPhase = "focus";
+              restoredSeconds = Math.max(0, focusSec - elapsedInCycle);
+            } else {
+              restoredPhase = "break";
+              restoredSeconds = Math.max(0, cycle - elapsedInCycle);
+            }
+          }
+
+          console.debug("Initializing timer state from API (fetch)", {
+            elapsed,
+            remainingTotal,
+            restoredPhase,
+            restoredSeconds,
+            serverStatus: userSessionData.status,
+          });
+
+          setPhase(restoredPhase);
+          setSeconds(restoredSeconds);
+          setTotalSecondsRemaining(remainingTotal);
+          // Start running immediately if server reports running
+          setRunning(userSessionData.status === "running");
+          isPausedSessionRef.current = userSessionData.status !== "running";
+          initializedRef.current = true;
+        }
+
+        setLoaded(true);
+      } catch (error) {
+        console.error(
+          "Error fetching study session from api/study/[id] :",
+          error,
+        );
+        setLoaded(true);
       }
-    } else {
-      setSessions(seedSessions());
-    }
-    setLoaded(true);
-  }, []);
+    };
+
+    fetchSession();
+  }, [sessionId]);
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
 
   useEffect(() => {
-    if (!loaded) return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
-  }, [loaded, sessions]);
+    runningRef.current = running;
+  }, [running]);
 
-  useEffect(() => {
-    if (!loaded) return;
-    const found = sessions.find((item) => item.id === sessionId) ?? null;
-    setSession(found);
-  }, [loaded, sessions, sessionId]);
-
+  // IMPORTANT CONST: Study session data
   const focusSeconds = (session?.focusMinutes ?? 0) * 60;
   const breakSeconds = (session?.breakMinutes ?? 0) * 60;
   const totalSeconds = (session?.totalMinutes ?? 0) * 60;
@@ -195,9 +259,63 @@ export default function StudySessionPage() {
     if (!session || initializedRef.current) return;
     initializedRef.current = true;
 
-    setPhase("idle");
-    setSeconds(focusSeconds);
-    setTotalSecondsRemaining(totalSeconds);
+    // If session was paused, restore the exact paused state.
+    // Prefer any exact paused fields persisted locally; if missing,
+    // derive paused state from `current_time` returned by the API.
+    if (
+      session.sessionStatus === "paused" &&
+      session.paused_seconds !== undefined &&
+      session.paused_phase !== undefined &&
+      session.paused_total_seconds_remaining !== undefined
+    ) {
+      setSeconds(session.paused_seconds);
+      setPhase(session.paused_phase);
+      setTotalSecondsRemaining(session.paused_total_seconds_remaining);
+      isPausedSessionRef.current = true;
+    } else if (
+      session.sessionStatus === "paused" &&
+      session.current_time !== undefined
+    ) {
+      console.debug("Restoring paused state from current_time", {
+        id: session.id,
+        current_time: session.current_time,
+        focusMinutes: session.focusMinutes,
+        breakMinutes: session.breakMinutes,
+        totalMinutes: session.totalMinutes,
+      });
+      // `current_time` is elapsed seconds stored on the server.
+      const elapsed = Math.max(0, session.current_time);
+      const remainingTotal = Math.max(0, totalSeconds - elapsed);
+
+      // Determine phase and seconds remaining in the current phase
+      const cycle = Math.max(1, focusSeconds + breakSeconds);
+      const elapsedInCycle = cycle > 0 ? elapsed % cycle : 0;
+
+      if (breakSeconds === 0) {
+        // No break configured — always in focus
+        setPhase("focus");
+        const secondsLeft = Math.max(0, focusSeconds - elapsedInCycle);
+        setSeconds(secondsLeft);
+      } else {
+        if (elapsedInCycle < focusSeconds) {
+          setPhase("focus");
+          setSeconds(Math.max(0, focusSeconds - elapsedInCycle));
+        } else {
+          setPhase("break");
+          setSeconds(Math.max(0, cycle - elapsedInCycle));
+        }
+      }
+
+      setTotalSecondsRemaining(remainingTotal);
+      isPausedSessionRef.current = true;
+    } else {
+      // For idle/completed or sessions without paused state
+      setPhase("idle");
+      setSeconds(focusSeconds);
+      setTotalSecondsRemaining(totalSeconds);
+      isPausedSessionRef.current = false;
+    }
+
     setRunning(false);
   }, [session, focusSeconds, totalSeconds]);
 
@@ -218,7 +336,11 @@ export default function StudySessionPage() {
         }
         return current - 1;
       });
-      setTotalSecondsRemaining((total) => Math.max(0, total - 1));
+      setTotalSecondsRemaining((total) => {
+        const newTotal = Math.max(0, total - 1);
+        totalSecondsRemainingRef.current = newTotal;
+        return newTotal;
+      });
     }, 1000);
 
     return () => {
@@ -226,55 +348,252 @@ export default function StudySessionPage() {
     };
   }, [running, phase, breakSeconds, focusSeconds]);
 
+  // Auto-pause when navigating away
+  useEffect(() => {
+    return () => {
+      if (
+        sessionRef.current &&
+        runningRef.current &&
+        totalSecondsRemainingRef.current > 0
+      ) {
+        const totalSecondsAtUnmount =
+          (sessionRef.current?.totalMinutes ?? 0) * 60;
+        const elapsedSeconds =
+          totalSecondsAtUnmount - totalSecondsRemainingRef.current;
+        console.debug("Auto-pausing session on unmount", {
+          sessionId: sessionRef.current.id,
+          elapsedSeconds,
+          totalSecondsAtUnmount,
+          totalSecondsRemainingRef: totalSecondsRemainingRef.current,
+        });
+        fetch(`/api/study/${sessionRef.current.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            status: "paused",
+            current_time: elapsedSeconds,
+          }),
+        }).catch((error) =>
+          console.error("Error auto-pausing session:", error),
+        );
+      }
+    };
+  }, []);
+
+  // Completing the session, marking as done
   useEffect(() => {
     if (!session) return;
     if (totalSecondsRemaining > 0) return;
+    if (!running) return; // Only auto-complete if the timer was actually running
 
     playTone(520, 300);
     setRunning(false);
     setPhase("idle");
-    setSessions((prev) =>
-      prev.map((item) =>
-        item.id === session.id ? { ...item, status: "completed" } : item,
-      ),
+    setSession((prev) => (prev ? { ...prev, sessionStatus: "paused" } : prev));
+    toast.success(
+      `Timer finished for ${session.title}. Mark it as done when ready.`,
     );
-    toast.success(`Session complete: ${session.title}`);
-  }, [totalSecondsRemaining, session]);
+  }, [totalSecondsRemaining, session, running, totalSeconds]);
 
+  // Run the timer
   const toggleRunning = () => {
     if (!session) return;
     if (phase === "idle") {
-      setPhase("focus");
-      setSeconds(focusSeconds);
-      setTotalSecondsRemaining(totalSeconds);
-      setRunning(true);
-      setSessions((prev) =>
-        prev.map((item) =>
-          item.id === session.id ? { ...item, status: "in-progress" } : item,
-        ),
-      );
+      // If this is a paused session being resumed, don't reset the timer
+      if (isPausedSessionRef.current) {
+        isPausedSessionRef.current = false; // Mark as no longer paused
+        setPhase("focus");
+        // Set seconds to match the remaining time so the display is correct
+        setSeconds(totalSecondsRemaining);
+        setRunning(true);
+        // Don't reset totalSecondsRemaining - keep the paused time
+      } else {
+        // Starting a fresh session
+        setPhase("focus");
+        setSeconds(focusSeconds);
+        setTotalSecondsRemaining(totalSeconds);
+        setRunning(true);
+      }
+
+      // Update database status with start time (or resume)
+      fetch(`/api/study/${session.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "running",
+          started_at: new Date(),
+        }),
+      })
+        .then((res) => {
+          if (res.ok) {
+            setSession((prev) =>
+              prev ? { ...prev, sessionStatus: "running" } : prev,
+            );
+          } else {
+            console.error("Failed to update session status");
+          }
+        })
+        .catch((error) => console.error("Error updating session:", error));
+
       return;
     }
-    setRunning((prev) => !prev);
+
+    if (running) {
+      // Pausing - save the exact paused state to localStorage
+      const pausedState = {
+        paused_seconds: seconds,
+        paused_phase: phase,
+        paused_total_seconds_remaining: totalSecondsRemaining,
+      };
+
+      console.debug("Pausing session locally", { pausedState });
+      setSession((prev) =>
+        prev
+          ? {
+              ...prev,
+              sessionStatus: "paused",
+              paused_seconds: pausedState.paused_seconds,
+              paused_phase: pausedState.paused_phase,
+              paused_total_seconds_remaining:
+                pausedState.paused_total_seconds_remaining,
+            }
+          : prev,
+      );
+
+      // Also persist to database
+      fetch(`/api/study/${session.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "paused",
+          current_time: totalSeconds - totalSecondsRemaining,
+        }),
+      }).catch((error) => console.error("Error pausing session:", error));
+
+      setRunning(false);
+    } else {
+      // Resuming
+      console.debug("Resuming session (client) for", session?.id);
+      setRunning(true);
+      fetch(`/api/study/${session.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "running",
+        }),
+      })
+        .then((res) => {
+          if (res.ok) {
+            setSession((prev) =>
+              prev ? { ...prev, sessionStatus: "running" } : prev,
+            );
+          }
+        })
+        .catch((error) => console.error("Error resuming session:", error));
+    }
   };
 
-  const resetSession = () => {
+  // Reset session function (making sure to add an alert, and patch the data of the timer status)
+  const resetSession = async () => {
     if (!session) return;
+
+    const wasRunning = running;
+
+    // Pause immediately while showing confirmation
     setRunning(false);
-    setSeconds(phase === "break" ? breakSeconds : focusSeconds);
-    setTotalSecondsRemaining(totalSeconds);
-  };
 
-  const markCompleted = () => {
-    if (!session) return;
+    // Persist paused state so server has an accurate current_time
+    try {
+      const current_time = Math.max(0, totalSeconds - totalSecondsRemaining);
+      await fetch(`/api/study/${session.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "paused", current_time }),
+      });
+      setSession((prev) =>
+        prev ? { ...prev, sessionStatus: "paused" } : prev,
+      );
+    } catch (e) {
+      console.error("Error persisting pause before reset:", e);
+    }
+
+    const confirmed = window.confirm(
+      "Are you sure you want to reset the study session timer? This will clear the elapsed time.",
+    );
+
+    if (!confirmed) {
+      // If user cancelled, restore previous running state
+      if (wasRunning) {
+        setRunning(true);
+        fetch(`/api/study/${session.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "running" }),
+        })
+          .then((res) => {
+            if (res.ok) {
+              setSession((prev) =>
+                prev ? { ...prev, sessionStatus: "running" } : prev,
+              );
+            }
+          })
+          .catch((err) => console.error("Error resuming after cancel:", err));
+      }
+      return;
+    }
+
+    // User has confirmed the reset of the study session, set these values!
     setRunning(false);
     setPhase("idle");
-    setSessions((prev) =>
-      prev.map((item) =>
-        item.id === session.id ? { ...item, status: "completed" } : item,
-      ),
+    setSeconds(focusSeconds);
+    setTotalSecondsRemaining(totalSeconds);
+
+    // Persist reset to server (clear current_time and mark idle)
+    try {
+      await fetch(`/api/study/${session.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "idle", current_time: 0 }),
+      });
+      setSession((prev) => (prev ? { ...prev, sessionStatus: "idle" } : prev));
+    } catch (e) {
+      console.error("Error persisting reset:", e);
+    }
+  };
+
+  const markAsDone = () => {
+    if (!session) return; // Check user session
+    // markAsDone confirmation popup
+    const confirmed = window.confirm(
+      "Are you sure you want to mark the selected study session(s) as done?",
     );
+    if (!confirmed) return;
+
+    setRunning(false);
+    setPhase("idle");
+
+    // Update database status with completion time and actual duration
+    const actualDuration = totalSeconds - totalSecondsRemaining;
+    fetch(`/api/study/${session.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        status: "completed",
+        completed_at: new Date(),
+        actual_duration: actualDuration,
+      }),
+    })
+      .then((res) => {
+        if (res.ok) {
+          setSession((prev) =>
+            prev ? { ...prev, sessionStatus: "completed" } : prev,
+          );
+        }
+      })
+      .catch((error) => console.error("Error updating session:", error));
+
     toast.success(`Session complete: ${session.title}`);
+    router.push(`/study`);
   };
 
   if (!loaded) {
@@ -324,10 +643,13 @@ export default function StudySessionPage() {
             Total {formatDuration(session.totalMinutes)}
           </Badge>
           <Badge
-            variant={session.status === "completed" ? "secondary" : "outline"}
+            variant={
+              session.sessionStatus === "completed" ? "secondary" : "outline"
+            }
             className="text-[10px]"
           >
-            {session.status.toUpperCase()}
+            {session.sessionStatus.charAt(0).toUpperCase() +
+              session.sessionStatus.slice(1)}
           </Badge>
           <Button variant="outline" size="sm" asChild>
             <Link href="/study" className="font-mono text-xs">
@@ -362,7 +684,7 @@ export default function StudySessionPage() {
               <Button variant="outline" onClick={resetSession}>
                 Reset
               </Button>
-              <Button variant="ghost" onClick={markCompleted}>
+              <Button variant="ghost" onClick={markAsDone}>
                 Mark Done
               </Button>
             </div>

@@ -67,6 +67,20 @@ export const updateStudySchema = z.object({
   .refine((date) => date >= new Date(),
     { message: "Scheduled time must be in the future" }
   )
+  .optional(),
+  status: z.enum(['idle', 'running', 'paused', 'completed'])
+  .optional(),
+  started_at: z.coerce.date()
+  .optional(),
+  current_time: z.coerce.number()
+  .int('Current time must be whole seconds')
+  .min(0)
+  .optional(),
+  completed_at: z.coerce.date()
+  .optional(),
+  actual_duration: z.coerce.number()
+  .int('Actual duration must be whole seconds')
+  .min(0)
   .optional()
 });
 
