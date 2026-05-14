@@ -73,6 +73,10 @@ import { createProject, getProjects } from '@/lib/services/projectService';
  *         description:
  *           type: string
  *           example: "Team coordination for the semester capstone build."
+ *         project_status:
+ *           type: string
+ *           enum: [active, completed, archived]
+ *           example: active
  *         ownerId:
  *           type: string
  *           example: "member-001"
@@ -141,6 +145,10 @@ import { createProject, getProjects } from '@/lib/services/projectService';
  *               description:
  *                 type: string
  *                 example: "Team coordination for the semester capstone build."
+ *               project_status:
+ *                 type: string
+ *                 enum: [active, completed, archived]
+ *                 example: active
  *               ownerId:
  *                 type: string
  *                 minLength: 1
