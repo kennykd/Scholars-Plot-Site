@@ -69,6 +69,7 @@ model User {
   user_email   String   @unique
   avatar_url   String?
   user_role    UserRole @default(user)
+  push_subscription String? 
   user_last_login DateTime
   user_created_at DateTime @default(now())
 

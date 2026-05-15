@@ -125,8 +125,8 @@ export default function StudyNewPage() {
       </div>
 
       <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-        <CardHeader className="border-t-2 border-accent rounded-t-xl pb-2">
-          <CardTitle className="font-display text-lg">
+        <CardHeader className="border-t-2 border-accent rounded-t-xl">
+          <CardTitle className="font-display text-lg mt-3.5">
             Session Details
           </CardTitle>
         </CardHeader>

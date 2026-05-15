@@ -104,17 +104,25 @@ export default function StudyPage() {
   const inProgressSessions = useMemo(
     () =>
       sessions
-        .filter(
-          (studySession) =>
-            studySession.sessionStatus === "running" ||
-            studySession.sessionStatus === "paused",
-        )
+        .filter((studySession) => {
+          if (
+            studySession.sessionStatus !== "running" &&
+            studySession.sessionStatus !== "paused"
+          ) {
+            return false;
+          }
+
+          // Exclude sessions that are 24+ hours old (they should expire)
+          const scheduledTime = parseISO(studySession.scheduledAt);
+          const hoursPassed = differenceInHours(nowTick, scheduledTime);
+          return hoursPassed < 24;
+        })
         .sort(
           (a, b) =>
             new Date(a.scheduledAt).getTime() -
             new Date(b.scheduledAt).getTime(),
         ),
-    [sessions],
+    [sessions, nowTick],
   );
 
   // Configure the upcoming sessions
@@ -196,7 +204,7 @@ export default function StudyPage() {
     [sessions, nowTick],
   );
 
-  // This is for simple alerts, not a section
+  // This is for the upcoming soon reminders, not yet a notification!
   const upcomingSoon = useMemo(
     () =>
       upcomingSessions.filter((studySession) => {

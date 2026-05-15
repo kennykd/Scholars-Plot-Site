@@ -1,3 +1,5 @@
+'use server';
+
 import { cookies } from "next/headers";
 import { adminAuth } from "@/lib/firebase/firebase-admin";
 import { prisma } from "@/lib/prisma";
