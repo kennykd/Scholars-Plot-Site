@@ -1,5 +1,6 @@
 'use server';
 
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { adminAuth } from "@/lib/firebase/firebase-admin";
 import { prisma } from "@/lib/prisma";
@@ -13,7 +14,8 @@ interface SessionUser {
 }
 
 // TODO: DELETE User from database if Session is not found or the user is no longer in the firebase console
-export async function getSession(): Promise<SessionUser | null> {
+// Implemented caching to the getSession function
+export const getSession = cache(async (): Promise<SessionUser | null> => { 
   const cookieStore = await cookies();
   const session = cookieStore.get("session")?.value;
 
@@ -43,4 +45,4 @@ export async function getSession(): Promise<SessionUser | null> {
     );
     return null;
   }
-}
+});

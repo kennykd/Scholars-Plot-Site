@@ -21,7 +21,7 @@ import {
   parseISO,
 } from "date-fns";
 import { StudySession } from "@/types";
-import { getSession } from "@/lib/firebase/auth";
+import { useAuth } from "@/lib/firebase/auth-context";
 
 const STORAGE_KEY = "scholarsPlot.studySessions";
 
@@ -105,13 +105,10 @@ export default function StudyPage() {
   }, []);
 
   // Fetch the user and store it in Ref, this is for getting userID data for notifications
+  const { user } = useAuth();
   useEffect(() => {
-    const fetchUser = async () => {
-      const session = await getSession();
-      userIDRef.current = session?.id ?? null;
-    };
-    fetchUser();
-  }, []);
+    userIDRef.current = user?.id ?? null;
+  }, [user]);
 
   const inProgressSessions = useMemo(
     () =>
@@ -365,16 +362,12 @@ export default function StudyPage() {
     const confirmed = window.confirm(
       "Are you sure you want to mark the selected study session(s) as done?",
     );
-
     if (!confirmed) return;
 
     try {
       // Separate real sessions from quick timers
       const realSessionIds = selectedSessionIds.filter(
         (id) => !id.startsWith("session-"),
-      );
-      const quickTimerIds = selectedSessionIds.filter((id) =>
-        id.startsWith("session-"),
       );
 
       // Update database status only for real sessions
@@ -417,6 +410,11 @@ export default function StudyPage() {
   };
 
   const deleteSelected = async () => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete the selected study session?",
+    );
+    if (!confirmed) return;
+
     try {
       setIsDeleting(true);
       // Delete each selected session(s) via the API route study/[id]
