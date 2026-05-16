@@ -55,7 +55,7 @@ export default function PushNotificationsToggle() {
         setMessage(
           err instanceof Error
             ? `${err.name}: ${err.message}`
-            : "Unable to initialize push support in this browser",
+            : "Push notifications is not supported in this browser!",
         );
       }
     };
@@ -67,14 +67,14 @@ export default function PushNotificationsToggle() {
     setMessage(null);
     try {
       if (Notification.permission === "denied") {
-        setMessage("Notification permission denied in browser settings.");
+        setMessage("Notification permission denied in your browser settings.");
         return;
       }
 
       if (Notification.permission !== "granted") {
         const perm = await Notification.requestPermission();
         if (perm !== "granted") {
-          setMessage("Please allow notifications to subscribe.");
+          setMessage("Please allow notifications for this site!");
           return;
         }
       }
@@ -85,7 +85,7 @@ export default function PushNotificationsToggle() {
             (window as any).__NEXT_PUBLIC_VAPID_PUBLIC_KEY
           : undefined;
       if (!vapidKey) {
-        setMessage("Push public key not configured on the client.");
+        console.log("Push public key not configured on the client.");
         return;
       }
 
@@ -132,26 +132,14 @@ export default function PushNotificationsToggle() {
       if (!resp.ok) {
         const body = await resp.text().catch(() => "");
         console.error("Server subscribe failed:", resp.status, body);
-        setMessage("Server rejected the subscription request.");
+        setMessage("Server rejected the notification request.");
         return;
       }
 
       setIsSubscribed(true);
-      setMessage("Subscribed to push notifications.");
-    } catch (err) {
-      console.error("Subscribe error:", err);
-      if (err instanceof Error) {
-        setMessage(
-          err.name === "AbortError"
-            ? `${err.name}: ${err.message}. Try clearing site data for localhost and re-allow notifications, or test in Incognito.`
-            : `${err.name}: ${err.message}`,
-        );
-        return;
-      }
-
-      setMessage(
-        "Failed to subscribe. Check console for details and try again.",
-      );
+      console.log("Subscribed to push notifications.");
+    } catch (error) {
+      console.error("Subscribe error:", error);
     } finally {
       setLoading(false);
     }
@@ -165,13 +153,13 @@ export default function PushNotificationsToggle() {
       const subscription = await reg.pushManager.getSubscription();
       if (!subscription) {
         setIsSubscribed(false);
-        setMessage("No active subscription found.");
+        console.log("No active subscription found.");
         return;
       }
 
       const unsubbed = await subscription.unsubscribe();
       if (!unsubbed) {
-        setMessage("Unable to unsubscribe from push service.");
+        setMessage("Unable to stop push notification services");
         return;
       }
 
@@ -183,15 +171,15 @@ export default function PushNotificationsToggle() {
       if (!resp.ok) {
         const body = await resp.text().catch(() => "");
         console.error("Server unsubscribe failed:", resp.status, body);
-        setMessage("Server failed to clear subscription.");
+        setMessage("Server failed to disable notifications!");
         return;
       }
 
       setIsSubscribed(false);
-      setMessage("Unsubscribed from push notifications.");
+      console.log("Unsubscribed from push notifications.");
     } catch (err) {
       console.error("Unsubscribe error:", err);
-      setMessage(
+      console.log(
         err instanceof Error
           ? `${err.name}: ${err.message}`
           : "Failed to unsubscribe. Check console for details and try again.",

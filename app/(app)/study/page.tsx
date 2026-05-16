@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import {
   addMinutes,
   differenceInHours,
   differenceInMinutes,
+  differenceInSeconds,
   format,
   formatDistanceToNow,
   isAfter,
@@ -20,11 +21,13 @@ import {
   parseISO,
 } from "date-fns";
 import { StudySession } from "@/types";
+import { getSession } from "@/lib/firebase/auth";
 
 const STORAGE_KEY = "scholarsPlot.studySessions";
 
 export default function StudyPage() {
   const router = useRouter();
+  const userIDRef = useRef<string | null>(null);
   const [sessions, setSessions] = useState<StudySession[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -96,9 +99,18 @@ export default function StudyPage() {
   useEffect(() => {
     const interval = setInterval(() => {
       setNowTick(new Date());
-    }, 30000);
+    }, 1000);
 
     return () => clearInterval(interval);
+  }, []);
+
+  // Fetch the user and store it in Ref, this is for getting userID data for notifications
+  useEffect(() => {
+    const fetchUser = async () => {
+      const session = await getSession();
+      userIDRef.current = session?.id ?? null;
+    };
+    fetchUser();
   }, []);
 
   const inProgressSessions = useMemo(
@@ -217,6 +229,63 @@ export default function StudyPage() {
       }),
     [upcomingSessions, nowTick],
   );
+
+  const sentReminders = useRef<Record<string, number[]>>({});
+
+  // Notification of the study session reminders
+  const notifyUpcomingSoon = async () => {
+    // The times where the study session reminders will give notifications to the user: 15min, 5min, now
+    const thresholds = [15 * 60, 5 * 60, 0]; // times 60 to get seconds presicion
+
+    // Check if userID already exist and stored in Ref
+    const userID = userIDRef.current;
+    if (!userID) return;
+
+    upcomingSoon.forEach(async (studySession) => {
+      const secondsAway = differenceInSeconds(
+        parseISO(studySession.scheduledAt),
+        nowTick,
+      );
+
+      for (const threshold of thresholds) {
+        // Match within a 1-second window to avoid missing the exact moment
+        if (secondsAway >= threshold && secondsAway < threshold + 1) {
+          const sentForSession = sentReminders.current[studySession.id] || [];
+          if (sentForSession.includes(threshold)) return;
+
+          const minutesLabel = threshold / 60;
+          const title = `Study session: ${studySession.title}`;
+          const body =
+            threshold === 0
+              ? `Starting now`
+              : `Starts in ${minutesLabel} minute${minutesLabel > 1 ? "s" : ""}`;
+
+          await fetch("/api/web-push/send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userID: userID,
+              title: title,
+              body: body,
+              url: `/study/${studySession.id}`,
+            }),
+          });
+
+          sentReminders.current[studySession.id] = [
+            ...(sentReminders.current[studySession.id] || []),
+            threshold,
+          ];
+        }
+      }
+    });
+  };
+
+  // Trigger reminders whenever upcomingSoon or nowTick changes
+  useEffect(() => {
+    if (!upcomingSoon || upcomingSoon.length === 0) return;
+    notifyUpcomingSoon();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [upcomingSoon, nowTick]);
 
   const openSession = async (studySession: StudySession) => {
     // Simply navigate to the timer page. The timer will remain paused until

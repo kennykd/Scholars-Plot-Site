@@ -19,7 +19,7 @@ export async function POST(request: Request) {
             process.env.VAPID_PRIVATE_KEY!
         );
 
-        const { userID, title, body } = await request.json();
+        const { userID, title, body, url } = await request.json();
         
         // Validate input
         if (!userID || !title || !body) {
@@ -44,9 +44,16 @@ export async function POST(request: Request) {
         const subscription = JSON.parse(user?.push_subscription!);
 
         // Send the notification as a string to the user
+        // Also takes metadata which is the url or route the notification object is going to point to
         await webpush.sendNotification(
             subscription,
-            JSON.stringify({title, body})
+            JSON.stringify({
+                title, 
+                body,
+                data: {
+                    url: url || "/" // defaults to the home directory if no url is found
+                }
+            })
         );
 
         // Return a sucess message of sending the notification

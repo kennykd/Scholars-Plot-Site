@@ -13,7 +13,7 @@ self.addEventListener('push', function (event) {
   const options = {
     body: data.body || '',
     icon: data.icon || '/favicon.ico',
-    data: data.url || {},
+    data: data.data || {},
   };
 
   console.log('Showing notification:', title, options);
@@ -26,7 +26,7 @@ self.addEventListener('push', function (event) {
 
 self.addEventListener('notificationclick', function (event) {
   event.notification.close();
-  const url = event.notification.data || '/';
+  const url = event.notification.data?.url || '/';
   event.waitUntil(
     clients.matchAll({ type: 'window' }).then((windowClients) => {
       for (let i = 0; i < windowClients.length; i++) {
