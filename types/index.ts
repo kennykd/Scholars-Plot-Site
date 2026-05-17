@@ -5,6 +5,7 @@
 
 export type TaskStatus = "Pending" | "In_Progress" | "Completed";
 export type ReminderFrequency = "daily" | "every-3-days" | "weekly" | "none"; 
+export type Phase = "idle" | "focus" | "break";
 
 export interface Task {
   /** Unique identifier for the task */
@@ -29,6 +30,24 @@ export interface Task {
   completedAt?: Date;
 }
 
+export type StudySession = {
+  id: string;
+  title: string;
+  notes: string;
+  attachments: string[];
+  scheduledAt: string;
+  focusMinutes: number;
+  breakMinutes: number;
+  totalMinutes: number;
+  sessionStatus: "idle" | "running" | "paused" | "completed";
+  createdAt: string;
+  isTimerOnly?: boolean;
+  current_time?: number;
+  paused_seconds?: number;
+  paused_phase?: Phase;
+  paused_total_seconds_remaining?: number;
+};
+
 // LEGACY
 export interface ChecklistItem {
   /** Unique identifier for the checklist item */
@@ -40,7 +59,7 @@ export interface ChecklistItem {
 }
 
 // LEGACY
-export interface StudySession {
+export interface StudySessionLegacy {
   /** Unique identifier for the study session */
   id: string;
   /** Optional reference to the associated task ID */
