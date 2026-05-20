@@ -86,9 +86,25 @@
   white-space: nowrap;
 }
 
-/* Time grid event text */
+/* Timegrid event sizing — keep short events legible */
+.fc .fc-timegrid-event-harness {
+  min-height: 28px;
+}
+.fc .fc-timegrid-event {
+  min-height: 28px;
+}
 .fc .fc-timegrid-event .fc-event-main {
-  padding: 2px 4px;
+  padding: 3px 6px;
+}
+.fc .fc-timegrid-event .fc-event-title,
+.fc .fc-timegrid-event .fc-event-time {
+  font-size: 0.75rem;
+  line-height: 1.15;
+}
+
+/* Taller time-slot rows so the grid feels less cramped */
+.fc .fc-timegrid-slot {
+  height: 2.5em;
 }
 
 /* Table borders */
