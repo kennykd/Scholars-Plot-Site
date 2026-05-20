@@ -142,6 +142,7 @@ model Task {
   task_users     TaskUser[]
   study_session_user StudySessionUser[]
   task_reminders TaskReminder[]
+  attachments    Attachment[]
 
   @@map("task")
 }
@@ -160,11 +161,13 @@ model TaskUser {
 
 model Attachment {
   attachment_id          Int      @id @default(autoincrement())
+  task_id                Int?
   file_name              String
   file_path              String
   file_type              String
   attachment_uploaded_at DateTime @default(now())
 
+  task               Task?              @relation(fields: [task_id], references: [task_id], onDelete: SetNull)
   study_session_user StudySessionUser[]
 
   @@map("attachment")

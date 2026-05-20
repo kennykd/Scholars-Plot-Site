@@ -217,7 +217,7 @@ export default function StudyEditPage({ params }: { params: { id: string } }) {
       </div>
 
       <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-        <CardHeader className="border-t-2 border-accent rounded-t-xl pb-2">
+        <CardHeader className="pb-2">
           <CardTitle className="font-display text-lg">
             Session Details
           </CardTitle>

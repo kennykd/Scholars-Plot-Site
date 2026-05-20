@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,7 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { ArrowLeft, CalendarIcon, Paperclip, X } from "lucide-react";
+import { ArrowLeft, CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 
 const combineDateTime = (date: Date, time: string) => {
@@ -31,6 +31,10 @@ const combineDateTime = (date: Date, time: string) => {
 
 export default function StudyNewPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const taskIdParam = searchParams.get("taskId");
+  const parsedTaskId = taskIdParam !== null ? Number(taskIdParam) : NaN;
+  const linkedTaskId = Number.isFinite(parsedTaskId) && parsedTaskId > 0 ? parsedTaskId : null;
 
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
@@ -41,6 +45,22 @@ export default function StudyNewPage() {
   const [totalPomodoro, setTotalPomodoro] = useState(2);
   const [descriptionAsChecklist, setDescriptionAsChecklist] = useState(true);
   const [calOpen, setCalOpen] = useState(false);
+  const titleEditedRef = useRef(false);
+
+  useEffect(() => {
+    if (!linkedTaskId) return;
+    let cancelled = false;
+    fetch(`/api/task/${linkedTaskId}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data?.task?.title || titleEditedRef.current) return;
+        setTitle(data.task.title);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [linkedTaskId]);
 
   const totalMinutesComputed =
     (Math.max(1, Number(focusMinutes) || 0) +
@@ -81,6 +101,7 @@ export default function StudyNewPage() {
         scheduledDate,
         scheduledTime,
       ).toISOString(),
+      ...(linkedTaskId ? { task_id: linkedTaskId } : {}),
     };
 
     try {
@@ -125,7 +146,7 @@ export default function StudyNewPage() {
       </div>
 
       <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-        <CardHeader className="border-t-2 border-accent rounded-t-xl pb-2">
+        <CardHeader className="pb-2">
           <CardTitle className="font-display text-lg">
             Session Details
           </CardTitle>
@@ -138,7 +159,10 @@ export default function StudyNewPage() {
               <Input
                 placeholder="e.g. Website Application Design and Security Self-Study"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => {
+                  titleEditedRef.current = true;
+                  setTitle(e.target.value);
+                }}
               />
             </div>
 

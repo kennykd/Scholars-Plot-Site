@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { StarRating } from "@/app/components/common/star-rating";
 import { ChevronRight } from "lucide-react";
-import { Task } from "@/types";
+import { toast } from "sonner";
+import type { Task } from "@/types";
 import { cn } from "@/lib/utils";
 import { format, isPast, isToday, isTomorrow } from "date-fns";
 
@@ -15,7 +17,27 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task }: TaskCardProps) {
-  const [done, setDone] = useState(task.status === "done");
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [done, setDone] = useState(task.status === "Completed");
+
+  const deadlineDate = new Date(task.deadline);
+
+  const handleToggle = async (checked: boolean) => {
+    setDone(checked);
+    try {
+      const res = await fetch(`/api/task/${task.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: checked ? "Completed" : "Pending" }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      startTransition(() => router.refresh());
+    } catch {
+      setDone(!checked);
+      toast.error("Could not update task");
+    }
+  };
 
   const getDeadlineBadge = (date: Date) => {
     if (isPast(date) && !isToday(date)) return { label: "Overdue", cls: "bg-red-500/20 text-red-400 border-red-500/30" };
@@ -24,7 +46,7 @@ export function TaskCard({ task }: TaskCardProps) {
     return { label: format(date, "MMM d"), cls: "bg-muted text-muted-foreground border-border" };
   };
 
-  const badge = getDeadlineBadge(task.deadline);
+  const badge = getDeadlineBadge(deadlineDate);
 
   return (
     <div
@@ -37,7 +59,8 @@ export function TaskCard({ task }: TaskCardProps) {
     >
       <Checkbox
         checked={done}
-        onCheckedChange={(v) => setDone(Boolean(v))}
+        disabled={pending}
+        onCheckedChange={(v) => handleToggle(Boolean(v))}
         className="shrink-0"
         onClick={(e) => e.stopPropagation()}
       />

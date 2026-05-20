@@ -18,28 +18,25 @@ jest.mock("@/components/ui/calendar", () => ({
   Calendar: ({ onSelect }) => (
     <button
       type="button"
-      onClick={() => onSelect?.(new Date("2026-03-20T00:00:00.000Z"))}
+      onClick={() => onSelect?.(new Date("2099-03-20T00:00:00.000Z"))}
     >
       Select March 20
     </button>
   ),
 }));
 
-jest.mock("@/app/components/tasks/study-session-prompt", () => ({
-  StudySessionPrompt: ({ taskName, onSkip }) => (
-    <div data-testid="study-prompt">
-      <p>Want to schedule {taskName}?</p>
-      <button onClick={onSkip}>Skip</button>
-    </div>
-  ),
-}));
-
 describe("TaskForm", () => {
   const mockPush = jest.fn();
+  const mockRefresh = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
-    useRouter.mockReturnValue({ push: mockPush });
+    useRouter.mockReturnValue({ push: mockPush, refresh: mockRefresh });
+    global.fetch = jest.fn();
+  });
+
+  afterEach(() => {
+    delete global.fetch;
   });
 
   it("renders the task form", () => {
@@ -80,13 +77,17 @@ describe("TaskForm", () => {
     expect(toast.error).toHaveBeenCalledWith("Deadline is required");
   });
 
-  it("creates a task and shows the study prompt", async () => {
+  it("posts to /api/task and redirects on success", async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ task: { id: 42 } }),
+    });
+
     render(<TaskForm />);
 
     fireEvent.change(screen.getByLabelText(/task name/i), {
       target: { value: "Data Science Quiz" },
     });
-
     fireEvent.click(screen.getByRole("button", { name: /pick a date/i }));
     fireEvent.click(screen.getByRole("button", { name: /select march 20/i }));
 
@@ -96,17 +97,28 @@ describe("TaskForm", () => {
     fireEvent.submit(form);
 
     await waitFor(() => {
-      expect(toast.success).toHaveBeenCalledWith("Task created! 🎉");
+      expect(global.fetch).toHaveBeenCalledWith(
+        "/api/task",
+        expect.objectContaining({ method: "POST" }),
+      );
     });
-    expect(screen.getByTestId("study-prompt")).toBeInTheDocument();
-    expect(screen.getByText(/data science quiz/i)).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith("Task created");
+      expect(mockPush).toHaveBeenCalledWith("/tasks");
+    });
   });
 
-  it("routes to /tasks when skip is clicked in the prompt", async () => {
+  it("shows an error toast when the API responds with a failure", async () => {
+    global.fetch.mockResolvedValue({
+      ok: false,
+      json: async () => ({ message: "Validation failed", errors: { title: ["bad"] } }),
+    });
+
     render(<TaskForm />);
 
     fireEvent.change(screen.getByLabelText(/task name/i), {
-      target: { value: "Test Task" },
+      target: { value: "Bad" },
     });
     fireEvent.click(screen.getByRole("button", { name: /pick a date/i }));
     fireEvent.click(screen.getByRole("button", { name: /select march 20/i }));
@@ -116,20 +128,9 @@ describe("TaskForm", () => {
       .closest("form");
     fireEvent.submit(form);
 
-    fireEvent.click(await screen.findByRole("button", { name: /skip/i }));
-
-    expect(mockPush).toHaveBeenCalledWith("/tasks");
-  });
-
-  it("updates attachment name when a file is selected", async () => {
-    const { container } = render(<TaskForm />);
-    const file = new File(["test contents"], "notes.pdf", {
-      type: "application/pdf",
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalled();
     });
-
-    const input = container.querySelector('input[type="file"]');
-    fireEvent.change(input, { target: { files: [file] } });
-
-    expect(await screen.findByText("notes.pdf")).toBeInTheDocument();
+    expect(mockPush).not.toHaveBeenCalled();
   });
 });

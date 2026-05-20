@@ -1,23 +1,54 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StarRating } from "@/app/components/common/star-rating";
 import { TaskDeleteButton } from "../../../components/tasks/task-delete-button";
-import { mockTasks } from "@/lib/mock-data";
+import { TaskAttachmentDeleteButton } from "../../../components/tasks/task-attachment-delete-button";
+import { getSession } from "@/lib/firebase/auth";
+import { getTaskById, serializeTask, TaskServiceError } from "@/lib/services/taskService";
+import { listTaskAttachments } from "@/lib/services/attachmentService";
+import type { Attachment, Task } from "@/types";
 import { format, formatDistanceToNow } from "date-fns";
 import { ArrowLeft, Paperclip, Timer } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const statusColors: Record<string, string> = {
-  todo: "bg-muted text-muted-foreground",
-  "in-progress": "bg-blue-500/20 text-blue-400 border-blue-500/30",
-  done: "bg-green-500/20 text-green-400 border-green-500/30",
+const statusColors: Record<Task["status"], string> = {
+  Pending: "bg-muted text-muted-foreground",
+  In_Progress: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+  Completed: "bg-green-500/20 text-green-400 border-green-500/30",
 };
 
-export default function TaskDetailPage({ params }: { params: { id: string } }) {
-  const { id } = params;
-  const task = mockTasks.find((t) => t.id === id);
+const statusLabels: Record<Task["status"], string> = {
+  Pending: "PENDING",
+  In_Progress: "IN PROGRESS",
+  Completed: "COMPLETED",
+};
+
+export default async function TaskDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const { id } = await params;
+  const numericId = Number(id);
+
+  let task: Task | null = null;
+  let attachments: Attachment[] = [];
+  if (Number.isFinite(numericId) && numericId > 0) {
+    try {
+      const row = await getTaskById(numericId, session.id);
+      attachments = await listTaskAttachments(numericId, session.id);
+      task = serializeTask(row, attachments);
+    } catch (err) {
+      if (!(err instanceof TaskServiceError)) throw err;
+      task = null;
+    }
+  }
 
   if (!task)
     return (
@@ -31,6 +62,8 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
       </div>
     );
 
+  const deadlineDate = new Date(task.deadline);
+
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-6">
       <Button variant="ghost" size="sm" asChild className="font-mono text-xs">
@@ -39,12 +72,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
         </Link>
       </Button>
       <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-        <CardHeader
-          className={cn(
-            "border-t-4 rounded-t-xl",
-            `priority-${Math.round(task.priority)}`,
-          )}
-        >
+        <CardHeader className={cn(`priority-${Math.round(task.priority)}`)}>
           <div className="flex items-start justify-between gap-3">
             <CardTitle className="font-display text-2xl font-bold text-foreground leading-tight">
               {task.title}
@@ -56,7 +84,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
               )}
               variant="outline"
             >
-              {task.status.replace("-", " ").toUpperCase()}
+              {statusLabels[task.status]}
             </Badge>
           </div>
           <StarRating value={task.priority} size="lg" readOnly />
@@ -68,19 +96,19 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                 DEADLINE
               </p>
               <p className="text-sm font-medium">
-                {format(task.deadline, "PPP")}
+                {format(deadlineDate, "PPP")}
               </p>
               <p className="font-mono text-xs text-muted-foreground">
-                {formatDistanceToNow(task.deadline, { addSuffix: true })}
+                {formatDistanceToNow(deadlineDate, { addSuffix: true })}
               </p>
             </div>
-            {task.reminder && task.reminder !== "none" && (
+            {task.completedAt && (
               <div>
                 <p className="font-mono text-xs text-muted-foreground tracking-wider mb-1">
-                  REMINDER
+                  COMPLETED
                 </p>
-                <p className="text-sm font-medium capitalize">
-                  {task.reminder.replace("-", " ")}
+                <p className="text-sm font-medium">
+                  {format(new Date(task.completedAt), "PPP")}
                 </p>
               </div>
             )}
@@ -95,21 +123,34 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
               </p>
             </div>
           )}
-          {task.attachments && task.attachments.length > 0 && (
+          {attachments.length > 0 && (
             <div>
               <p className="font-mono text-xs text-muted-foreground tracking-wider mb-2">
                 ATTACHMENTS
               </p>
-              <div className="space-y-1">
-                {task.attachments.map((file) => (
-                  <div
-                    key={file}
-                    className="flex items-center gap-2 text-sm text-muted-foreground"
+              <ul className="space-y-1.5">
+                {attachments.map((att) => (
+                  <li
+                    key={att.id}
+                    className="flex items-center gap-2 rounded-lg border border-border/40 bg-muted/20 px-3 py-2"
                   >
-                    <Paperclip className="h-3.5 w-3.5" /> {file}
-                  </div>
+                    <Paperclip className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <a
+                      href={att.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm flex-1 truncate text-foreground hover:text-accent transition-colors"
+                    >
+                      {att.fileName}
+                    </a>
+                    <TaskAttachmentDeleteButton
+                      taskId={task.id}
+                      attachmentId={att.id}
+                      fileName={att.fileName}
+                    />
+                  </li>
                 ))}
-              </div>
+              </ul>
             </div>
           )}
           <div className="flex gap-3 pt-2">
@@ -117,14 +158,14 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
               asChild
               className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground font-semibold"
             >
-              <Link href="/study/timer">
+              <Link href={`/study/new?taskId=${task.id}`}>
                 <Timer className="h-4 w-4 mr-2" /> Start Study Session
               </Link>
             </Button>
             <Button variant="outline" disabled className="font-mono text-xs">
               Edit
             </Button>
-            <TaskDeleteButton taskTitle={task.title} />
+            <TaskDeleteButton taskId={task.id} taskTitle={task.title} />
           </div>
         </CardContent>
       </Card>

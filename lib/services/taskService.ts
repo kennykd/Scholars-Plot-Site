@@ -1,5 +1,22 @@
 import { prisma } from '@/lib/prisma';
-import type { CreateTaskInput as CreateTaskSchema, UpdateTaskInput as UpdateTaskSchema } from '@/lib/validation/task';
+import type { Task as PrismaTask } from '@/lib/generated/prisma/client';
+import type { CreateTaskInput, UpdateTaskInput } from '@/lib/validation/task';
+import type { Attachment, Task, TaskStatus } from '@/types';
+
+export function serializeTask(row: PrismaTask, attachments?: Attachment[]): Task {
+  return {
+    id: row.task_id,
+    projectId: row.project_id,
+    title: row.task_name,
+    description: row.task_description,
+    deadline: row.task_deadline.toISOString(),
+    priority: Number(row.task_priority),
+    status: row.task_status as TaskStatus,
+    createdAt: row.task_created_at.toISOString(),
+    completedAt: row.task_completed_at?.toISOString() ?? null,
+    ...(attachments ? { attachments } : {}),
+  };
+}
 
 export class TaskServiceError extends Error {
   constructor(
@@ -11,56 +28,92 @@ export class TaskServiceError extends Error {
   }
 }
 
-const taskInclude = {
-  project: true,
-  task_users: { select: { user_id: true } },
-};
+// ─── Access control ──────────────────────────────────────────────────────────
 
-export async function getTasks() {
+export async function requireTaskAccess(taskId: number, userId: string) {
+  const task = await prisma.task.findUnique({
+    where: { task_id: taskId },
+    include: {
+      task_users: { select: { user_id: true } },
+    },
+  });
+
+  if (!task || task.project_id !== null) {
+    throw new TaskServiceError(404, 'Task not found');
+  }
+
+  const isOwner = task.task_users.some((row) => row.user_id === userId);
+
+  if (!isOwner) {
+    throw new TaskServiceError(403, 'You do not have access to this task');
+  }
+
+  return task;
+}
+
+// ─── User-scoped CRUD ────────────────────────────────────────────────────────
+
+export async function getTasks(userId: string) {
   return prisma.task.findMany({
-    include: taskInclude,
+    where: {
+      project_id: null,
+      task_users: { some: { user_id: userId } },
+    },
     orderBy: { task_created_at: 'desc' },
   });
 }
 
-export async function createTask(input: CreateTaskSchema & { user_id?: string; project_id?: number | null }) {
-  const { user_id, project_id, title, description, deadline, priority, status } = input as any;
-
-  const data: any = {
-    task_name: title,
-    task_description: description ?? null,
-    task_deadline: deadline,
-    task_priority: priority ?? 2.5,
-    task_status: status ?? undefined,
-    project_id: project_id ?? null,
-  };
-
-  if (user_id) data.task_users = { create: { user_id } };
-
-  return prisma.task.create({ data, include: taskInclude });
+export async function getTaskById(taskId: number, userId: string) {
+  return requireTaskAccess(taskId, userId);
 }
 
-export async function updateTaskById(taskId: number, input: UpdateTaskSchema) {
-  const existing = await prisma.task.findUnique({ where: { task_id: taskId } });
-  if (!existing) throw new TaskServiceError(404, 'Task not found');
-
-  const data: any = {};
-  const asAny = input as any;
-  if (asAny.title !== undefined) data.task_name = asAny.title;
-  if (asAny.description !== undefined) data.task_description = asAny.description;
-  if (asAny.deadline !== undefined) data.task_deadline = asAny.deadline;
-  if (asAny.priority !== undefined) data.task_priority = asAny.priority;
-  if (asAny.status !== undefined) data.task_status = asAny.status;
-
-  return prisma.task.update({ where: { task_id: taskId }, data, include: taskInclude });
+export async function createTask(userId: string, data: CreateTaskInput) {
+  return prisma.task.create({
+    data: {
+      task_name: data.title,
+      task_description: data.description,
+      task_deadline: data.deadline,
+      task_priority: data.priority ?? 3,
+      task_status: data.status,
+      project_id: null,
+      task_users: { create: { user_id: userId } },
+    },
+  });
 }
 
-export async function deleteTaskById(taskId: number) {
-  const existing = await prisma.task.findUnique({ where: { task_id: taskId }, select: { task_id: true } });
-  if (!existing) throw new TaskServiceError(404, 'Task not found');
+export async function updateTaskById(
+  taskId: number,
+  userId: string,
+  data: UpdateTaskInput,
+) {
+  const existing = await requireTaskAccess(taskId, userId);
 
-  await prisma.task.delete({ where: { task_id: taskId } });
+  const statusChanging = data.status !== undefined && data.status !== existing.task_status;
+
+  return prisma.task.update({
+    where: { task_id: taskId },
+    data: {
+      ...(data.title !== undefined ? { task_name: data.title } : {}),
+      ...(data.description !== undefined ? { task_description: data.description } : {}),
+      ...(data.deadline !== undefined ? { task_deadline: data.deadline } : {}),
+      ...(data.priority !== undefined ? { task_priority: data.priority } : {}),
+      ...(data.status !== undefined ? { task_status: data.status } : {}),
+      ...(statusChanging
+        ? { task_completed_at: data.status === 'Completed' ? new Date() : null }
+        : {}),
+    },
+  });
 }
+
+export async function deleteTaskById(taskId: number, userId: string) {
+  await requireTaskAccess(taskId, userId);
+
+  await prisma.task.delete({
+    where: { task_id: taskId },
+  });
+}
+
+// ─── AI helpers (used by lib/services/aiService.ts) ──────────────────────────
 
 export async function getTaskWithProject(task_id: number) {
   return prisma.task.findUnique({

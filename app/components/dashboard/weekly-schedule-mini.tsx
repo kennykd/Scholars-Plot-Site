@@ -1,12 +1,17 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { mockCalendarEvents } from "@/lib/mock-data";
+import type { Task } from "@/types";
+import { TASK_EVENT_COLOR } from "@/lib/utils/calendar-adapters";
 import { cn } from "@/lib/utils";
 import { startOfWeek, addDays, format, isToday, isSameDay } from "date-fns";
 
-export function WeeklyScheduleMini() {
+interface WeeklyScheduleMiniProps {
+  tasks: Task[];
+}
+
+export function WeeklyScheduleMini({ tasks }: WeeklyScheduleMiniProps) {
   const today = new Date();
-  const weekStart = startOfWeek(today, { weekStartsOn: 1 }); // Monday
+  const weekStart = startOfWeek(today, { weekStartsOn: 1 });
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
   return (
@@ -20,8 +25,8 @@ export function WeeklyScheduleMini() {
         <Link href="/calendar" className="block">
           <div className="grid grid-cols-7 gap-1">
             {days.map((day) => {
-              const dayEvents = mockCalendarEvents.filter((e) =>
-                isSameDay(e.date, day),
+              const dayTasks = tasks.filter((t) =>
+                isSameDay(new Date(t.deadline), day),
               );
               const isCurrentDay = isToday(day);
               return (
@@ -48,16 +53,16 @@ export function WeeklyScheduleMini() {
                     {format(day, "d")}
                   </div>
                   <div className="flex flex-col gap-0.5 items-center">
-                    {dayEvents.slice(0, 3).map((ev) => (
+                    {dayTasks.slice(0, 3).map((task) => (
                       <span
-                        key={ev.id}
+                        key={task.id}
                         className="h-1.5 w-1.5 rounded-full"
-                        style={{ backgroundColor: ev.color }}
+                        style={{ backgroundColor: TASK_EVENT_COLOR }}
                       />
                     ))}
-                    {dayEvents.length > 3 && (
+                    {dayTasks.length > 3 && (
                       <span className="font-mono text-[8px] text-muted-foreground">
-                        +{dayEvents.length - 3}
+                        +{dayTasks.length - 3}
                       </span>
                     )}
                   </div>

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 jest.mock("next/navigation", () => ({
   useRouter: jest.fn(),
+  useSearchParams: jest.fn(() => new URLSearchParams()),
 }));
 
 jest.mock("sonner", () => ({

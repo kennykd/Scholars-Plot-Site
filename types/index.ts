@@ -1,33 +1,28 @@
-/**
- * Core entity interfaces for Scholar's Plot Site
- * Frontend-only types for UI components and mock data
- */
-
 export type TaskStatus = "Pending" | "In_Progress" | "Completed";
-export type ReminderFrequency = "daily" | "every-3-days" | "weekly" | "none"; 
+export type ReminderFrequency = "daily" | "every-3-days" | "weekly" | "none";
 export type Phase = "idle" | "focus" | "break";
 
+export interface Attachment {
+  id: number;
+  taskId: number | null;
+  fileName: string;
+  fileKey: string;
+  fileType: string;
+  url: string;
+  uploadedAt: string;
+}
+
 export interface Task {
-  /** Unique identifier for the task */
-  id: string;
-  /** Name/title of the task */
+  id: number;
+  projectId: number | null;
   title: string;
-  /** Optional description; supports file attachments and AI processing */
-  description?: string;
-  /** Due date/time for the task */
-  deadline: Date;
-  /** Priority rating from 1-5, supports 0.5 increments (e.g., 2.5, 3.5) */
+  description: string | null;
+  deadline: string;
   priority: number;
-  /** Current status of the task */
   status: TaskStatus;
-  /** Optional file names for attachments (visual only, no actual upload) */
-  attachments?: string[];
-  /** Reminder frequency/timing */
-  reminder?: ReminderFrequency;
-  /** Timestamp when task was created */
-  createdAt: Date;
-  /** Timestamp when task was completed (if applicable) */
-  completedAt?: Date;
+  createdAt: string;
+  completedAt: string | null;
+  attachments?: Attachment[];
 }
 
 export type StudySession = {
@@ -48,54 +43,7 @@ export type StudySession = {
   paused_total_seconds_remaining?: number;
 };
 
-// LEGACY
-export interface ChecklistItem {
-  /** Unique identifier for the checklist item */
-  id: string;
-  /** Text content of the item to study */
-  text: string;
-  /** Whether this item has been completed */
-  completed: boolean;
-}
 
-// LEGACY
-export interface StudySessionLegacy {
-  /** Unique identifier for the study session */
-  id: string;
-  /** Optional reference to the associated task ID */
-  taskId?: string;
-  /** Optional title of the associated task */
-  taskTitle?: string;
-  /** Duration allocated for study in minutes (default: 25 for Pomodoro) */
-  duration: number;
-  /** Break duration in minutes (default: 5 for Pomodoro) */
-  breakDuration: number;
-  /** List of items to study, automatically extracted from task description */
-  checklist: ChecklistItem[];
-  /** Current status of the study session */
-  status: "pending" | "active" | "completed";
-  /** Optional scheduled date/time for the study session */
-  scheduledAt?: Date;
-}
-
-export interface CalendarEvent {
-  /** Unique identifier for the calendar event */
-  id: string;
-  /** Name/title of the event (task or study session name) */
-  title: string;
-  /** Type of calendar event */
-  type: "task-deadline" | "study-session";
-  /** Date of the event */
-  date: Date;
-  /** Optional start time in HH:mm format */
-  startTime?: string;
-  /** Optional end time in HH:mm format */
-  endTime?: string;
-  /** CSS color value for rendering the calendar block */
-  color: string;
-  /** Optional reference to associated task ID */
-  taskId?: string;
-}
 
 export interface AnalyticsData {
   /** Task completion metrics categorized by timing */

@@ -9,13 +9,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -23,10 +16,11 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { StarRating } from "@/app/components/common/star-rating";
 import { toast } from "sonner";
-import { StudySessionPrompt } from "@/app/components/tasks/study-session-prompt";
 import { format } from "date-fns";
 import { CalendarIcon, Paperclip, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
 export default function TaskForm() {
   const router = useRouter();
@@ -34,23 +28,38 @@ export default function TaskForm() {
   const [deadline, setDeadline] = useState<Date | undefined>();
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState(3);
-  const [reminder, setReminder] = useState("none");
-  const [attachment, setAttachment] = useState<string | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [calOpen, setCalOpen] = useState(false);
-  const [showPrompt, setShowPrompt] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const addFiles = (incoming: FileList | File[]) => {
+    const arr = Array.from(incoming);
+    const accepted: File[] = [];
+    for (const f of arr) {
+      if (f.size > MAX_FILE_BYTES) {
+        toast.error(`"${f.name}" exceeds 10MB and was skipped`);
+        continue;
+      }
+      accepted.push(f);
+    }
+    if (accepted.length > 0) setFiles((prev) => [...prev, ...accepted]);
+  };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (file) setAttachment(file.name);
+    if (e.dataTransfer.files?.length) addFiles(e.dataTransfer.files);
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) setAttachment(file.name);
+    if (e.target.files?.length) addFiles(e.target.files);
+    e.target.value = "";
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const removeFile = (idx: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
       toast.error("Task name is required");
@@ -60,178 +69,218 @@ export default function TaskForm() {
       toast.error("Deadline is required");
       return;
     }
-    toast.success("Task created! 🎉");
-    setShowPrompt(true);
+
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/task", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title.trim(),
+          description: description.trim() || undefined,
+          deadline: deadline.toISOString(),
+          status: "Pending",
+          priority,
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        const firstError =
+          body?.errors && typeof body.errors === "object"
+            ? Object.values(body.errors).flat()[0]
+            : null;
+        throw new Error(firstError ?? body?.message ?? "Failed to create task");
+      }
+
+      const created = await res.json();
+      const taskId: number | undefined = created?.task?.id;
+
+      if (taskId && files.length > 0) {
+        const failures: string[] = [];
+        for (const f of files) {
+          const fd = new FormData();
+          fd.append("file", f);
+          const uploadRes = await fetch(`/api/task/${taskId}/attachment`, {
+            method: "POST",
+            body: fd,
+          });
+          if (!uploadRes.ok) failures.push(f.name);
+        }
+        if (failures.length > 0) {
+          toast.warning(`Task created. Some files failed: ${failures.join(", ")}`);
+        } else {
+          toast.success("Task created");
+        }
+      } else {
+        toast.success("Task created");
+      }
+
+      router.push("/tasks");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not create task");
+      setSubmitting(false);
+    }
   };
 
   return (
-    <>
-      {showPrompt && (
-        <StudySessionPrompt
-          taskName={title}
-          onSkip={() => router.push("/tasks")}
-        />
-      )}
-      <div className="p-6 max-w-2xl mx-auto space-y-6">
-        <div>
-          <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">
-            NEW TASK
-          </h1>
-          <p className="font-mono text-xs text-muted-foreground mt-1 tracking-widest">
-            CREATE A NEW TASK
-          </p>
-        </div>
-
-        <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-          <CardHeader className="border-t-2 border-accent rounded-t-xl pb-2">
-            <CardTitle className="font-display text-lg">Task Details</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-5 pt-2">
-              <div className="space-y-1.5">
-                <Label
-                  htmlFor="title"
-                  className="font-mono text-xs tracking-wider"
-                >
-                  TASK NAME *
-                </Label>
-                <Input
-                  id="title"
-                  placeholder="e.g. Calculus II Problem Set 6"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="font-mono text-xs tracking-wider">
-                  DEADLINE *
-                </Label>
-                <Popover open={calOpen} onOpenChange={setCalOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !deadline && "text-muted-foreground",
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {deadline ? format(deadline, "PPP") : "Pick a date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={deadline}
-                      onSelect={(d) => {
-                        setDeadline(d);
-                        setCalOpen(false);
-                      }}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label
-                  htmlFor="desc"
-                  className="font-mono text-xs tracking-wider"
-                >
-                  DESCRIPTION
-                </Label>
-                <Textarea
-                  id="desc"
-                  placeholder="Optional task description..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="resize-y min-h-[80px]"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="font-mono text-xs tracking-wider">
-                  ATTACHMENT
-                </Label>
-                {attachment ? (
-                  <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/30 px-3 py-2">
-                    <Paperclip className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm flex-1 truncate">
-                      {attachment}
-                    </span>
-                    <button type="button" onClick={() => setAttachment(null)}>
-                      <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                    </button>
-                  </div>
-                ) : (
-                  <label
-                    className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border/50 bg-muted/20 px-4 py-6 cursor-pointer hover:border-accent/50 transition-colors"
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={handleDrop}
-                  >
-                    <Paperclip className="h-6 w-6 text-muted-foreground" />
-                    <span className="font-mono text-xs text-muted-foreground">
-                      Drop file here or click to browse
-                    </span>
-                    <input
-                      type="file"
-                      className="hidden"
-                      onChange={handleFileSelect}
-                    />
-                  </label>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="font-mono text-xs tracking-wider">
-                  PRIORITY
-                </Label>
-                <div className="flex items-center gap-3">
-                  <StarRating
-                    value={priority}
-                    onChange={setPriority}
-                    size="lg"
-                  />
-                  <span className="font-mono text-sm text-muted-foreground">
-                    {priority.toFixed(1)} / 5.0
-                  </span>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="font-mono text-xs tracking-wider">
-                  REMINDER
-                </Label>
-                <Select value={reminder} onValueChange={setReminder}>
-                  <SelectTrigger className="font-mono text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    <SelectItem value="daily">Daily</SelectItem>
-                    <SelectItem value="every-3-days">Every 3 Days</SelectItem>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <Button
-                  type="submit"
-                  className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground font-semibold"
-                >
-                  Create Task
-                </Button>
-                <Button variant="outline" asChild>
-                  <Link href="/tasks">Cancel</Link>
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+    <div className="p-6 max-w-2xl mx-auto space-y-6">
+      <div>
+        <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">
+          NEW TASK
+        </h1>
+        <p className="font-mono text-xs text-muted-foreground mt-1 tracking-widest">
+          CREATE A NEW TASK
+        </p>
       </div>
-    </>
+
+      <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+        <CardHeader className="pb-2">
+          <CardTitle className="font-display text-lg">Task Details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-5 pt-2">
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="title"
+                className="font-mono text-xs tracking-wider"
+              >
+                TASK NAME *
+              </Label>
+              <Input
+                id="title"
+                placeholder="e.g. Calculus II Problem Set 6"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="font-mono text-xs tracking-wider">
+                DEADLINE *
+              </Label>
+              <Popover open={calOpen} onOpenChange={setCalOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !deadline && "text-muted-foreground",
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {deadline ? format(deadline, "PPP") : "Pick a date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={deadline}
+                    onSelect={(d) => {
+                      setDeadline(d);
+                      setCalOpen(false);
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="desc"
+                className="font-mono text-xs tracking-wider"
+              >
+                DESCRIPTION
+              </Label>
+              <Textarea
+                id="desc"
+                placeholder="Optional task description..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="resize-y min-h-[80px]"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="font-mono text-xs tracking-wider">
+                ATTACHMENTS
+              </Label>
+              <label
+                className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border/50 bg-muted/20 px-4 py-6 cursor-pointer hover:border-accent/50 transition-colors"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={handleDrop}
+              >
+                <Paperclip className="h-6 w-6 text-muted-foreground" />
+                <span className="font-mono text-xs text-muted-foreground">
+                  Drop files here or click to browse (10MB max each)
+                </span>
+                <input
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+              </label>
+              {files.length > 0 && (
+                <ul className="space-y-1.5 pt-1">
+                  {files.map((f, i) => (
+                    <li
+                      key={`${f.name}-${i}`}
+                      className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/30 px-3 py-2"
+                    >
+                      <Paperclip className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="text-sm flex-1 truncate">{f.name}</span>
+                      <span className="font-mono text-[10px] text-muted-foreground shrink-0">
+                        {(f.size / 1024).toFixed(0)} KB
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeFile(i)}
+                        aria-label={`Remove ${f.name}`}
+                      >
+                        <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="font-mono text-xs tracking-wider">
+                PRIORITY
+              </Label>
+              <div className="flex items-center gap-3">
+                <StarRating
+                  value={priority}
+                  onChange={setPriority}
+                  size="lg"
+                />
+                <span className="font-mono text-sm text-muted-foreground">
+                  {priority.toFixed(1)} / 5.0
+                </span>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground font-semibold"
+              >
+                {submitting ? "Creating..." : "Create Task"}
+              </Button>
+              <Button type="button" variant="outline" asChild>
+                <Link href="/tasks">Cancel</Link>
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

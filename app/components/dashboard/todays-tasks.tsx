@@ -5,22 +5,26 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { StarRating } from "@/app/components/common/star-rating";
-import { mockTasks } from "@/lib/mock-data";
+import type { Task } from "@/types";
 import { cn } from "@/lib/utils";
 import { format, isToday, isTomorrow, isPast } from "date-fns";
 
-export function TodaysTasks() {
-  const [completed, setCompleted] = useState<Set<string>>(new Set());
+interface TodaysTasksProps {
+  tasks: Task[];
+}
 
-  // Show tasks due today or overdue, sorted by priority desc
-  const tasks = [...mockTasks]
+export function TodaysTasks({ tasks }: TodaysTasksProps) {
+  const [completed, setCompleted] = useState<Set<number>>(new Set());
+
+  const sorted = [...tasks]
     .sort((a, b) => b.priority - a.priority)
     .slice(0, 6);
 
-  const toggle = (id: string) => {
+  const toggle = (id: number) => {
     setCompleted((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) { next.delete(id); } else { next.add(id); }
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
@@ -40,35 +44,40 @@ export function TodaysTasks() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {tasks.map((task) => {
-          const done = completed.has(task.id);
-          const badge = getDeadlineBadge(task.deadline);
-          return (
-            <div
-              key={task.id}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-4 py-3 border-l-4 bg-background/40 transition-opacity",
-                `priority-${Math.round(task.priority)}`,
-                done && "opacity-50"
-              )}
-            >
-              <Checkbox
-                checked={done}
-                onCheckedChange={() => toggle(task.id)}
-                className="shrink-0"
-              />
-              <div className="flex-1 min-w-0">
-                <p className={cn("text-sm font-medium truncate", done && "line-through text-muted-foreground")}>
-                  {task.title}
-                </p>
-                <StarRating value={task.priority} size="sm" readOnly />
+        {sorted.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No tasks yet.</p>
+        ) : (
+          sorted.map((task) => {
+            const done = completed.has(task.id) || task.status === "Completed";
+            const deadlineDate = new Date(task.deadline);
+            const badge = getDeadlineBadge(deadlineDate);
+            return (
+              <div
+                key={task.id}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-4 py-3 border-l-4 bg-background/40 transition-opacity",
+                  `priority-${Math.round(task.priority)}`,
+                  done && "opacity-50",
+                )}
+              >
+                <Checkbox
+                  checked={done}
+                  onCheckedChange={() => toggle(task.id)}
+                  className="shrink-0"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className={cn("text-sm font-medium truncate", done && "line-through text-muted-foreground")}>
+                    {task.title}
+                  </p>
+                  <StarRating value={task.priority} size="sm" readOnly />
+                </div>
+                <Badge variant={badge.variant} className="shrink-0 text-xs font-mono">
+                  {badge.label}
+                </Badge>
               </div>
-              <Badge variant={badge.variant} className="shrink-0 text-xs font-mono">
-                {badge.label}
-              </Badge>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </CardContent>
     </Card>
   );
