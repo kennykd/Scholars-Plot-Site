@@ -122,11 +122,9 @@ export default function PushNotificationsToggle() {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          subscription: subscription.toJSON
-            ? subscription.toJSON()
-            : subscription,
-        }),
+        body: JSON.stringify(
+          subscription.toJSON() ? subscription.toJSON() : subscription,
+        ),
       });
 
       if (!resp.ok) {

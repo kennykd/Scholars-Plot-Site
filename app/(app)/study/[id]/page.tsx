@@ -147,11 +147,24 @@ export default function StudySessionPage() {
           return;
         }
 
+        // Extract attachment names from study_session_user if available
+        const attachmentNames: string[] = [];
+        if (
+          apiStudy.study_session_user &&
+          Array.isArray(apiStudy.study_session_user)
+        ) {
+          apiStudy.study_session_user.forEach((ssu: any) => {
+            if (ssu.attachment && ssu.attachment.file_name) {
+              attachmentNames.push(ssu.attachment.file_name);
+            }
+          });
+        }
+
         const mapped: StudySession = {
           id: String(apiStudy.study_session_id),
           title: apiStudy.study_session_name,
           notes: apiStudy.study_session_description ?? "",
-          attachments: [],
+          attachments: attachmentNames,
           scheduledAt: apiStudy.study_session_scheduled_at
             ? new Date(apiStudy.study_session_scheduled_at).toISOString()
             : new Date().toISOString(),

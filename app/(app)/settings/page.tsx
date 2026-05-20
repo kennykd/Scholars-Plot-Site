@@ -4,7 +4,7 @@ import LogoutButton from "@/app/components/auth/logout-button";
 import { ThemeToggle } from "../../components/settings/theme-toggle";
 import { getSession } from "@/lib/firebase/auth";
 import { redirect } from "next/navigation";
-import PushNotificationsToggle from "@/app/components/common/push-notifications-toggle";
+import PushNotificationsToggle from "@/app/components/settings/push-notifications-toggle";
 
 export default async function SettingsPage() {
   const user = await getSession();

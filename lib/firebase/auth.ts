@@ -23,7 +23,10 @@ export const getSession = cache(async (): Promise<SessionUser | null> => {
 
   try {
     // Try verifying as Firebase token
-    const decodedToken: DecodedIdToken = await adminAuth.verifyIdToken(session);
+    // FIXED: Verify using the Session Cookie function instead of verifyIdToken,
+    // this is because we are using long-lived session ID, stored in server-side httpOnly cookies
+    // this will make it safer against XSS attacks since JavaScript (or any type of malicious scripts) cannot read httpOnly cookies
+    const decodedToken: DecodedIdToken = await adminAuth.verifySessionCookie(session, true);
 
     // Search for user in database
     const user = await prisma.user.findUnique({

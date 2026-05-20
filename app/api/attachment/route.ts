@@ -1,9 +1,17 @@
 import { NextResponse } from "next/server";
 import { uploadFile, getFileUrl } from "@/lib/bucket";
+import { prisma } from "@/lib/prisma";
 import { v4 as uuidv4 } from "uuid";
+import { getSession } from "@/lib/firebase/auth";
 
 export async function POST(req) {
   try {
+    const session = await getSession();
+    
+    if (!session) {
+      return NextResponse.json({ error: "User is not authenticated" }, { status: 401 });
+    }
+
     const formData = await req.formData();
     const file = formData.get("file"); // Has to match with frontend form field name
 
@@ -15,16 +23,26 @@ export async function POST(req) {
     const buffer = Buffer.from(await file.arrayBuffer());
 
     // Give it a unique name so files don't overwrite each other
-    const uniqueFileName = `uploads/${formData.userId}-${uuidv4()}-${file.name}`;
+    const uniqueFileName = `uploads/${session.id}-${uuidv4()}-${file.name}`;
 
     // Upload to the storage bucket
     await uploadFile(buffer, uniqueFileName, file.type);
+
+    // Create attachment record in database
+    const attachment = await prisma.attachment.create({
+      data: {
+        file_name: file.name,
+        file_path: uniqueFileName,
+        file_type: file.type,
+      },
+    });
 
     // Get a temporary URL to return to the frontend
     const url = await getFileUrl(uniqueFileName);
 
     return NextResponse.json({ 
       success: true,
+      attachment_id: attachment.attachment_id,
       fileName: uniqueFileName, // To be saved in the database
       url: url                  // To be sent to the frontend to display the file
     });
