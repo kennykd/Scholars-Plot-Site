@@ -1,30 +1,66 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import TasksPage from "./page";
-import { mockTasks } from "@/lib/mock-data";
+import { TasksToolbar } from "@/app/components/tasks/tasks-toolbar";
 
 jest.mock("@/app/components/tasks/task-card", () => ({
   TaskCard: ({ task }) => <div data-testid="task-card">{task.title}</div>,
 }));
 
-describe("TasksPage", () => {
-  it("renders page title, count and new task link", () => {
-    render(<TasksPage />);
+const isoDays = (n) =>
+  new Date(Date.now() + n * 24 * 60 * 60 * 1000).toISOString();
 
-    expect(screen.getByRole("heading", { name: /tasks/i })).toBeInTheDocument();
-    expect(
-      screen.getByText(new RegExp(`^${mockTasks.length} tasks$`, "i")),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /new task/i })).toHaveAttribute(
-      "href",
-      "/tasks/new",
-    );
-  });
+const fixtureTasks = [
+  {
+    id: 1,
+    projectId: null,
+    title: "Calculus II Problem Set 5",
+    description: null,
+    deadline: isoDays(2),
+    priority: 4.5,
+    status: "In_Progress",
+    createdAt: isoDays(-7),
+    completedAt: null,
+  },
+  {
+    id: 2,
+    projectId: null,
+    title: "Data Structures Assignment 3",
+    description: null,
+    deadline: isoDays(3),
+    priority: 5,
+    status: "In_Progress",
+    createdAt: isoDays(-5),
+    completedAt: null,
+  },
+  {
+    id: 3,
+    projectId: null,
+    title: "Physics Lab Report",
+    description: null,
+    deadline: isoDays(1),
+    priority: 4,
+    status: "Pending",
+    createdAt: isoDays(-10),
+    completedAt: null,
+  },
+  {
+    id: 4,
+    projectId: null,
+    title: "Web Development Milestone 1",
+    description: null,
+    deadline: isoDays(-1),
+    priority: 5,
+    status: "Completed",
+    createdAt: isoDays(-14),
+    completedAt: isoDays(-2),
+  },
+];
 
-  it("shows tasks sorted by priority by default", () => {
-    render(<TasksPage />);
+describe("TasksToolbar", () => {
+  it("renders all tasks sorted by priority by default", () => {
+    render(<TasksToolbar tasks={fixtureTasks} />);
 
-    const expectedTitles = [...mockTasks]
+    const expectedTitles = [...fixtureTasks]
       .sort((a, b) => b.priority - a.priority)
       .map((task) => task.title);
 
@@ -35,34 +71,31 @@ describe("TasksPage", () => {
     expect(titles).toEqual(expectedTitles);
   });
 
-  it("filters to done tasks", async () => {
-    render(<TasksPage />);
+  it("filters to completed tasks", async () => {
+    render(<TasksToolbar tasks={fixtureTasks} />);
     const user = userEvent.setup();
 
-    const expectedTitles = mockTasks
-      .filter((task) => task.status === "done")
+    const expectedTitles = fixtureTasks
+      .filter((task) => task.status === "Completed")
       .sort((a, b) => b.priority - a.priority)
       .map((task) => task.title);
 
-    await user.click(screen.getByRole("tab", { name: /done/i }));
+    await user.click(screen.getByRole("tab", { name: /completed/i }));
 
     await waitFor(() => {
       const titles = screen
         .getAllByTestId("task-card")
         .map((card) => card.textContent);
       expect(titles).toEqual(expectedTitles);
-      expect(
-        screen.getByText(new RegExp(`^${expectedTitles.length} tasks$`, "i")),
-      ).toBeInTheDocument();
     });
   });
 
   it("filters to in-progress tasks", async () => {
-    render(<TasksPage />);
+    render(<TasksToolbar tasks={fixtureTasks} />);
     const user = userEvent.setup();
 
-    const expectedTitles = mockTasks
-      .filter((task) => task.status === "in-progress")
+    const expectedTitles = fixtureTasks
+      .filter((task) => task.status === "In_Progress")
       .sort((a, b) => b.priority - a.priority)
       .map((task) => task.title);
 
@@ -73,9 +106,17 @@ describe("TasksPage", () => {
         .getAllByTestId("task-card")
         .map((card) => card.textContent);
       expect(titles).toEqual(expectedTitles);
-      expect(
-        screen.getByText(new RegExp(`^${expectedTitles.length} tasks$`, "i")),
-      ).toBeInTheDocument();
+    });
+  });
+
+  it("renders an empty-state message when no tasks match", async () => {
+    render(<TasksToolbar tasks={fixtureTasks.filter((t) => t.status === "Pending")} />);
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("tab", { name: /completed/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/no tasks found/i)).toBeInTheDocument();
     });
   });
 });

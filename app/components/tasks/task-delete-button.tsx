@@ -17,15 +17,30 @@ import {
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-export function TaskDeleteButton({ taskTitle }: { taskTitle: string }) {
+interface TaskDeleteButtonProps {
+  taskId: number;
+  taskTitle: string;
+}
+
+export function TaskDeleteButton({ taskId, taskTitle }: TaskDeleteButtonProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     setLoading(true);
-    toast.success(`Deleted "${taskTitle}"`);
-    router.push("/tasks");
-    router.refresh();
+    try {
+      const res = await fetch(`/api/task/${taskId}`, { method: "DELETE" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.message ?? "Delete failed");
+      }
+      toast.success(`Deleted "${taskTitle}"`);
+      router.push("/tasks");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not delete task");
+      setLoading(false);
+    }
   };
 
   return (

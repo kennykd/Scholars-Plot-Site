@@ -1,37 +1,55 @@
-import { CalendarEvent } from "@/types";
-import { format } from "date-fns";
 import type { EventInput } from "@fullcalendar/core";
+import { addMinutes, format } from "date-fns";
+import type { Task } from "@/types";
 
-export function toFullCalendarEvents(events: CalendarEvent[]): EventInput[] {
-  return events.map((ev) => {
-    const dateStr = format(ev.date, "yyyy-MM-dd");
+export interface CalendarStudySession {
+  id: number;
+  title: string;
+  scheduledAt: string;
+  focusMinutes: number;
+}
 
-    if (ev.startTime && ev.endTime) {
-      return {
-        id: ev.id,
-        title: ev.title,
-        start: `${dateStr}T${ev.startTime}:00`,
-        end: `${dateStr}T${ev.endTime}:00`,
-        backgroundColor: ev.color,
-        borderColor: ev.color,
-        allDay: false,
-        extendedProps: {
-          type: ev.type,
-          taskId: ev.taskId,
-        },
-      };
-    }
+export const TASK_EVENT_COLOR = "#FF4D2E";
+export const STUDY_EVENT_COLOR = "#3b82f6";
 
+export function tasksToCalendarEvents(tasks: Task[]): EventInput[] {
+  return tasks.map((task) => {
+    const deadline = new Date(task.deadline);
     return {
-      id: ev.id,
-      title: ev.title,
-      start: dateStr,
+      id: `task-${task.id}`,
+      title: task.title,
+      start: format(deadline, "yyyy-MM-dd"),
       allDay: true,
-      backgroundColor: ev.color,
-      borderColor: ev.color,
+      backgroundColor: TASK_EVENT_COLOR,
+      borderColor: TASK_EVENT_COLOR,
       extendedProps: {
-        type: ev.type,
-        taskId: ev.taskId,
+        type: "task-deadline" as const,
+        taskId: task.id,
+        status: task.status,
+        priority: task.priority,
+        description: task.description,
+        deadline: task.deadline,
+      },
+    };
+  });
+}
+
+export function studySessionsToCalendarEvents(
+  sessions: CalendarStudySession[],
+): EventInput[] {
+  return sessions.map((session) => {
+    const start = new Date(session.scheduledAt);
+    const end = addMinutes(start, session.focusMinutes);
+    return {
+      id: `session-${session.id}`,
+      title: `Study: ${session.title}`,
+      start: start.toISOString(),
+      end: end.toISOString(),
+      backgroundColor: STUDY_EVENT_COLOR,
+      borderColor: STUDY_EVENT_COLOR,
+      extendedProps: {
+        type: "study-session" as const,
+        sessionId: session.id,
       },
     };
   });

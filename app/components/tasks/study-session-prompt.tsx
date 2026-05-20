@@ -23,7 +23,7 @@ export function StudySessionPrompt({
       }}
     >
       <Card className="w-full max-w-md bg-card/95 border border-accent/30 shadow-2xl">
-        <CardHeader className="border-t-2 border-accent rounded-t-xl pb-2">
+        <CardHeader className="pb-2">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/20">
               <Timer className="h-5 w-5 text-accent" />
