@@ -91,10 +91,8 @@ if (!authorization?.startsWith("Bearer ")) {
 const idToken = authorization.split("Bearer ")[1];
 
 try {
-  // The second argument `true` tells verifyIdToken to also check whether
-  // the token has been revoked via adminAuth.revokeRefreshTokens() —
-  // this ensures sign-out is respected immediately rather than waiting
-  // up to 1 hour for the token to naturally expire.
+  // The bearer value here is a Firebase ID token. Verify it first, then
+  // exchange it for the long-lived httpOnly session cookie below.
   const decodedToken = await adminAuth.verifyIdToken(idToken, true);
 
   // Anonymous auth and phone-auth tokens carry no email, which would crash
@@ -141,7 +139,7 @@ try {
   });
 
   // Set session cookie
-  const response = NextResponse.json({ status: "success" });
+  const response = NextResponse.json({ status: "successfully authenticated" });
   response.cookies.set("session", sessionCookie, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

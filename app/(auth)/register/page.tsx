@@ -21,12 +21,14 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const createSession = async (idToken: string, displayName?: string) => {
+  const createSession = async (idToken: string, name?: string) => {
     const res = await fetch("/api/auth/firebase", {
       method: "POST",
-      headers: { Authorization: `Bearer ${idToken}` },
-      // Pass the displayName as a JSON string into the api endpoint
-      body: JSON.stringify({ displayName }),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${idToken}`,
+      },
+      body: JSON.stringify({ name }),
     });
     if (!res.ok) throw new Error("Failed to create session");
   };
