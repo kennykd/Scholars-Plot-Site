@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { Task } from '../../../types/index';
-import { mockTasks } from '../../../lib/mock-data';
 import { createTaskSchema } from '../../../lib/validation/task';
-import { createTask } from '@/lib/services/taskService';
+import { createTask, getTasks } from '@/lib/services/taskService';
 import { runTaskAnalysis } from '@/lib/services/aiService';
 
-export const tasks: Task[] = mockTasks;
+/**
+ * NOTE (21/5/2026):
+ * The documentation for task API has NOT been fixed yet.
+ */
 
 /**
  * @swagger
@@ -182,12 +183,24 @@ export const tasks: Task[] = mockTasks;
 
 export async function GET() {
   try {
-    return NextResponse.json(
-      { message: 'Tasks retrieved successfully', tasks },
-      { status: 200 },
-    );
+    const dbTasks = await getTasks();
+
+    const mapped = dbTasks.map((t) => ({
+      id: String(t.task_id),
+      title: t.task_name,
+      description: t.task_description ?? undefined,
+      deadline: t.task_deadline,
+      priority: Number(t.task_priority),
+      status: t.task_status,
+      attachments: [],
+      reminder: undefined,
+      createdAt: t.task_created_at,
+      completedAt: t.task_completed_at ?? undefined,
+    }));
+
+    return NextResponse.json({ message: 'Tasks retrieved successfully', tasks: mapped }, { status: 200 });
   } catch (error) {
-    return NextResponse.json({ message: 'Error retrieving tasks', error }, { status: 500 });
+    return NextResponse.json({ message: 'Error retrieving tasks', error: String(error) }, { status: 500 });
   }
 }
 
@@ -210,16 +223,17 @@ export async function POST(request: Request) {
       );
     }
 
+    const asAny = body as any;
+
     const created = await createTask({
       ...parsed.data,
-      user_id: (body as any)?.user_id,
-      project_id: (body as any)?.project_id ?? null,
+      user_id: asAny?.user_id,
+      project_id: asAny?.project_id ?? null,
     });
 
-    // Kick off AI analysis if user_id and task id available
     try {
-      if ((body as any)?.user_id && created.task_id) {
-        runTaskAnalysis(created.task_id, (body as any).user_id).catch((error) => {
+      if (asAny?.user_id && created.task_id) {
+        runTaskAnalysis(created.task_id, asAny.user_id).catch((error) => {
           console.error(`AI analysis failed for task ${created.task_id}:`, error);
         });
       }
@@ -227,11 +241,21 @@ export async function POST(request: Request) {
       console.error('Error starting AI analysis:', e);
     }
 
-    return NextResponse.json(
-      { message: 'Task created successfully', task: created },
-      { status: 201 },
-    );
+    const resp = {
+      id: String(created.task_id),
+      title: created.task_name,
+      description: created.task_description ?? undefined,
+      deadline: created.task_deadline,
+      priority: Number(created.task_priority),
+      status: created.task_status,
+      attachments: [],
+      reminder: undefined,
+      createdAt: created.task_created_at,
+      completedAt: created.task_completed_at ?? undefined,
+    };
+
+    return NextResponse.json({ message: 'Task created successfully', task: resp }, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ message: 'Error creating task', error }, { status: 500 });
+    return NextResponse.json({ message: 'Error creating task', error: String(error) }, { status: 500 });
   }
 }

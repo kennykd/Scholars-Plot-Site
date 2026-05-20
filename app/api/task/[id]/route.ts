@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { updateTaskSchema } from '../../../../lib/validation/task';
-import { tasks } from '../route';
+import { updateTaskById, deleteTaskById } from '@/lib/services/taskService';
+
+/**
+ * NOTE (21/5/2026):
+ * The documentation for task API has NOT been fixed yet.
+ */
 
 /**
  * @swagger
@@ -169,19 +174,15 @@ export async function PATCH(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
 
-    const index = tasks.findIndex((task) => task.id === id);
-
-    if (index === -1) {
-      return NextResponse.json({ message: 'Task not found' }, { status: 404 });
-    };
+    const taskId = Number(id);
+    if (!Number.isFinite(taskId)) return NextResponse.json({ message: 'Invalid task id' }, { status: 400 });
 
     let body: unknown;
-
     try {
       body = await request.json();
     } catch {
       return NextResponse.json({ message: 'Invalid JSON body' }, { status: 400 });
-    };
+    }
 
     const parsed = updateTaskSchema.safeParse(body);
 
@@ -190,27 +191,34 @@ export async function PATCH(request: Request, context: RouteContext) {
         { message: 'Validation failed', errors: z.flattenError(parsed.error).fieldErrors },
         { status: 400 },
       );
-    };
+    }
 
     if (Object.keys(parsed.data).length === 0) {
       return NextResponse.json({ message: 'No fields provided for update' }, { status: 400 });
-    };
+    }
 
-    const { deadline, ...rest } = parsed.data;
+    try {
+      const updated = await updateTaskById(taskId, parsed.data as any);
 
-    tasks[index] = {
-      ...tasks[index],
-      ...rest,
-      ...(deadline ? { deadline: new Date(deadline) } : {}),
-      id: tasks[index].id,
-    };
+      const resp = {
+        id: String(updated.task_id),
+        title: updated.task_name,
+        description: updated.task_description ?? undefined,
+        deadline: updated.task_deadline,
+        priority: Number(updated.task_priority),
+        status: updated.task_status,
+        attachments: [],
+        reminder: undefined,
+        createdAt: updated.task_created_at,
+        completedAt: updated.task_completed_at ?? undefined,
+      };
 
-    return NextResponse.json(
-      { message: 'Task updated successfully', task: tasks[index] },
-      { status: 200 },
-    );
+      return NextResponse.json({ message: 'Task updated successfully', task: resp }, { status: 200 });
+    } catch (e: any) {
+      return NextResponse.json({ message: e?.message ?? 'Error updating task' }, { status: e?.status ?? 500 });
+    }
   } catch (error) {
-    return NextResponse.json({ message: 'Error updating task', error }, { status: 500 });
+    return NextResponse.json({ message: 'Error updating task', error: String(error) }, { status: 500 });
   }
 }
 
@@ -218,16 +226,16 @@ export async function DELETE(_: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
 
-    const index = tasks.findIndex((task) => task.id === id);
+    const taskId = Number(id);
+    if (!Number.isFinite(taskId)) return NextResponse.json({ message: 'Invalid task id' }, { status: 400 });
 
-    if (index === -1) {
-      return NextResponse.json({ message: 'Task not found' }, { status: 404 });
-    };
-
-    tasks.splice(index, 1);
-
-    return NextResponse.json({ message: 'Task deleted successfully' }, { status: 200 });
+    try {
+      await deleteTaskById(taskId);
+      return NextResponse.json({ message: 'Task deleted successfully' }, { status: 200 });
+    } catch (e: any) {
+      return NextResponse.json({ message: e?.message ?? 'Error deleting task' }, { status: e?.status ?? 500 });
+    }
   } catch (error) {
-    return NextResponse.json({ message: 'Error deleting task', error }, { status: 500 });
+    return NextResponse.json({ message: 'Error deleting task', error: String(error) }, { status: 500 });
   }
 }
