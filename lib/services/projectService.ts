@@ -130,7 +130,7 @@ export async function getProjects() {
 export async function createProject(data: CreateProjectInput) {
   const ownerMember = {
     user_id: data.ownerId,
-    project_user_role: 'owner',
+    project_user_role: 'owner' as ProjectUserRole,
   };
 
   const additionalMembers =
@@ -138,7 +138,7 @@ export async function createProject(data: CreateProjectInput) {
       ?.filter((member) => member.id !== data.ownerId)
       .map((member) => ({
         user_id: member.id,
-        project_user_role: member.role,
+        project_user_role: member.role as ProjectUserRole,
       })) ?? [];
 
   return prisma.project.create({

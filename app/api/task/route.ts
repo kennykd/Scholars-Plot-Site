@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { Task } from '../../../types/index';
 import { mockTasks } from '../../../lib/mock-data';
 import { createTaskSchema } from '../../../lib/validation/task';
+import { createTask } from '@/lib/services/taskService';
+import { runTaskAnalysis } from '@/lib/services/aiService';
 
 export const tasks: Task[] = mockTasks;
 
@@ -208,23 +210,25 @@ export async function POST(request: Request) {
       );
     }
 
-    const { title, description, deadline, status, priority, attachments } = parsed.data;
+    const created = await createTask({
+      ...parsed.data,
+      user_id: (body as any)?.user_id,
+      project_id: (body as any)?.project_id ?? null,
+    });
 
-    const newTask: Task = {
-      id: crypto.randomUUID(),
-      title,
-      description: description ?? '',
-      deadline,
-      status: status ?? 'todo',
-      priority: priority ?? 3,
-      attachments: attachments ?? [],
-      createdAt: new Date(),
-    };
-
-    tasks.push(newTask);
+    // Kick off AI analysis if user_id and task id available
+    try {
+      if ((body as any)?.user_id && created.task_id) {
+        runTaskAnalysis(created.task_id, (body as any).user_id).catch((error) => {
+          console.error(`AI analysis failed for task ${created.task_id}:`, error);
+        });
+      }
+    } catch (e) {
+      console.error('Error starting AI analysis:', e);
+    }
 
     return NextResponse.json(
-      { message: 'Task created successfully', task: newTask },
+      { message: 'Task created successfully', task: created },
       { status: 201 },
     );
   } catch (error) {

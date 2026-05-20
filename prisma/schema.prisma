@@ -69,6 +69,7 @@ model User {
   user_email   String   @unique
   avatar_url   String?
   user_role    UserRole @default(user)
+  push_subscription String?
   user_last_login DateTime
   user_created_at DateTime @default(now())
 
@@ -78,6 +79,18 @@ model User {
   study_session_user StudySessionUser[]
 
   @@map("user")
+}
+
+model UserFormulaWeights {
+  id            Int      @id @default(autoincrement())
+  user_id       Int      @unique
+  w_impact      Decimal  @default(3.0) @db.Decimal(4, 2)
+  w_confidence  Decimal  @default(1.0) @db.Decimal(4, 2)
+  w_ease        Decimal  @default(2.0) @db.Decimal(4, 2)
+  w_urgency     Decimal  @default(4.0) @db.Decimal(4, 2)
+  updated_at    DateTime @updatedAt
+
+  @@map("user_formula_weights")
 }
 
 model Project {
@@ -118,6 +131,12 @@ model Task {
   task_status       TaskStatus @default(Pending)
   task_completed_at DateTime?
   task_created_at   DateTime   @default(now())
+
+  estimated_minutes    Int?
+  confidence_score     Int?      // 1-10, AI-inferred from description clarity
+  grade_weight_percent Decimal?  @db.Decimal(5, 2) // user input, 0.5-5.0 (impact)
+  ai_priority_score    Int?      // the 0-100 output of the formula
+  ai_analyzed_at       DateTime? // when the AI last processed this task
 
   project        Project?       @relation(fields: [project_id], references: [project_id], onDelete: SetNull)
   task_users     TaskUser[]

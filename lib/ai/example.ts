@@ -1,7 +1,12 @@
+// This file contains example code demonstrating how to use the Google GenAI API client to upload
+// attachments and generate AI recommendations based on user context and attached documents.
+// It includes functions for classifying attachments, uploading them, and generating AI responses
+// with specific configurations.
+
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { toJSONSchema } from "zod";
-import { uploadRemoteImage } from "./upload-image";
-import { uploadRemotePDF } from "./upload-pdf";
+import { uploadRemoteImage } from "./uploadImage";
+import { uploadRemotePDF } from "./uploadPdf";
 import { aiResponseSchema } from "../validation/ai";
 
 // Client gets the API key from the environment variable GEMINI_API_KEY.
@@ -35,14 +40,89 @@ function classifyAttachment(source: string): "pdf" | "image" {
   throw new Error(`Unsupported attachment type for source: ${source}`);
 }
 
+type PromptPart = { text: string } | { fileData: { mimeType: string; fileUri: string } };
+
+type SplitAttachment = { source: string; index: number };
+
+type UploadedAttachment = {
+  index: number;
+  mimeType: string;
+  fileUri: string;
+};
+
+function splitAttachments(attachments: string[]) {
+  return attachments.reduce(
+    (acc, source, index) => {
+      const classified = classifyAttachment(source);
+      if (classified === "pdf") {
+        acc.pdfs.push({ source, index });
+      } else {
+        acc.images.push({ source, index });
+      }
+
+      return acc;
+    },
+    {
+      pdfs: [] as SplitAttachment[],
+      images: [] as SplitAttachment[],
+    }
+  );
+}
+
+export async function uploadAttachments(attachments: string[]): Promise<PromptPart[]> {
+  if (!attachments.length) {
+    return [];
+  }
+
+  // Single-pass split keeps one public attachments API while preserving type-specific upload logic.
+  const split = splitAttachments(attachments);
+
+  const uploadedPdfs = await Promise.all(
+    split.pdfs.map(async ({ source, index }): Promise<UploadedAttachment> => {
+      // Each file keeps its original index so mixed image/PDF ordering can be restored later.
+      const uploadedPdf = await uploadRemotePDF(ai, source, `reference-document-${index + 1}`);
+      if (!uploadedPdf.uri) {
+        throw new Error("Uploaded PDF does not have a URI.");
+      }
+
+      return {
+        index,
+        mimeType: "application/pdf",
+        fileUri: uploadedPdf.uri,
+      };
+    })
+  );
+
+  const uploadedImages = await Promise.all(
+    split.images.map(async ({ source, index }): Promise<UploadedAttachment> => {
+      const uploadedImage = await uploadRemoteImage(ai, source, `reference-image-${index + 1}`);
+      if (!uploadedImage.file.uri) {
+        throw new Error("Uploaded image does not have a URI.");
+      }
+
+      return {
+        index,
+        mimeType: uploadedImage.mimeType,
+        fileUri: uploadedImage.file.uri,
+      };
+    })
+  );
+
+  return [...uploadedPdfs, ...uploadedImages]
+    .sort((a, b) => a.index - b.index)
+    .map(({ mimeType, fileUri }) => ({
+      fileData: {
+        mimeType,
+        fileUri,
+      },
+    }));
+}
+
 export async function aiRecommend(
   context: string,
   attachments?: string[]
 ) {
-  const promptParts: Array<
-    { text: string } |
-    { fileData: { mimeType: string; fileUri: string } }
-  > = [
+  const promptParts: PromptPart[] = [
     {
       text: [
         "Use the user context and all attached PDF and image documents together as one prompt.",
@@ -50,72 +130,8 @@ export async function aiRecommend(
         context,
       ].join("\n\n"),
     },
+    ...(attachments?.length ? await uploadAttachments(attachments) : []),
   ];
-
-  if (attachments?.length) {
-    // Single-pass split keeps one public attachments API while preserving type-specific upload logic.
-    const splitAttachments = attachments.reduce(
-      (acc, source, index) => {
-        const classified = classifyAttachment(source);
-        if (classified === "pdf") {
-          acc.pdfs.push({ source, index });
-        } else {
-          acc.images.push({ source, index });
-        }
-
-        return acc;
-      },
-      {
-        pdfs: [] as Array<{ source: string; index: number }>,
-        images: [] as Array<{ source: string; index: number }>,
-      }
-    );
-
-    const uploadedPdfs = await Promise.all(
-      splitAttachments.pdfs.map(async ({ source, index }) => {
-        // Each file keeps its original index so mixed image/PDF ordering can be restored later.
-        const uploadedPdf = await uploadRemotePDF(ai, source, `reference-document-${index + 1}`);
-        if (!uploadedPdf.uri) {
-          throw new Error("Uploaded PDF does not have a URI.");
-        }
-
-        return {
-          index,
-          mimeType: "application/pdf",
-          fileUri: uploadedPdf.uri,
-        };
-      })
-    );
-
-    const uploadedImages = await Promise.all(
-      splitAttachments.images.map(async ({ source, index }) => {
-        const uploadedImage = await uploadRemoteImage(ai, source, `reference-image-${index + 1}`);
-        if (!uploadedImage.file.uri) {
-          throw new Error("Uploaded image does not have a URI.");
-        }
-
-        return {
-          index,
-          mimeType: uploadedImage.mimeType,
-          fileUri: uploadedImage.file.uri,
-        };
-      })
-    );
-
-    const uploadedFiles = [...uploadedPdfs, ...uploadedImages].sort(
-      (a, b) => a.index - b.index
-    );
-
-    // Push uploaded files in the same order the user attached them.
-    for (const uploadedFile of uploadedFiles) {
-      promptParts.push({
-        fileData: {
-          mimeType: uploadedFile.mimeType,
-          fileUri: uploadedFile.fileUri,
-        }
-      });
-    }
-  }
 
   const contents = [
     {

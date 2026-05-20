@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { AIResponse } from '../../../types/index';
 import { aiRequestSchema } from '../../../lib/validation/ai';
+import { runTaskAnalysis } from '@/lib/services/aiService';
+
+/**
+ * NOTE (20/5/2026):
+ * Swagger documentation for this API route has NOT been updated yet.
+ */
 
 /**
  * @swagger
@@ -224,43 +230,30 @@ import { aiRequestSchema } from '../../../lib/validation/ai';
  *               role: "member"
  */
 
+const ReAnalyzeSchema = z.object({
+  task_id: z.number().int().positive(),
+  user_id: z.string().min(1),
+});
+
 export async function POST(request: Request) {
-  try {
-    let body: unknown;
+  const body = await request.json();
+  const parsed = ReAnalyzeSchema.safeParse(body);
 
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json({ message: 'Invalid JSON body' }, { status: 400 });
-    }
-
-    const parsed = aiRequestSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return NextResponse.json(
-        { message: 'Validation failed', errors: z.flattenError(parsed.error).fieldErrors },
-        { status: 400 },
-      );
-    }
-
-    const { message, attachments } = parsed.data;
-
-    const attachmentContext = attachments && attachments.length > 0
-      ? ` (with ${attachments.length} attachment${attachments.length > 1 ? 's' : ''}: ${attachments.join(', ')})`
-      : '';
-
-    const aiResponse: AIResponse = {
-      id: crypto.randomUUID(),
-      chatResponse: `I've analyzed your input${attachmentContext}. Here's what I found based on: "${message}"`,
-      jsonFormat: undefined,
-      createdAt: new Date(),
-    };
-
+  if (!parsed.success) {
     return NextResponse.json(
-      { message: 'AI response generated successfully', aiResponse },
-      { status: 200 },
+      { error: parsed.error.flatten().fieldErrors },
+      { status: 400 }
     );
+  }
+
+  try {
+    await runTaskAnalysis(parsed.data.task_id, parsed.data.user_id);
+    return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ message: 'Error generating AI response', error }, { status: 500 });
+    console.error("Re-analysis failed:", error);
+    return NextResponse.json(
+      { error: "Analysis failed" },
+      { status: 500 }
+    );
   }
 }
