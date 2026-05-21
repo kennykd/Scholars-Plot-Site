@@ -27,7 +27,7 @@ export default function TaskForm() {
   const [title, setTitle] = useState("");
   const [deadline, setDeadline] = useState<Date | undefined>();
   const [description, setDescription] = useState("");
-  const [priority, setPriority] = useState(3);
+  const [priority, setPriority] = useState(2.5);
   const [files, setFiles] = useState<File[]>([]);
   const [calOpen, setCalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);

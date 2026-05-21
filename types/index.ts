@@ -1,4 +1,5 @@
 export type TaskStatus = "Pending" | "In_Progress" | "Completed";
+export type ProjectTaskStatus = "not-done" | "pending" | "done";
 export type ReminderFrequency = "daily" | "every-3-days" | "weekly" | "none";
 export type Phase = "idle" | "focus" | "break";
 
@@ -117,8 +118,6 @@ export interface ProjectMember {
   /** Role within the project */
   role: ProjectRole;
 }
-
-export type ProjectTaskStatus = TaskStatus;
 
 export interface ProjectTask {
   id: string;

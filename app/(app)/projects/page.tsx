@@ -27,14 +27,21 @@ import {
 import { StarRating } from "@/app/components/common/star-rating";
 import { mockProjects } from "@/lib/mock-data";
 import {
-  Project,
   ProjectMember,
   ProjectRole,
   ProjectTask,
-  ProjectTaskPriority,
   ProjectTaskStatus,
 } from "@/types";
 import { cn } from "@/lib/utils";
+import {
+  fetchProjects,
+  createProjectApi,
+  addProjectMemberApi,
+  createProjectTaskApi,
+  updateProjectTaskApi,
+  type StoredProject,
+  type StoredProjectTask,
+} from "@/app/api/project/client";
 
 import {
   Crown,
@@ -53,15 +60,6 @@ type CurrentUser = {
   email: string;
   name: string | null;
   image: string | null;
-};
-
-type StoredProjectTask = Omit<ProjectTask, "createdAt"> & {
-  createdAt: string;
-};
-
-type StoredProject = Omit<Project, "createdAt" | "tasks"> & {
-  createdAt: string;
-  tasks: StoredProjectTask[];
 };
 
 const STORAGE_KEY = "scholarsPlot.projects";
@@ -90,7 +88,7 @@ const STATUS_META: Array<{
   },
 ];
 
-const PRIORITY_STYLES: Record<ProjectTaskPriority, string> = {
+const PRIORITY_STYLES: Record<string, string> = {
   low: "bg-muted text-muted-foreground border-border",
   medium: "bg-amber-500/15 text-amber-400 border-amber-500/30",
   high: "bg-red-500/15 text-red-400 border-red-500/30",
@@ -101,16 +99,6 @@ const ROLE_STYLES: Record<ProjectRole, string> = {
   moderator: "bg-blue-500/15 text-blue-400 border-blue-500/30",
   member: "bg-muted text-muted-foreground border-border",
 };
-
-const toStoredProjects = (projects: Project[]): StoredProject[] =>
-  projects.map((project) => ({
-    ...project,
-    createdAt: project.createdAt.toISOString(),
-    tasks: project.tasks.map((task) => ({
-      ...task,
-      createdAt: task.createdAt.toISOString(),
-    })),
-  }));
 
 const createMemberFromUser = (
   user: CurrentUser,
@@ -125,7 +113,7 @@ const createMemberFromUser = (
   };
 };
 
-const priorityFromRating = (value: number): ProjectTaskPriority => {
+const priorityFromRating = (value: number): string => {
   if (value >= 4) return "high";
   if (value >= 2.5) return "medium";
   return "low";
@@ -133,7 +121,6 @@ const priorityFromRating = (value: number): ProjectTaskPriority => {
 
 export default function ProjectsPage() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
-  const [hydrated, setHydrated] = useState(false);
   const [projects, setProjects] = useState<StoredProject[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
 
@@ -143,13 +130,16 @@ export default function ProjectsPage() {
 
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectDescription, setNewProjectDescription] = useState("");
+  const [newProjectDeadline, setNewProjectDeadline] = useState<string | null>(null);
+  const [newProjectPriorityRating, setNewProjectPriorityRating] = useState<number>(2.5);
+  const [newProjectStatus, setNewProjectStatus] = useState<"active" | "completed" | "archived">("active");
 
   const [inviteHandle, setInviteHandle] = useState("");
   const [inviteRole, setInviteRole] = useState<ProjectRole>("member");
 
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
-  const [taskPriorityRating, setTaskPriorityRating] = useState(3);
+  const [taskPriorityRating, setTaskPriorityRating] = useState(2.5);
   const [taskReminder, setTaskReminder] = useState("none");
   const [taskAttachment, setTaskAttachment] = useState<string | null>(null);
 
@@ -170,31 +160,58 @@ export default function ProjectsPage() {
   }, []);
 
   useEffect(() => {
-    const stored =
-      typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
+    let isMounted = true;
 
-    if (stored) {
+    const loadProjects = async () => {
       try {
-        const parsed = JSON.parse(stored) as StoredProject[];
-        setProjects(parsed);
-        setActiveProjectId(parsed[0]?.id ?? null);
-      } catch {
-        const seeded = toStoredProjects(mockProjects);
-        setProjects(seeded);
-        setActiveProjectId(seeded[0]?.id ?? null);
+        const fetchedProjects = await fetchProjects();
+        if (isMounted) {
+          setProjects(fetchedProjects);
+          if (fetchedProjects.length > 0) {
+            setActiveProjectId(fetchedProjects[0].id);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load projects:", error);
+        toast.error("Failed to load projects");
+        // Fallback to mock data
+        const seeded = mockProjects.map((p) => ({
+          id: `project-${Date.now()}-${Math.random()}`,
+          name: p.name,
+          description: p.description,
+          deadline: undefined,
+          project_status: "active" as const,
+          priority: 3,
+          ownerId: p.ownerId,
+          members: p.members,
+          tasks: p.tasks.map((t) => ({
+            id: `proj-task-${t.id}`,
+            title: t.title,
+            description: t.description,
+            attachments: t.attachments || [],
+            reminder: t.reminder || "none",
+            priority: t.priority >= 4 ? "high" : t.priority >= 2.5 ? "medium" : "low",
+            status: (t.status as any) || "not-done" as const,
+            assignedTo: undefined,
+            createdAt: t.createdAt.toISOString(),
+          })),
+          createdAt: p.createdAt.toISOString(),
+        }));
+        if (isMounted) {
+          setProjects(seeded);
+          if (seeded.length > 0) {
+            setActiveProjectId(seeded[0].id);
+          }
+        }
       }
-    } else {
-      const seeded = toStoredProjects(mockProjects);
-      setProjects(seeded);
-      setActiveProjectId(seeded[0]?.id ?? null);
-    }
-    setHydrated(true);
-  }, []);
+    };
 
-  useEffect(() => {
-    if (!hydrated) return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
-  }, [hydrated, projects]);
+    loadProjects();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const activeProject = useMemo(
     () => projects.find((project) => project.id === activeProjectId) ?? null,
@@ -228,23 +245,38 @@ export default function ProjectsPage() {
     );
   };
 
-  const handleCreateProject = () => {
+  const handleCreateProject = async () => {
     if (!newProjectName.trim() || !currentUser) return;
-    const newProject: StoredProject = {
-      id: `project-${Date.now()}`,
-      name: newProjectName.trim(),
-      description: newProjectDescription.trim() || undefined,
-      ownerId: currentUser.id,
-      members: [createMemberFromUser(currentUser, "owner")],
-      tasks: [],
-      createdAt: new Date().toISOString(),
-    };
 
-    setProjects((prev) => [newProject, ...prev]);
-    setActiveProjectId(newProject.id);
-    setNewProjectName("");
-    setNewProjectDescription("");
-    setCreateProjectOpen(false);
+    try {
+      const newProject = await createProjectApi(
+        newProjectName.trim(),
+        currentUser.id,
+        newProjectDescription.trim() || undefined,
+        newProjectDeadline || undefined,
+        newProjectPriorityRating,
+        newProjectStatus,
+      );
+
+      // Add current user as owner member
+      newProject.members = [
+        createMemberFromUser(currentUser, "owner"),
+      ];
+
+      setProjects((prev) => [newProject, ...prev]);
+      setActiveProjectId(newProject.id);
+      setNewProjectName("");
+      setNewProjectDescription("");
+      setNewProjectDeadline(null);
+      setNewProjectPriorityRating(2.5);
+      setNewProjectStatus("active");
+      setCreateProjectOpen(false);
+      toast.success("Project created successfully");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to create project";
+      toast.error(message);
+    }
   };
 
   const handleJoinProject = () => {
@@ -267,22 +299,34 @@ export default function ProjectsPage() {
     });
   };
 
-  const handleInviteMember = () => {
+  const handleInviteMember = async () => {
     if (!activeProject || !inviteHandle.trim()) return;
-    updateProject(activeProject.id, (project) => ({
-      ...project,
-      members: [
-        ...project.members,
-        {
-          id: `member-${Date.now()}`,
-          name: inviteHandle.trim(),
-          handle: inviteHandle.trim(),
-          role: inviteRole,
-        },
-      ],
-    }));
-    setInviteHandle("");
-    setInviteRole("member");
+
+    try {
+      const newMember = await addProjectMemberApi(
+        activeProject.id,
+        `user-${Date.now()}`,
+        inviteHandle.trim(),
+        inviteHandle.trim(),
+        inviteRole
+      );
+
+      updateProject(activeProject.id, (project) => ({
+        ...project,
+        members: [
+          ...project.members,
+          newMember,
+        ],
+      }));
+
+      setInviteHandle("");
+      setInviteRole("member");
+      toast.success("Member invited successfully");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to invite member";
+      toast.error(message);
+    }
   };
 
   const handleTaskDrop = (e: React.DragEvent) => {
@@ -296,49 +340,64 @@ export default function ProjectsPage() {
     if (file) setTaskAttachment(file.name);
   };
 
-  const handleCreateTask = (e: React.FormEvent) => {
+  const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeProject) return;
     if (!taskTitle.trim()) {
       toast.error("Task name is required");
       return;
     }
-    const priority = priorityFromRating(taskPriorityRating);
-    const attachments = taskAttachment ? [taskAttachment] : [];
 
-    updateProject(activeProject.id, (project) => ({
-      ...project,
-      tasks: [
-        {
-          id: `proj-task-${Date.now()}`,
-          title: taskTitle.trim(),
-          description: taskDescription.trim() || undefined,
-          attachments,
-          reminder: taskReminder as ProjectTask["reminder"],
-          priority,
-          status: "not-done",
-          createdAt: new Date().toISOString(),
-        },
-        ...project.tasks,
-      ],
-    }));
+    try {
+      const priority = priorityFromRating(taskPriorityRating);
+      const newTask = await createProjectTaskApi(
+        activeProject.id,
+        taskTitle.trim(),
+        priority,
+        taskDescription.trim() || undefined,
+        undefined,
+        taskAttachment || undefined,
+        taskReminder as string
+      );
 
-    setTaskTitle("");
-    setTaskDescription("");
-    setTaskPriorityRating(3);
-    setTaskReminder("none");
-    setTaskAttachment(null);
-    setCreateTaskOpen(false);
+      updateProject(activeProject.id, (project) => ({
+        ...project,
+        tasks: [newTask, ...project.tasks],
+      }));
+
+      setTaskTitle("");
+      setTaskDescription("");
+      setTaskPriorityRating(3);
+      setTaskReminder("none");
+      setTaskAttachment(null);
+      setCreateTaskOpen(false);
+      toast.success("Task created successfully");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to create task";
+      toast.error(message);
+    }
   };
 
-  const assignTask = (taskId: string, memberId?: string) => {
+  const assignTask = async (taskId: string, memberId?: string) => {
     if (!activeProject) return;
-    updateProject(activeProject.id, (project) => ({
-      ...project,
-      tasks: project.tasks.map((task) =>
-        task.id === taskId ? { ...task, assignedTo: memberId } : task,
-      ),
-    }));
+
+    try {
+      const updatedTask = await updateProjectTaskApi(taskId, undefined, undefined, undefined, undefined, memberId);
+      
+      updateProject(activeProject.id, (project) => ({
+        ...project,
+        tasks: project.tasks.map((task) =>
+          task.id === taskId ? { ...task, assignedTo: memberId } : task,
+        ),
+      }));
+      
+      toast.success("Task assigned successfully");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to assign task";
+      toast.error(message);
+    }
   };
 
   const claimTask = (taskId: string) => {
@@ -346,19 +405,35 @@ export default function ProjectsPage() {
     assignTask(taskId, currentMember.id);
   };
 
-  const moveTask = (taskId: string, direction: "next" | "prev") => {
+  const moveTask = async (taskId: string, direction: "next" | "prev") => {
     if (!activeProject) return;
-    updateProject(activeProject.id, (project) => ({
-      ...project,
-      tasks: project.tasks.map((task) => {
-        if (task.id !== taskId) return task;
-        const currentIndex = STATUS_ORDER.indexOf(task.status);
-        const nextIndex =
-          direction === "next" ? currentIndex + 1 : currentIndex - 1;
-        const nextStatus = STATUS_ORDER[nextIndex] ?? task.status;
-        return { ...task, status: nextStatus };
-      }),
-    }));
+
+    const task = activeProject.tasks.find((t) => t.id === taskId);
+    if (!task) return;
+
+    const currentIndex = STATUS_ORDER.indexOf(task.status);
+    const nextIndex =
+      direction === "next" ? currentIndex + 1 : currentIndex - 1;
+    const nextStatus = STATUS_ORDER[nextIndex] ?? task.status;
+
+    if (nextStatus === task.status) return;
+
+    try {
+      await updateProjectTaskApi(taskId, undefined, undefined, undefined, nextStatus);
+      
+      updateProject(activeProject.id, (project) => ({
+        ...project,
+        tasks: project.tasks.map((t) =>
+          t.id === taskId ? { ...t, status: nextStatus } : t,
+        ),
+      }));
+      
+      toast.success("Task moved successfully");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to move task";
+      toast.error(message);
+    }
   };
 
   const tasksByStatus = useMemo(() => {
@@ -429,7 +504,7 @@ export default function ProjectsPage() {
           </Select>
 
           <Dialog open={createProjectOpen} onOpenChange={setCreateProjectOpen}>
-            <DialogContent>
+            <DialogContent className="sm:max-w-3xl">
               <DialogHeader>
                 <DialogTitle>Create Project</DialogTitle>
                 <DialogDescription>
@@ -448,6 +523,39 @@ export default function ProjectsPage() {
                   onChange={(e) => setNewProjectDescription(e.target.value)}
                   className="min-h-[90px]"
                 />
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div>
+                    <Label className="font-mono text-xs">Deadline</Label>
+                    <Input
+                      className="mt-1"
+                      type="date"
+                      value={newProjectDeadline ?? ""}
+                      onChange={(e) => setNewProjectDeadline(e.target.value || null)}
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="font-mono text-xs">Priority</Label>
+                    <div className="mt-1 flex h-10 flex-nowrap items-center gap-2 whitespace-nowrap">
+                      <StarRating value={newProjectPriorityRating} onChange={setNewProjectPriorityRating} />
+                      <span className="font-mono text-sm text-muted-foreground">{newProjectPriorityRating.toFixed(1)} / 5.0</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="font-mono text-xs">Status</Label>
+                    <Select value={newProjectStatus} onValueChange={(v) => setNewProjectStatus(v as any)}>
+                      <SelectTrigger className="mt-1 w-full font-mono text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="archived">Archived</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
               </div>
               <DialogFooter>
                 <DialogClose asChild>
