@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createProjectSchema } from '../../../lib/validation/project';
-import { createProject, getProjects } from '@/lib/services/projectService';
+import { createProject, getProjects, ProjectServiceError } from '@/lib/services/projectService';
+import { getSession } from '@/lib/firebase/auth';
 
 /**
  * @swagger
@@ -200,19 +201,35 @@ import { createProject, getProjects } from '@/lib/services/projectService';
 
 export async function GET() {
   try {
-    const projects = await getProjects();
+    const session = await getSession();
+
+    if (!session) {
+      return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
+    }
+
+    const projects = await getProjects(session.id);
 
     return NextResponse.json(
       { message: 'Projects retrieved successfully', projects },
       { status: 200 },
     );
   } catch (error) {
+    if (error instanceof ProjectServiceError) {
+      return NextResponse.json({ message: error.message }, { status: error.status });
+    }
+
     return NextResponse.json({ message: 'Error retrieving projects', error }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
+    const session = await getSession();
+
+    if (!session) {
+      return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
+    }
+
     let body: unknown;
 
     try {
@@ -230,13 +247,17 @@ export async function POST(request: Request) {
       );
     }
 
-    const project = await createProject(parsed.data);
+    const project = await createProject(session.id, parsed.data);
 
     return NextResponse.json(
       { message: 'Project created successfully', project },
       { status: 201 },
     );
   } catch (error) {
+    if (error instanceof ProjectServiceError) {
+      return NextResponse.json({ message: error.message }, { status: error.status });
+    }
+
     return NextResponse.json({ message: 'Error creating project', error }, { status: 500 });
   }
 }

@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { AIResponse } from '../../../types/index';
 import { aiRequestSchema } from '../../../lib/validation/ai';
 import { runTaskAnalysis } from '@/lib/services/aiService';
+import { requireTaskAccess, TaskServiceError } from '@/lib/services/taskService';
+import { getSession } from '@/lib/firebase/auth';
 
 /**
  * NOTE (20/5/2026):
@@ -232,10 +234,15 @@ import { runTaskAnalysis } from '@/lib/services/aiService';
 
 const ReAnalyzeSchema = z.object({
   task_id: z.number().int().positive(),
-  user_id: z.string().min(1),
 });
 
 export async function POST(request: Request) {
+  const session = await getSession();
+
+  if (!session) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
   const body = await request.json();
   const parsed = ReAnalyzeSchema.safeParse(body);
 
@@ -247,9 +254,13 @@ export async function POST(request: Request) {
   }
 
   try {
-    await runTaskAnalysis(parsed.data.task_id, parsed.data.user_id);
+    await requireTaskAccess(parsed.data.task_id, session.id);
+    await runTaskAnalysis(parsed.data.task_id, session.id);
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (error instanceof TaskServiceError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Re-analysis failed:", error);
     return NextResponse.json(
       { error: "Analysis failed" },

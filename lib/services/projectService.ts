@@ -73,6 +73,29 @@ async function requireProjectManagerRole(projectId: number, userId: string) {
   return memberRole.project_user_role as ProjectUserRole;
 }
 
+async function requireProjectOwnerRole(projectId: number, userId: string) {
+  const project = await prisma.project.findUnique({
+    where: { project_id: projectId },
+    select: { project_id: true },
+  });
+
+  if (!project) {
+    throw new ProjectServiceError(404, 'Project not found');
+  }
+
+  const memberRole = await getProjectMemberRole(projectId, userId);
+
+  if (!memberRole) {
+    throw new ProjectServiceError(403, 'You are not a member of this project');
+  }
+
+  if (memberRole.project_user_role !== 'owner') {
+    throw new ProjectServiceError(403, 'Only the project owner can perform this action');
+  }
+
+  return memberRole.project_user_role as ProjectUserRole;
+}
+
 async function requireProjectTaskAccess(taskId: number, userId: string) {
   const task = await prisma.task.findUnique({
     where: { task_id: taskId },
@@ -118,8 +141,11 @@ async function requireProjectTaskAccess(taskId: number, userId: string) {
   };
 }
 
-export async function getProjects() {
+export async function getProjects(userId: string) {
   return prisma.project.findMany({
+    where: {
+      project_user: { some: { user_id: userId } },
+    },
     include: projectInclude,
     orderBy: {
       project_created_at: 'desc',
@@ -127,15 +153,15 @@ export async function getProjects() {
   });
 }
 
-export async function createProject(data: CreateProjectInput) {
+export async function createProject(userId: string, data: CreateProjectInput) {
   const ownerMember = {
-    user_id: data.ownerId,
+    user_id: userId,
     project_user_role: 'owner' as ProjectUserRole,
   };
 
   const additionalMembers =
     data.members
-      ?.filter((member) => member.id !== data.ownerId)
+      ?.filter((member) => member.id !== userId)
       .map((member) => ({
         user_id: member.id,
         project_user_role: member.role as ProjectUserRole,
@@ -156,7 +182,9 @@ export async function createProject(data: CreateProjectInput) {
   });
 }
 
-export async function updateProjectById(projectId: number, data: UpdateProjectInput) {
+export async function updateProjectById(projectId: number, userId: string, data: UpdateProjectInput) {
+  await requireProjectManagerRole(projectId, userId);
+
   const existingProject = await prisma.project.findUnique({
     where: { project_id: projectId },
     include: {
@@ -217,15 +245,8 @@ export async function updateProjectById(projectId: number, data: UpdateProjectIn
   });
 }
 
-export async function deleteProjectById(projectId: number) {
-  const project = await prisma.project.findUnique({
-    where: { project_id: projectId },
-    select: { project_id: true },
-  });
-
-  if (!project) {
-    throw new ProjectServiceError(404, 'Project not found');
-  }
+export async function deleteProjectById(projectId: number, userId: string) {
+  await requireProjectOwnerRole(projectId, userId);
 
   await prisma.project.delete({
     where: { project_id: projectId },

@@ -6,6 +6,7 @@ import {
   ProjectServiceError,
   updateProjectById,
 } from '@/lib/services/projectService';
+import { getSession } from '@/lib/firebase/auth';
 
 /**
  * @swagger
@@ -150,6 +151,12 @@ type RouteContext = {
 
 export async function DELETE(_: Request, context: RouteContext) {
   try {
+    const session = await getSession();
+
+    if (!session) {
+      return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
+    }
+
     const { id } = await context.params;
     const parsedProjectId = z.coerce.number().int().positive().safeParse(id);
 
@@ -157,7 +164,7 @@ export async function DELETE(_: Request, context: RouteContext) {
       return NextResponse.json({ message: 'Invalid project id' }, { status: 400 });
     }
 
-    await deleteProjectById(parsedProjectId.data);
+    await deleteProjectById(parsedProjectId.data, session.id);
 
     return NextResponse.json({ message: 'Project deleted successfully' }, { status: 200 });
   } catch (error) {
@@ -171,6 +178,12 @@ export async function DELETE(_: Request, context: RouteContext) {
 
 export async function PATCH(request: Request, context: RouteContext) {
   try {
+    const session = await getSession();
+
+    if (!session) {
+      return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
+    }
+
     const { id } = await context.params;
     const parsedProjectId = z.coerce.number().int().positive().safeParse(id);
 
@@ -199,7 +212,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       return NextResponse.json({ message: 'No fields provided for update' }, { status: 400 });
     };
 
-    const project = await updateProjectById(parsedProjectId.data, parsed.data);
+    const project = await updateProjectById(parsedProjectId.data, session.id, parsed.data);
 
     return NextResponse.json(
       { message: 'Project updated successfully', project },

@@ -15,7 +15,8 @@ export const createProjectSchema = z.object({
   project_status: z.enum(['active', 'completed', 'archived'])
   .optional(),
   ownerId: z.string()
-  .min(1, 'Owner ID is required'),
+  .min(1)
+  .optional(),
   members: z.array(z.object({
     id: z.string(),
     name: z.string()
