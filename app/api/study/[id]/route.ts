@@ -195,11 +195,16 @@ export async function GET(request: Request, context: RouteContext) {
     // Get the user-specific data
     const userSessionData = studySession.study_session_user?.[0];
 
+    // Only participants may view the session
+    if (!userSessionData) {
+      return NextResponse.json({ message: "Study session not found" }, { status: 404 });
+    }
+
     return NextResponse.json(
       {
         message: "Study session retrieved successfully",
         studySession,
-        userSessionData: userSessionData || null,
+        userSessionData,
       },
       { status: 200 },
     );
@@ -224,6 +229,19 @@ export async function DELETE(request: Request, context: RouteContext) {
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    // Only a participant of this session may delete it
+    const membership = await prisma.studySessionUser.findUnique({
+      where: {
+        study_session_id_user_id: {
+          study_session_id: studySessionId,
+          user_id: session.id,
+        },
+      },
+    });
+    if (!membership) {
+      return NextResponse.json({ message: "Study session not found" }, { status: 404 });
     }
 
     // Delete related StudySessionUser records first (due to foreign key constraints)
@@ -283,6 +301,19 @@ export async function PATCH(request: Request, context: RouteContext) {
     }
 
     const userId = session.id;
+
+    // Only a participant of this session may update it
+    const membership = await prisma.studySessionUser.findUnique({
+      where: {
+        study_session_id_user_id: {
+          study_session_id: studySessionId,
+          user_id: userId,
+        },
+      },
+    });
+    if (!membership) {
+      return NextResponse.json({ message: "Study session not found" }, { status: 404 });
+    }
 
     // Separate StudySessionUser fields from StudySession fields
     const userFields = ['status', 'started_at', 'current_time', 'completed_at', 'actual_duration'];
