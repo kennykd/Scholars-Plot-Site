@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import type { Task as PrismaTask } from '@/lib/generated/prisma/client';
 import type { CreateTaskInput, UpdateTaskInput } from '@/lib/validation/task';
 import type { Attachment, Task, TaskStatus } from '@/types';
+import { TaskAttachment } from '@/lib/ai/taskAnalyzer';
 
 export function serializeTask(row: PrismaTask, attachments?: Attachment[]): Task {
   return {
@@ -61,6 +62,28 @@ export async function getTasks(userId: string) {
     },
     orderBy: { task_created_at: 'desc' },
   });
+}
+
+export async function getTaskAttachments(
+  task_id: number
+): Promise<TaskAttachment[]> {
+  const sessionUsers = await prisma.studySessionUser.findMany({
+    where: {
+      task_id,
+      attachment_id: { not: null },
+    },
+    include: {
+      attachment: true,
+    },
+  });
+
+  return sessionUsers
+    .filter((su) => su.attachment !== null)
+    .map((su) => ({
+      file_path: su.attachment!.file_path,
+      file_type: su.attachment!.file_type,
+      file_name: su.attachment!.file_name,
+    }));
 }
 
 export async function getTaskById(taskId: number, userId: string) {
@@ -143,6 +166,6 @@ export async function updateTaskAIFields(task_id: number, fields: {
   });
 }
 
-export async function getUserFormulaWeights(user_id: number) {
+export async function getUserFormulaWeights(user_id: string) {
   return prisma.userFormulaWeights.findUnique({ where: { user_id } });
 }
