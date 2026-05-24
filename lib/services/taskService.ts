@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import type { Task as PrismaTask } from '@/lib/generated/prisma/client';
 import type { CreateTaskInput, UpdateTaskInput } from '@/lib/validation/task';
 import type { Attachment, Task, TaskStatus } from '@/types';
+import { TaskAttachment } from '@/lib/ai/taskAnalyzer';
 
 export function serializeTask(row: PrismaTask, attachments?: Attachment[]): Task {
   return {
@@ -28,30 +29,10 @@ export class TaskServiceError extends Error {
   }
 }
 
-// ─── Access control ──────────────────────────────────────────────────────────
-
-export async function requireTaskAccess(taskId: number, userId: string) {
-  const task = await prisma.task.findUnique({
-    where: { task_id: taskId },
-    include: {
-      task_users: { select: { user_id: true } },
-    },
-  });
-
-  if (!task || task.project_id !== null) {
-    throw new TaskServiceError(404, 'Task not found');
-  }
-
-  const isOwner = task.task_users.some((row) => row.user_id === userId);
-
-  if (!isOwner) {
-    throw new TaskServiceError(403, 'You do not have access to this task');
-  }
-
-  return task;
-}
-
-// ─── User-scoped CRUD ────────────────────────────────────────────────────────
+const taskInclude = {
+  project: true,
+  task_users: { select: { user_id: true } },
+};
 
 export async function getTasks(userId: string) {
   return prisma.task.findMany({
@@ -61,6 +42,28 @@ export async function getTasks(userId: string) {
     },
     orderBy: { task_created_at: 'desc' },
   });
+}
+
+export async function getTaskAttachments(
+  task_id: number
+): Promise<TaskAttachment[]> {
+  const sessionUsers = await prisma.studySessionUser.findMany({
+    where: {
+      task_id,
+      attachment_id: { not: null },
+    },
+    include: {
+      attachment: true,
+    },
+  });
+
+  return sessionUsers
+    .filter((su) => su.attachment !== null)
+    .map((su) => ({
+      file_path: su.attachment!.file_path,
+      file_type: su.attachment!.file_type,
+      file_name: su.attachment!.file_name,
+    }));
 }
 
 export async function getTaskById(taskId: number, userId: string) {
@@ -80,40 +83,54 @@ export async function createTask(userId: string, data: CreateTaskInput) {
     },
   });
 }
-
-export async function updateTaskById(
-  taskId: number,
-  userId: string,
-  data: UpdateTaskInput,
-) {
-  const existing = await requireTaskAccess(taskId, userId);
-
-  const statusChanging = data.status !== undefined && data.status !== existing.task_status;
-
-  return prisma.task.update({
-    where: { task_id: taskId },
-    data: {
-      ...(data.title !== undefined ? { task_name: data.title } : {}),
-      ...(data.description !== undefined ? { task_description: data.description } : {}),
-      ...(data.deadline !== undefined ? { task_deadline: data.deadline } : {}),
-      ...(data.priority !== undefined ? { task_priority: data.priority } : {}),
-      ...(data.status !== undefined ? { task_status: data.status } : {}),
-      ...(statusChanging
-        ? { task_completed_at: data.status === 'Completed' ? new Date() : null }
-        : {}),
+export async function getTaskAttachments(
+  task_id: number
+): Promise<TaskAttachment[]> {
+  const sessionUsers = await prisma.studySessionUser.findMany({
+    where: {
+      task_id,
+      attachment_id: { not: null },
+    },
+    include: {
+      attachment: true,
     },
   });
+
+  return sessionUsers
+    .filter((su) => su.attachment !== null)
+    .map((su) => ({
+      file_path: su.attachment!.file_path,
+      file_type: su.attachment!.file_type,
+      file_name: su.attachment!.file_name,
+    }));
 }
 
-export async function deleteTaskById(taskId: number, userId: string) {
-  await requireTaskAccess(taskId, userId);
-
-  await prisma.task.delete({
-    where: { task_id: taskId },
-  });
+export async function getTaskById(taskId: number, userId: string) {
+  return requireTaskAccess(taskId, userId);
+>>>>>>> f93ca76 (feat: addition of accepting Attachment into AI input)
 }
 
-// ─── AI helpers (used by lib/services/aiService.ts) ──────────────────────────
+export async function updateTaskById(taskId: number, input: UpdateTaskSchema) {
+  const existing = await prisma.task.findUnique({ where: { task_id: taskId } });
+  if (!existing) throw new TaskServiceError(404, 'Task not found');
+
+  const data: any = {};
+  const asAny = input as any;
+  if (asAny.title !== undefined) data.task_name = asAny.title;
+  if (asAny.description !== undefined) data.task_description = asAny.description;
+  if (asAny.deadline !== undefined) data.task_deadline = asAny.deadline;
+  if (asAny.priority !== undefined) data.task_priority = asAny.priority;
+  if (asAny.status !== undefined) data.task_status = asAny.status;
+
+  return prisma.task.update({ where: { task_id: taskId }, data, include: taskInclude });
+}
+
+export async function deleteTaskById(taskId: number) {
+  const existing = await prisma.task.findUnique({ where: { task_id: taskId }, select: { task_id: true } });
+  if (!existing) throw new TaskServiceError(404, 'Task not found');
+
+  await prisma.task.delete({ where: { task_id: taskId } });
+}
 
 export async function getTaskWithProject(task_id: number) {
   return prisma.task.findUnique({
@@ -143,6 +160,6 @@ export async function updateTaskAIFields(task_id: number, fields: {
   });
 }
 
-export async function getUserFormulaWeights(user_id: number) {
+export async function getUserFormulaWeights(user_id: string) {
   return prisma.userFormulaWeights.findUnique({ where: { user_id } });
 }
