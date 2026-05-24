@@ -1,20 +1,33 @@
-import { analyzeTask, TaskAnalysisInput } from '@/lib/ai/taskAnalyzer';
-import { calculatePriorityScore } from '@/lib/ai/priorityFormula';
-import { getTaskWithProject, getUserFormulaWeights, updateTaskAIFields } from '@/lib/services/taskService';
+import { analyzeTask, TaskAnalysisInput } from "@/lib/ai/taskAnalyzer";
+import { calculatePriorityScore } from "@/lib/ai/priorityFormula";
+import {
+  updateTaskAIFields,
+  getTaskWithProject,
+  getUserFormulaWeights,
+  getTaskAttachments,
+} from "@/lib/services/taskService";
 
-export async function runTaskAnalysis(task_id: number, user_id: string): Promise<void> {
+export async function runTaskAnalysis(
+  task_id: number,
+  user_id: string
+): Promise<void> {
   const task = await getTaskWithProject(task_id);
   if (!task) throw new Error(`Task ${task_id} not found`);
 
-  const parsedUserId = Number(user_id);
-  const userWeights = Number.isFinite(parsedUserId) ? await getUserFormulaWeights(parsedUserId) : null;
+  const [userWeights, attachments] = await Promise.all([
+    getUserFormulaWeights(user_id),
+    getTaskAttachments(task_id),
+  ]);
 
   const analysisInput: TaskAnalysisInput = {
     task_name: task.task_name,
     task_description: task.task_description,
     task_deadline: task.task_deadline,
     task_priority: Number(task.task_priority),
-    project_priority: task.project?.project_priority ? Number(task.project.project_priority) : null,
+    project_priority: task.project?.project_priority
+      ? Number(task.project.project_priority)
+      : null,
+    attachments: attachments.length > 0 ? attachments : undefined,
   };
 
   const analysis = await analyzeTask(analysisInput);

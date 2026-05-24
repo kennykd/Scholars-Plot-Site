@@ -1,5 +1,23 @@
 import { prisma } from '@/lib/prisma';
-import type { CreateTaskInput as CreateTaskSchema, UpdateTaskInput as UpdateTaskSchema } from '@/lib/validation/task';
+import type { Task as PrismaTask } from '@/lib/generated/prisma/client';
+import type { CreateTaskInput, UpdateTaskInput } from '@/lib/validation/task';
+import type { Attachment, Task, TaskStatus } from '@/types';
+import { TaskAttachment } from '@/lib/ai/taskAnalyzer';
+
+export function serializeTask(row: PrismaTask, attachments?: Attachment[]): Task {
+  return {
+    id: row.task_id,
+    projectId: row.project_id,
+    title: row.task_name,
+    description: row.task_description,
+    deadline: row.task_deadline.toISOString(),
+    priority: Number(row.task_priority),
+    status: row.task_status as TaskStatus,
+    createdAt: row.task_created_at.toISOString(),
+    completedAt: row.task_completed_at?.toISOString() ?? null,
+    ...(attachments ? { attachments } : {}),
+  };
+}
 
 export class TaskServiceError extends Error {
   constructor(
@@ -16,28 +34,80 @@ const taskInclude = {
   task_users: { select: { user_id: true } },
 };
 
-export async function getTasks() {
+export async function getTasks(userId: string) {
   return prisma.task.findMany({
-    include: taskInclude,
+    where: {
+      project_id: null,
+      task_users: { some: { user_id: userId } },
+    },
     orderBy: { task_created_at: 'desc' },
   });
 }
 
-export async function createTask(input: CreateTaskSchema & { user_id?: string; project_id?: number | null }) {
-  const { user_id, project_id, title, description, deadline, priority, status } = input as any;
+export async function getTaskAttachments(
+  task_id: number
+): Promise<TaskAttachment[]> {
+  const sessionUsers = await prisma.studySessionUser.findMany({
+    where: {
+      task_id,
+      attachment_id: { not: null },
+    },
+    include: {
+      attachment: true,
+    },
+  });
 
-  const data: any = {
-    task_name: title,
-    task_description: description ?? null,
-    task_deadline: deadline,
-    task_priority: priority ?? 2.5,
-    task_status: status ?? undefined,
-    project_id: project_id ?? null,
-  };
+  return sessionUsers
+    .filter((su) => su.attachment !== null)
+    .map((su) => ({
+      file_path: su.attachment!.file_path,
+      file_type: su.attachment!.file_type,
+      file_name: su.attachment!.file_name,
+    }));
+}
 
-  if (user_id) data.task_users = { create: { user_id } };
+export async function getTaskById(taskId: number, userId: string) {
+  return requireTaskAccess(taskId, userId);
+}
 
-  return prisma.task.create({ data, include: taskInclude });
+export async function createTask(userId: string, data: CreateTaskInput) {
+  return prisma.task.create({
+    data: {
+      task_name: data.title,
+      task_description: data.description,
+      task_deadline: data.deadline,
+      task_priority: data.priority ?? 3,
+      task_status: data.status,
+      project_id: null,
+      task_users: { create: { user_id: userId } },
+    },
+  });
+}
+export async function getTaskAttachments(
+  task_id: number
+): Promise<TaskAttachment[]> {
+  const sessionUsers = await prisma.studySessionUser.findMany({
+    where: {
+      task_id,
+      attachment_id: { not: null },
+    },
+    include: {
+      attachment: true,
+    },
+  });
+
+  return sessionUsers
+    .filter((su) => su.attachment !== null)
+    .map((su) => ({
+      file_path: su.attachment!.file_path,
+      file_type: su.attachment!.file_type,
+      file_name: su.attachment!.file_name,
+    }));
+}
+
+export async function getTaskById(taskId: number, userId: string) {
+  return requireTaskAccess(taskId, userId);
+>>>>>>> f93ca76 (feat: addition of accepting Attachment into AI input)
 }
 
 export async function updateTaskById(taskId: number, input: UpdateTaskSchema) {
@@ -90,6 +160,6 @@ export async function updateTaskAIFields(task_id: number, fields: {
   });
 }
 
-export async function getUserFormulaWeights(user_id: number) {
+export async function getUserFormulaWeights(user_id: string) {
   return prisma.userFormulaWeights.findUnique({ where: { user_id } });
 }
