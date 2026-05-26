@@ -73,11 +73,15 @@ model User {
   user_last_login DateTime
   user_created_at DateTime @default(now())
 
+  ai_behavior_profile   Json?
+  ai_profile_updated_at DateTime?
+
   analytics       Analytics?      @relation(fields: [analytics_id], references: [analytics_id])
   project_members ProjectUser[]
   task_users      TaskUser[]
   study_session_user StudySessionUser[]
   user_formula_weights UserFormulaWeights?
+  user_availability UserAvailability[]
 
   @@map("user")
 }
@@ -94,6 +98,19 @@ model UserFormulaWeights {
   user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
   @@map("user_formula_weights")
+}
+
+model UserAvailability {
+  id          Int     @id @default(autoincrement())
+  user_id     String
+  day_of_week Int     // 0=Sunday, 6=Saturday
+  start_time  String  // "09:00"
+  end_time    String  // "17:00"
+  is_active   Boolean @default(true)
+
+  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  
+  @@map("user_availability")
 }
 
 model Project {
