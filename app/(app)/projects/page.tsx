@@ -23,6 +23,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 import { StarRating } from "@/app/components/common/star-rating";
 import { mockProjects } from "@/lib/mock-data";
@@ -39,6 +50,7 @@ import {
   addProjectMemberApi,
   createProjectTaskApi,
   updateProjectTaskApi,
+  deleteProjectApi,
   type StoredProject,
   type StoredProjectTask,
 } from "@/app/api/project/client";
@@ -49,6 +61,7 @@ import {
   Plus,
   Settings,
   ShieldCheck,
+  Trash2,
   UserPlus,
   Users,
   X,
@@ -127,6 +140,7 @@ export default function ProjectsPage() {
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
+  const [deletingProject, setDeletingProject] = useState(false);
 
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectDescription, setNewProjectDescription] = useState("");
@@ -329,6 +343,26 @@ export default function ProjectsPage() {
     }
   };
 
+  const handleDeleteProject = async () => {
+    if (!activeProject) return;
+    setDeletingProject(true);
+    try {
+      await deleteProjectApi(activeProject.id);
+      const deletedId = activeProject.id;
+      const remaining = projects.filter((p) => p.id !== deletedId);
+      setProjects(remaining);
+      setActiveProjectId(remaining[0]?.id ?? null);
+      setSettingsOpen(false);
+      toast.success(`Deleted "${activeProject.name}"`);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to delete project";
+      toast.error(message);
+    } finally {
+      setDeletingProject(false);
+    }
+  };
+
   const handleTaskDrop = (e: React.DragEvent) => {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
@@ -470,13 +504,7 @@ export default function ProjectsPage() {
         <div className="flex flex-wrap items-center gap-3">
           <Select
             value={projectSelectValue}
-            onValueChange={(value) => {
-              if (value === "__new_project__") {
-                setCreateProjectOpen(true);
-              } else {
-                setActiveProjectId(value);
-              }
-            }}
+            onValueChange={(value) => setActiveProjectId(value)}
           >
             <SelectTrigger className="min-w-[220px] font-mono text-xs">
               <SelectValue
@@ -491,17 +519,33 @@ export default function ProjectsPage() {
                   {project.name}
                 </SelectItem>
               ))}
-              <SelectItem
-                value="__new_project__"
-                className="font-mono text-xs text-accent"
-              >
-                <span className="flex items-center gap-1">
-                  <Plus className="h-3 w-3" />
-                  New Project
-                </span>
-              </SelectItem>
             </SelectContent>
           </Select>
+
+          {activeProject && (
+            <div className="flex items-center gap-2 text-xs">
+              <div className="flex items-center gap-1 text-muted-foreground">
+                <Users className="h-4 w-4" />
+                {activeProject.members.length} member
+                {activeProject.members.length !== 1 ? "s" : ""}
+              </div>
+              {currentMember ? (
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "text-[10px] font-mono",
+                    ROLE_STYLES[currentMember.role],
+                  )}
+                >
+                  {currentMember.role.toUpperCase()}
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-[10px] font-mono">
+                  Not a member
+                </Badge>
+              )}
+            </div>
+          )}
 
           <Dialog open={createProjectOpen} onOpenChange={setCreateProjectOpen}>
             <DialogContent className="sm:max-w-3xl">
@@ -655,6 +699,49 @@ export default function ProjectsPage() {
                       </Button>
                     </div>
                   )}
+
+                  {isOwner && activeProject && (
+                    <div className="space-y-2 border-t border-destructive/30 pt-4">
+                      <p className="text-xs font-mono text-destructive tracking-wider">
+                        DANGER ZONE
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Deleting this project removes its tasks and all member
+                        assignments. This cannot be undone.
+                      </p>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" className="font-mono text-xs">
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete project
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              Delete &quot;{activeProject.name}&quot;?
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This permanently deletes the project, its tasks,
+                              and all member assignments. This cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel disabled={deletingProject}>
+                              Cancel
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={handleDeleteProject}
+                              disabled={deletingProject}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              {deletingProject ? "Deleting..." : "Delete"}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  )}
                 </div>
                 <DialogFooter showCloseButton />
               </DialogContent>
@@ -792,31 +879,7 @@ export default function ProjectsPage() {
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          {activeProject && (
-            <>
-              <div className="flex items-center gap-1 text-muted-foreground">
-                <Users className="h-4 w-4" />
-                {activeProject.members.length} member
-                {activeProject.members.length !== 1 ? "s" : ""}
-              </div>
-              {currentMember ? (
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "text-[10px] font-mono",
-                    ROLE_STYLES[currentMember.role],
-                  )}
-                >
-                  {currentMember.role.toUpperCase()}
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="text-[10px] font-mono">
-                  Not a member
-                </Badge>
-              )}
-            </>
-          )}
+        <div className="flex flex-wrap items-center gap-2">
           {activeProject && !currentMember && (
             <Button
               size="sm"
@@ -826,6 +889,12 @@ export default function ProjectsPage() {
               Join Project
             </Button>
           )}
+          <Button
+            onClick={() => setCreateProjectOpen(true)}
+            className="bg-accent hover:bg-accent/90 text-accent-foreground font-semibold"
+          >
+            <Plus className="h-4 w-4 mr-1" /> New Project
+          </Button>
         </div>
       </div>
 
