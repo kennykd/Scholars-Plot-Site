@@ -25,6 +25,7 @@ export default function LoginPage() {
     const res = await fetch("/api/auth/firebase", {
       method: "POST",
       headers: {
+        "Content-Type": "application/json",
         Authorization: `Bearer ${idToken}`,
       },
     });

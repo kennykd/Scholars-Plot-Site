@@ -207,17 +207,31 @@ export async function PUT(request: NextRequest) {
 
   try {
     const user = await prisma.user.update({
-      where: { id: session.id },
-      data: parsed.data,
+      where: { user_id: session.id },
+      data: {
+        user_name: parsed.data.name,
+        avatar_url: parsed.data.image,
+      },
       select: {
-        id: true,
-        email: true,
-        name: true,
-        image: true,
+        user_id: true,
+        user_email: true,
+        user_name: true,
+        avatar_url: true,
       },
     });
 
-    return NextResponse.json({ message: "User updated successfully", user }, { status: 200 });
+    return NextResponse.json(
+      {
+        message: "User updated successfully",
+        user: {
+          id: user.user_id,
+          email: user.user_email,
+          name: user.user_name,
+          image: user.avatar_url,
+        },
+      },
+      { status: 200 },
+    );
   } catch (error) {
     console.error("[api/users/me] Failed to update user:", error);
     return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
@@ -250,7 +264,7 @@ export async function DELETE() {
 
   // Step 1: Delete from database first — cascades Sessions, Accounts, Todos
   try {
-    await prisma.user.delete({ where: { id: session.id } });
+    await prisma.user.delete({ where: { user_id: session.id } });
   } catch (error) {
     console.error("[api/users/me] Failed to delete user from database:", error);
     return NextResponse.json({ error: "Failed to delete account" }, { status: 500 });

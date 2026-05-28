@@ -1,3 +1,6 @@
+'use server';
+
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { adminAuth } from "@/lib/firebase/firebase-admin";
 import { prisma } from "@/lib/prisma";
@@ -11,7 +14,8 @@ interface SessionUser {
 }
 
 // TODO: DELETE User from database if Session is not found or the user is no longer in the firebase console
-export async function getSession(): Promise<SessionUser | null> {
+// Implemented caching to the getSession function
+export const getSession = cache(async (): Promise<SessionUser | null> => { 
   const cookieStore = await cookies();
   const session = cookieStore.get("session")?.value;
 
@@ -19,7 +23,10 @@ export async function getSession(): Promise<SessionUser | null> {
 
   try {
     // Try verifying as Firebase token
-    const decodedToken: DecodedIdToken = await adminAuth.verifyIdToken(session);
+    // FIXED: Verify using the Session Cookie function instead of verifyIdToken,
+    // this is because we are using long-lived session ID, stored in server-side httpOnly cookies
+    // this will make it safer against XSS attacks since JavaScript (or any type of malicious scripts) cannot read httpOnly cookies
+    const decodedToken: DecodedIdToken = await adminAuth.verifySessionCookie(session, true);
 
     // Search for user in database
     const user = await prisma.user.findUnique({
@@ -41,4 +48,4 @@ export async function getSession(): Promise<SessionUser | null> {
     );
     return null;
   }
-}
+});

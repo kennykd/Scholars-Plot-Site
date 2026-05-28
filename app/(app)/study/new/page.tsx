@@ -34,7 +34,8 @@ export default function StudyNewPage() {
   const searchParams = useSearchParams();
   const taskIdParam = searchParams.get("taskId");
   const parsedTaskId = taskIdParam !== null ? Number(taskIdParam) : NaN;
-  const linkedTaskId = Number.isFinite(parsedTaskId) && parsedTaskId > 0 ? parsedTaskId : null;
+  const linkedTaskId =
+    Number.isFinite(parsedTaskId) && parsedTaskId > 0 ? parsedTaskId : null;
 
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
@@ -66,6 +67,34 @@ export default function StudyNewPage() {
     (Math.max(1, Number(focusMinutes) || 0) +
       Math.max(1, Number(breakMinutes) || 0)) *
     Math.max(1, Number(totalPomodoro) || 0);
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    for (const file of Array.from(files)) {
+      setAttachments((prev) => [...prev, file.name]);
+    }
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDrop = (event: React.DragEvent<HTMLLabelElement>) => {
+    event.preventDefault();
+    const files = event.dataTransfer.files;
+    if (!files) return;
+
+    for (const file of Array.from(files)) {
+      setAttachments((prev) => [...prev, file.name]);
+    }
+  };
+
+  const handleRemoveAttachment = (index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const handleCreateSession = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -285,6 +314,74 @@ export default function StudyNewPage() {
                 onChange={(e) => setNotes(e.target.value)}
                 className="resize-y min-h-22.5"
               />
+            </div>
+
+            {/* Insert Attachments */}
+            <div className="space-y-1.5">
+              <Label className="font-mono text-xs tracking-wider">
+                ATTACHMENTS
+              </Label>
+              {attachments.length ? (
+                <div className="space-y-2">
+                  {attachments.map((file, index) => (
+                    <div
+                      key={`${file}-${index}`}
+                      className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/30 px-3 py-2"
+                    >
+                      <Paperclip className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm flex-1 truncate">{file}</span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setAttachments((prev) =>
+                            prev.filter((_, i) => i !== index),
+                          )
+                        }
+                      >
+                        <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <label
+                  className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border/50 bg-muted/20 px-4 py-6 cursor-pointer hover:border-accent/50 transition-colors"
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={handleDrop}
+                >
+                  <Paperclip className="h-6 w-6 text-muted-foreground" />
+                  <span className="font-mono text-xs text-muted-foreground">
+                    Drop files here or click to browse
+                  </span>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    multiple
+                    onChange={handleFileSelect}
+                  />
+                </label>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border border-accent/20 bg-accent/5 px-4 py-3">
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  AI Suggestions
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Get session ideas based on your title and attachments.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="gap-1.5 font-mono text-xs border-accent/40 text-accent hover:bg-accent/10 hover:text-accent"
+                onClick={() => toast.info("AI suggestions coming soon!")}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                AI Suggestions
+              </Button>
             </div>
 
             <div className="flex gap-3 pt-2">

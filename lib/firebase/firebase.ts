@@ -16,4 +16,9 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0
 
 export const auth = getAuth(app);
 
-// const app = initializeApp(firebaseConfig)
+// IMPORTANT: This line is for development
+// This is to get the firebase ID token
+// REMOVE THIS LINE WHEN DEPLOYMENT
+if (typeof window !== "undefined") {
+  (window as any).auth = auth;
+}

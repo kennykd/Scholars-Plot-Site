@@ -67,63 +67,92 @@ import { prisma } from "@/lib/prisma";
  *                   example: Unauthorized
  */
 
+const SESSION_DURATION_MS = 60 * 60 * 24 * 7 * 1000;
+const SESSION_DURATION_S  = 60 * 60 * 24 * 7;
+
 export async function POST(req: NextRequest) {
-  const authorization = req.headers.get("Authorization");
-  let name: string | undefined;
+const authorization = req.headers.get("Authorization");
+let name: string | undefined;
 
-  // Parse the name from the request body (sent by manual registration, not Google sign-in)
-  try {
-    const body = await req.json() as { name?: unknown };
-    if (typeof body.name === "string") {
-      name = body.name.trim() || undefined;
-    }
-  } catch {
-    name = undefined;
+// Parse the name from the request body (sent by manual registration, not Google sign-in)
+try {
+  const body = await req.json() as { name?: unknown };
+  if (typeof body.name === "string") {
+    name = body.name.trim() || undefined;
+  }
+} catch {
+  name = undefined;
+}
+
+if (!authorization?.startsWith("Bearer ")) {
+  return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+}
+
+const idToken = authorization.split("Bearer ")[1];
+
+try {
+  // The bearer value here is a Firebase ID token. Verify it first, then
+  // exchange it for the long-lived httpOnly session cookie below.
+  const decodedToken = await adminAuth.verifyIdToken(idToken, true);
+
+  // Anonymous auth and phone-auth tokens carry no email, which would crash
+  // the Prisma upsert below. Guard here so the error is explicit and clean
+  // rather than a 500 leaking from inside the DB call.
+  if (!decodedToken.email) {
+    return NextResponse.json({ error: "An email address is required to register." }, { status: 400 });
   }
 
-  if (!authorization?.startsWith("Bearer ")) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  // firebaseName/firebaseImage: sourced from the Firebase token (Google sign-in profile data),
+  // may differ from what is stored in the database if the user updated their profile here.
+  const firebaseName = decodedToken.name?.trim();
+  const firebaseImage = decodedToken.picture?.trim();
+  // Prefer the name sent in the request body (manual registration), fall back to Firebase token name
+  name = name || firebaseName;
 
-  const idToken = authorization.split("Bearer ")[1];
+  // Upsert user to PostgreSQL database.
+  // If firebaseName or firebaseImage exist on the token, sync them to the DB.
+  // (THIS IS IMPORTANT) If they are absent, keep whatever is already stored — never overwrite with null.
+  const user = await prisma.user.upsert({
+    where: { user_email: decodedToken.email },
+    update: {
+      ...(name ? { user_name: name } : {}),
+      ...(firebaseImage ? { avatar_url: firebaseImage } : {}),
+      user_last_login: new Date(),
+    },
+    create: {
+      user_id: decodedToken.uid,
+      user_email: decodedToken.email,
+      user_name: name || "User",
+      avatar_url: firebaseImage || null,
+      user_last_login: new Date(),
+    },
+  });
 
-  try {
-    const decodedToken = await adminAuth.verifyIdToken(idToken);
-    // firebaseName/firebaseImage: sourced from the Firebase token (Google sign-in profile data),
-    // may differ from what is stored in the database if the user updated their profile here.
-    const firebaseName = decodedToken.name?.trim();
-    const firebaseImage = decodedToken.picture?.trim();
-    // Prefer the name sent in the request body (manual registration), fall back to Firebase token name
-    name = name || firebaseName;
+  /* 
+    createSessionCookie() exchanges the short-lived ID token (1 hr) for a
+    dedicated server-issued session token (7 days). Storing the
+    raw ID token in the cookie instead would let an attacker replay it
+    directly against Firebase APIs, the session cookie is only valid here.
+   */
+  const sessionCookie = await adminAuth.createSessionCookie(idToken, {
+    expiresIn: SESSION_DURATION_MS,
+  });
 
-    // Upsert user to PostgreSQL database.
-    // If firebaseName or firebaseImage exist on the token, sync them to the DB.
-    // (THIS IS IMPORTANT) If they are absent, keep whatever is already stored — never overwrite with null.
-    const user = await prisma.user.upsert({
-      where: { user_email: decodedToken.email! },
-      update: {
-        ...(name ? { user_name: name } : {}),
-        ...(firebaseImage ? { avatar_url: firebaseImage } : {}),
-        user_last_login: new Date(),
-      },
-      create: {
-        user_id: decodedToken.uid,
-        user_email: decodedToken.email!,
-        user_name: name || "User",
-        avatar_url: firebaseImage || null,
-        user_last_login: new Date(),
-      },
-    });
+  // Set session cookie
+  const response = NextResponse.json({ status: "successfully authenticated" });
+  response.cookies.set("session", sessionCookie, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    // ADDED sameSite
+    // a request triggered from a third-party site would automatically attach this cookie, allowing forged authenticated requests.
+    sameSite: "strict",
+    path: "/",
+    // ADDED maxAge
+    // when the browser is closed, a token still persist as long as it is not exceeding the age
+    maxAge: SESSION_DURATION_S,
+  });
 
-    // Set session cookie
-    const response = NextResponse.json({ status: "success", userId: user.user_id });
-    response.cookies.set("session", idToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-    });
-
-    return response;
+  return response;
   } catch (error) {
     console.error("Firebase auth error:", error);
     return NextResponse.json({ error: "Authentication failed" }, { status: 401 });
