@@ -1,7 +1,40 @@
 import { prisma } from '@/lib/prisma';
 import type { Task as PrismaTask } from '@/lib/generated/prisma/client';
-import type { CreateTaskInput, UpdateTaskInput } from '@/lib/validation/task';
+import type { CreateTaskInput, ReminderOption, UpdateTaskInput } from '@/lib/validation/task';
 import type { Attachment, Task, TaskStatus } from '@/types';
+
+type ReminderInterval = { interval_type: 'days' | 'weeks'; interval_value: number };
+
+function reminderOptionToInterval(option: ReminderOption | undefined): ReminderInterval | null {
+  switch (option) {
+    case 'daily': return { interval_type: 'days', interval_value: 1 };
+    case 'every-3-days': return { interval_type: 'days', interval_value: 3 };
+    case 'weekly': return { interval_type: 'weeks', interval_value: 1 };
+    case 'biweekly': return { interval_type: 'weeks', interval_value: 2 };
+    default: return null;
+  }
+}
+
+function intervalToMs({ interval_type, interval_value }: ReminderInterval): number {
+  const day = 24 * 60 * 60 * 1000;
+  const unit = interval_type === 'weeks' ? 7 * day : day;
+  return interval_value * unit;
+}
+
+async function replaceTaskReminder(taskId: number, option: ReminderOption | undefined) {
+  if (option === undefined) return;
+  await prisma.taskReminder.deleteMany({ where: { task_id: taskId } });
+  const interval = reminderOptionToInterval(option);
+  if (!interval) return;
+  await prisma.taskReminder.create({
+    data: {
+      task_id: taskId,
+      interval_type: interval.interval_type,
+      interval_value: interval.interval_value,
+      remind_at: new Date(Date.now() + intervalToMs(interval)),
+    },
+  });
+}
 
 export function serializeTask(row: PrismaTask, attachments?: Attachment[]): Task {
   return {
@@ -54,10 +87,16 @@ export async function requireTaskAccess(taskId: number, userId: string) {
 // ─── User-scoped CRUD ────────────────────────────────────────────────────────
 
 export async function getTasks(userId: string) {
+  // 7-day overdue cutoff: hide uncompleted tasks whose deadline is older than 7 days.
+  const overdueCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   return prisma.task.findMany({
     where: {
       project_id: null,
       task_users: { some: { user_id: userId } },
+      OR: [
+        { task_status: 'Completed' },
+        { task_deadline: { gte: overdueCutoff } },
+      ],
     },
     orderBy: { task_created_at: 'desc' },
   });
@@ -67,7 +106,17 @@ export async function getTaskById(taskId: number, userId: string) {
   return requireTaskAccess(taskId, userId);
 }
 
+export async function getStudySessionsForTask(taskId: number, userId: string) {
+  await requireTaskAccess(taskId, userId);
+  return prisma.studySessionUser.findMany({
+    where: { task_id: taskId, user_id: userId },
+    include: { study_session: true },
+    orderBy: { study_session: { study_session_scheduled_at: 'asc' } },
+  });
+}
+
 export async function createTask(userId: string, data: CreateTaskInput) {
+  const reminderInterval = reminderOptionToInterval(data.reminder);
   return prisma.task.create({
     data: {
       task_name: data.title,
@@ -77,6 +126,17 @@ export async function createTask(userId: string, data: CreateTaskInput) {
       task_status: data.status,
       project_id: null,
       task_users: { create: { user_id: userId } },
+      ...(reminderInterval
+        ? {
+            task_reminders: {
+              create: {
+                interval_type: reminderInterval.interval_type,
+                interval_value: reminderInterval.interval_value,
+                remind_at: new Date(Date.now() + intervalToMs(reminderInterval)),
+              },
+            },
+          }
+        : {}),
     },
   });
 }
@@ -90,7 +150,7 @@ export async function updateTaskById(
 
   const statusChanging = data.status !== undefined && data.status !== existing.task_status;
 
-  return prisma.task.update({
+  const updated = await prisma.task.update({
     where: { task_id: taskId },
     data: {
       ...(data.title !== undefined ? { task_name: data.title } : {}),
@@ -103,6 +163,10 @@ export async function updateTaskById(
         : {}),
     },
   });
+
+  await replaceTaskReminder(taskId, data.reminder);
+
+  return updated;
 }
 
 export async function deleteTaskById(taskId: number, userId: string) {
