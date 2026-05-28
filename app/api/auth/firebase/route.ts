@@ -130,7 +130,7 @@ try {
 
   /* 
     createSessionCookie() exchanges the short-lived ID token (1 hr) for a
-    dedicated server-issued session token (7 days). Storing the
+    dedicated server-issued session token (long-lived). Storing the
     raw ID token in the cookie instead would let an attacker replay it
     directly against Firebase APIs, the session cookie is only valid here.
    */

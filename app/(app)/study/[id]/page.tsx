@@ -386,6 +386,7 @@ export default function StudySessionPage() {
             status: "paused",
             current_time: elapsedSeconds,
           }),
+          keepalive: true,
         }).catch((error) =>
           console.error("Error auto-pausing session:", error),
         );
