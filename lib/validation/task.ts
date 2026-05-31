@@ -6,6 +6,7 @@ export const reminderOptionSchema = z.enum([
   'every-3-days',
   'weekly',
   'biweekly',
+  'monthly',
 ]);
 
 export const createTaskSchema = z.object({

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/firebase/auth';
+import { clearUserPushSubscription } from '@/lib/services/webPushService';
 
 export async function DELETE() {
     try {
@@ -11,10 +11,7 @@ export async function DELETE() {
         }
 
         // Update the push_subcription field in the USER model of the DB
-        await prisma.user.update({
-            where: { user_id: session.id },
-            data: { push_subscription: null },
-        });
+        await clearUserPushSubscription(session.id);
 
         return NextResponse.json({ message: "Sucessfully turned of notifications" });
     } catch (error) {

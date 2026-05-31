@@ -1,9 +1,9 @@
-import { prisma } from '@/lib/prisma';
+import prisma from '@/lib/prisma';
 import type { Task as PrismaTask } from '@/lib/generated/prisma/client';
 import type { CreateTaskInput, ReminderOption, UpdateTaskInput } from '@/lib/validation/task';
 import type { Attachment, Task, TaskStatus } from '@/types';
 
-type ReminderInterval = { interval_type: 'days' | 'weeks'; interval_value: number };
+type ReminderInterval = { interval_type: 'days' | 'weeks' | 'months'; interval_value: number };
 
 function reminderOptionToInterval(option: ReminderOption | undefined): ReminderInterval | null {
   switch (option) {
@@ -11,13 +11,14 @@ function reminderOptionToInterval(option: ReminderOption | undefined): ReminderI
     case 'every-3-days': return { interval_type: 'days', interval_value: 3 };
     case 'weekly': return { interval_type: 'weeks', interval_value: 1 };
     case 'biweekly': return { interval_type: 'weeks', interval_value: 2 };
+    case 'monthly': return { interval_type: 'months', interval_value: 1 };
     default: return null;
   }
 }
 
 function intervalToMs({ interval_type, interval_value }: ReminderInterval): number {
   const day = 24 * 60 * 60 * 1000;
-  const unit = interval_type === 'weeks' ? 7 * day : day;
+  const unit = interval_type === 'weeks' ? 7 * day : interval_type === 'months' ? 30 * day : day;
   return interval_value * unit;
 }
 

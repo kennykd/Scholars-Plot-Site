@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+import prisma from '@/lib/prisma';
 import type { Attachment as PrismaAttachment } from '@/lib/generated/prisma/client';
 import { uploadFile, getFileUrl, deleteFile } from '@/lib/bucket';
 import { requireTaskAccess, TaskServiceError } from '@/lib/services/taskService';

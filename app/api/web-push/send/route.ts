@@ -1,7 +1,7 @@
 import webpush from 'web-push'
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/firebase/auth';
+import { getUserPushSubscription } from '@/lib/services/webPushService';
 
 // TODO: Make sure this nofication enpoint is secured
 export async function POST(request: Request) {
@@ -26,9 +26,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Missing required fields: userID, title, body' }, { status: 400 });
         }
 
-        const user = await prisma.user.findUnique({
-            where: { user_id: userID },
-        })
+        const user = await getUserPushSubscription(userID)
 
         // Check if user exists
         if (!user) {

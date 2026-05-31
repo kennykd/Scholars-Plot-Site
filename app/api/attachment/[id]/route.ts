@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { deleteFile } from "@/lib/bucket";
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/firebase/auth";
 import { requireTaskAccess, TaskServiceError } from "@/lib/services/taskService";
 

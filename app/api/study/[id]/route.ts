@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { updateStudySchema } from '../../../../lib/validation/study';
-import { prisma } from '@/lib/prisma';
-import { Prisma } from '@/lib/generated/prisma/client';
+import { getStudySessionForUserById, deleteStudySessionIfMember, updateStudySessionForMember } from '@/lib/services/studySessionService';
 import { getSession } from '@/lib/firebase/auth';
 
 /**
@@ -179,35 +178,18 @@ export async function GET(request: Request, context: RouteContext) {
     }
 
     // Fetch the study session with user data
-    const studySession = await prisma.studySession.findUnique({
-      where: { study_session_id: studySessionId },
-      include: {
-        study_session_user: {
-          where: { user_id: session.id },
-        },
-      },
-    });
+    const studySession = await getStudySessionForUserById(studySessionId, session.id);
 
     if (!studySession) {
       return NextResponse.json({ message: "Study session not found" }, { status: 404 });
     }
 
-    // Get the user-specific data
     const userSessionData = studySession.study_session_user?.[0];
-
-    // Only participants may view the session
     if (!userSessionData) {
       return NextResponse.json({ message: "Study session not found" }, { status: 404 });
     }
 
-    return NextResponse.json(
-      {
-        message: "Study session retrieved successfully",
-        studySession,
-        userSessionData,
-      },
-      { status: 200 },
-    );
+    return NextResponse.json({ message: "Study session retrieved successfully", studySession, userSessionData }, { status: 200 });
   } catch (error) {
     return NextResponse.json({ message: "Error retrieving study session", error }, { status: 500 });
   }
@@ -231,28 +213,10 @@ export async function DELETE(request: Request, context: RouteContext) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    // Only a participant of this session may delete it
-    const membership = await prisma.studySessionUser.findUnique({
-      where: {
-        study_session_id_user_id: {
-          study_session_id: studySessionId,
-          user_id: session.id,
-        },
-      },
-    });
-    if (!membership) {
+    const deleted = await deleteStudySessionIfMember(studySessionId, session.id);
+    if (!deleted) {
       return NextResponse.json({ message: "Study session not found" }, { status: 404 });
     }
-
-    // Delete related StudySessionUser records first (due to foreign key constraints)
-    await prisma.studySessionUser.deleteMany({
-      where: { study_session_id: studySessionId }
-    });
-
-    // Then delete the study session
-    await prisma.studySession.delete({
-      where: { study_session_id: studySessionId }
-    })
 
     return NextResponse.json({ message: "Study session deleted successfully" }, { status: 200 });
   } catch (error) {
@@ -302,71 +266,12 @@ export async function PATCH(request: Request, context: RouteContext) {
 
     const userId = session.id;
 
-    // Only a participant of this session may update it
-    const membership = await prisma.studySessionUser.findUnique({
-      where: {
-        study_session_id_user_id: {
-          study_session_id: studySessionId,
-          user_id: userId,
-        },
-      },
-    });
-    if (!membership) {
+    const result = await updateStudySessionForMember(studySessionId, userId, parsed.data);
+    if (result.notFound) {
       return NextResponse.json({ message: "Study session not found" }, { status: 404 });
     }
 
-    // Separate StudySessionUser fields from StudySession fields
-    const userFields = ['status', 'started_at', 'current_time', 'completed_at', 'actual_duration'];
-    const userUpdates = Object.fromEntries(
-      Object.entries(parsed.data).filter(([key]) => userFields.includes(key))
-    );
-    const sessionUpdates = Object.fromEntries(
-      Object.entries(parsed.data).filter(([key]) => !userFields.includes(key))
-    );
-
-    // Update StudySessionUser if any user fields are provided
-    if (Object.keys(userUpdates).length > 0) {
-      const userDataToUpdate = Object.fromEntries(
-        Object.entries(userUpdates).filter(([, v]) => v !== undefined)
-      ) as Prisma.StudySessionUserUpdateInput;
-
-      await prisma.studySessionUser.update({
-        where: {
-          study_session_id_user_id: {
-            study_session_id: studySessionId,
-            user_id: userId,
-          },
-        },
-        data: userDataToUpdate,
-      });
-    }
-
-    // Update StudySession fields if any remain
-    let updatedStudySession = null;
-    if (Object.keys(sessionUpdates).length > 0) {
-      const data = Object.fromEntries(
-        Object.entries(sessionUpdates).filter(([, v]) => v !== undefined)
-      ) as Prisma.StudySessionUpdateInput;
-
-      // Handle null checklist_json
-      if ('checklist_json' in sessionUpdates && sessionUpdates.checklist_json === null) {
-        data.checklist_json = Prisma.DbNull;
-      }
-
-      updatedStudySession = await prisma.studySession.update({
-        where: { study_session_id: studySessionId },
-        data,
-      });
-    }
-
-    // Return success message
-    return NextResponse.json(
-      { 
-        message: "Successfully updated study session",
-        updatedStudySession 
-      },
-      { status: 200 },
-    );
+    return NextResponse.json({ message: "Successfully updated study session", updatedStudySession: result.updatedStudySession }, { status: 200 });
   } catch (error) {
     return NextResponse.json({ message: 'Error updating study session', error }, { status: 500 });
   }

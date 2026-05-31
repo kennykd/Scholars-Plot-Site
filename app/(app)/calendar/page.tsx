@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/firebase/auth";
 import { getTasks, serializeTask } from "@/lib/services/taskService";
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/prisma";
 import { CalendarView } from "./calendar-view";
 import type { CalendarStudySession } from "@/lib/utils/calendar-adapters";
 

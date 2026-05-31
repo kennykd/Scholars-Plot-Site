@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { z } from "zod";
 import { adminAuth } from "@/lib/firebase/firebase-admin";
 import { getSession } from "@/lib/firebase/auth";
-import { prisma } from "@/lib/prisma";
+import { deleteUserById, updateUserProfile } from "@/lib/services/userService";
 import { updateUserSchema } from "@/lib/validation/user";
 
 /**
@@ -206,29 +206,12 @@ export async function PUT(request: NextRequest) {
   }
 
   try {
-    const user = await prisma.user.update({
-      where: { user_id: session.id },
-      data: {
-        user_name: parsed.data.name,
-        avatar_url: parsed.data.image,
-      },
-      select: {
-        user_id: true,
-        user_email: true,
-        user_name: true,
-        avatar_url: true,
-      },
-    });
+    const user = await updateUserProfile(session.id, parsed.data);
 
     return NextResponse.json(
       {
         message: "User updated successfully",
-        user: {
-          id: user.user_id,
-          email: user.user_email,
-          name: user.user_name,
-          image: user.avatar_url,
-        },
+        user,
       },
       { status: 200 },
     );
@@ -264,7 +247,7 @@ export async function DELETE() {
 
   // Step 1: Delete from database first — cascades Sessions, Accounts, Todos
   try {
-    await prisma.user.delete({ where: { user_id: session.id } });
+    await deleteUserById(session.id);
   } catch (error) {
     console.error("[api/users/me] Failed to delete user from database:", error);
     return NextResponse.json({ error: "Failed to delete account" }, { status: 500 });
