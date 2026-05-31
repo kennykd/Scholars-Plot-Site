@@ -1,6 +1,19 @@
 export type TaskStatus = "Pending" | "In_Progress" | "Completed";
 export type ProjectTaskStatus = "not-done" | "pending" | "done";
-export type ReminderFrequency = "daily" | "every-3-days" | "weekly" | "none";
+export type ReminderIntervalType = "minutes" | "hours" | "days" | "weeks" | "months";
+export type StudyReminderValueUnit = "minutes" | "hours";
+export type ReminderFrequency =
+  | "none"
+  | "daily"
+  | "every-3-days"
+  | "weekly"
+  | "biweekly"
+  | "monthly";
+export type StudyReminderOffset = {
+  unit: StudyReminderValueUnit;
+  value: number;
+  atStart?: boolean;
+};
 export type Phase = "idle" | "focus" | "break";
 
 export interface Attachment {
@@ -37,6 +50,8 @@ export type StudySession = {
   totalMinutes: number;
   sessionStatus: "idle" | "running" | "paused" | "completed";
   createdAt: string;
+  reminderEnabled?: boolean;
+  reminderOffsets?: number[];
   isTimerOnly?: boolean;
   current_time?: number;
   paused_seconds?: number;

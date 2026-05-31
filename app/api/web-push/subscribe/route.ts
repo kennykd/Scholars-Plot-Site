@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/firebase/auth';
 import { notificationSchema } from '@/lib/validation/notification';
 import { z } from 'zod';
+import { setUserPushSubscription } from '@/lib/services/webPushService';
 
 // Initialize the type for the subscription, referring to the notificationSchema zod validation
 type PushSubscription = z.infer<typeof notificationSchema>;
@@ -72,10 +72,7 @@ try {
 
     // TODO: Move to service notification
     // Update the push_subcription field in the USER model of the DB
-    await prisma.user.update({
-        where: { user_id: session.id },
-        data: { push_subscription: JSON.stringify(subscription) },
-    });
+    await setUserPushSubscription(session.id, JSON.stringify(subscription));
 
     return NextResponse.json({ message: "Sucessfully set notifications on" }, { status: 200 });
 } catch (error) {

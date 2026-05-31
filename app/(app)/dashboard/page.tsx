@@ -6,13 +6,16 @@ import { ActiveStudySession } from "@/app/components/dashboard/active-study-sess
 import { UpcomingDeadlines } from "@/app/components/dashboard/upcoming-deadlines";
 import { getSession } from "@/lib/firebase/auth";
 import { getTasks, serializeTask } from "@/lib/services/taskService";
+import { getStudySessionsForDashboard } from "@/lib/services/studySessionService";
 
 export default async function DashboardPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const rows = await getTasks(session.id);
-  const tasks = rows.map((row) => serializeTask(row));
+  const taskRows = await getTasks(session.id);
+  const tasks = taskRows.map((row) => serializeTask(row));
+
+  const studySessions = await getStudySessionsForDashboard(session.id);
 
   return (
     <div className="p-6 space-y-6">
@@ -31,7 +34,7 @@ export default async function DashboardPage() {
         <div className="lg:col-span-2">
           <TodaysTasks tasks={tasks} />
         </div>
-        <ActiveStudySession />
+        <ActiveStudySession sessions={studySessions} />
         <WeeklyScheduleMini tasks={tasks} />
         <div className="md:col-span-2 lg:col-span-2">
           <UpcomingDeadlines tasks={tasks} />

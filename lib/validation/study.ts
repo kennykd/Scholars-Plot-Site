@@ -26,6 +26,10 @@ export const createStudySchema = z.object({
     .min(1, 'Checklist item text is required'),
     completed: z.boolean(),
   })).nullable(),
+  reminder_enabled: z.boolean().optional(),
+  reminders: z.array(z.coerce.number()
+    .int('Reminder value must be a whole number')
+    .min(0, 'Reminder value cannot be negative')).optional(),
   study_session_scheduled_at: z.coerce.date()
   .refine((date) => date >= new Date(),
     { message: "Scheduled time must be in the future" }
@@ -62,6 +66,12 @@ export const updateStudySchema = z.object({
     completed: z.boolean(),
   }))
   .nullable()
+  .optional(),
+  reminder_enabled: z.boolean()
+  .optional(),
+  reminders: z.array(z.coerce.number()
+    .int('Reminder value must be a whole number')
+    .min(0, 'Reminder value cannot be negative'))
   .optional(),
   study_session_scheduled_at: z.coerce.date()
   .refine((date) => date >= new Date(),

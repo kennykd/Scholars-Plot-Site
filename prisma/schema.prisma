@@ -47,17 +47,11 @@ enum SessionTimerStatus {
 }
 
 enum ReminderIntervalType {
+  minutes
   hours
   days
   weeks
-  fixed
-  custom
-}
-
-enum AlertType {
-  reminder
-  deadline_approaching @map("deadline-approaching")
-  timer_complete       @map("timer-complete")
+  months
 }
 
 // ─── MODELS ──────────────────────────────────────────────────────────────────
@@ -174,19 +168,20 @@ model Attachment {
 }
 
 model StudySession {
-  study_session_id            Int      @id @default(autoincrement())
-  study_session_name          String
-  study_session_description   String?  @db.Text
-  focus_minutes               Int      @default(25)
-  break_minutes               Int      @default(5)
-  total_pomodoros             Int      @default(2)
-  total_minutes               Int      @default(60)
-  study_session_scheduled_at  DateTime
-  study_session_created_at    DateTime @default(now())
-  checklist_json              Json?
+  study_session_id             Int      @id @default(autoincrement())
+  study_session_name           String
+  study_session_description    String?  @db.Text
+  focus_minutes                Int      @default(25)
+  break_minutes                Int      @default(5)
+  total_pomodoros              Int      @default(2)
+  total_minutes                Int      @default(60)
+  study_session_scheduled_at   DateTime
+  study_session_created_at     DateTime @default(now())
+  checklist_json               Json?
+  study_session_reminder_enabled Boolean @default(true)
+  study_session_remind_at_minutes Int[]  @default([])
 
-  study_session_user      StudySessionUser[]
-  study_session_reminders StudySessionReminder[]
+  study_session_user StudySessionUser[]
 
   @@map("study_session")
 }
@@ -212,21 +207,6 @@ model StudySessionUser {
   @@map("study_session_user")
 }
 
-model StudySessionReminder {
-  reminder_id      Int                  @id @default(autoincrement())
-  study_session_id Int
-  interval_type    ReminderIntervalType
-  interval_value   Int?
-  remind_at        DateTime
-  is_active        Boolean              @default(true)
-  reminder_created_at DateTime          @default(now())
-
-  study_session StudySession @relation(fields: [study_session_id], references: [study_session_id])
-  alerts        Alert[]
-
-  @@map("study_session_reminder")
-}
-
 model TaskReminder {
   reminder_id         Int                  @id @default(autoincrement())
   task_id             Int
@@ -237,24 +217,7 @@ model TaskReminder {
   reminder_created_at DateTime             @default(now())
 
   task   Task    @relation(fields: [task_id], references: [task_id])
-  alerts Alert[]
-
   @@map("task_reminder")
-}
-
-model Alert {
-  alert_id              Int       @id @default(autoincrement())
-  study_session_reminder_id Int?
-  task_reminder_id      Int?
-  alert_type            AlertType
-  message               String    @db.Text
-  message_deadline      DateTime?
-  sent_at               DateTime  @default(now())
-
-  study_session_reminder StudySessionReminder? @relation(fields: [study_session_reminder_id], references: [reminder_id])
-  task_reminder          TaskReminder?         @relation(fields: [task_reminder_id], references: [reminder_id])
-
-  @@map("alert")
 }
 
 model Analytics {

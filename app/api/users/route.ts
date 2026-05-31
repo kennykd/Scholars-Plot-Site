@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/firebase/auth";
-import { prisma } from "@/lib/prisma";
+import { getPublicUsers } from "@/lib/services/userService";
 
 /**
  * @swagger
@@ -76,13 +76,7 @@ export async function GET() {
   }
 
   try {
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        name: true,
-        image: true,
-      },
-    });
+    const users = await getPublicUsers();
 
     return NextResponse.json({ message: "Users retrieved successfully", users }, { status: 200 });
   } catch (error) {
