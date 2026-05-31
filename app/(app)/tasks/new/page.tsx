@@ -14,11 +14,20 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { StarRating } from "@/app/components/common/star-rating";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { CalendarIcon, Paperclip, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+type ReminderOption = "none" | "daily" | "every-3-days" | "weekly" | "biweekly";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
@@ -26,8 +35,10 @@ export default function TaskForm() {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [deadline, setDeadline] = useState<Date | undefined>();
+  const [deadlineTime, setDeadlineTime] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState(2.5);
+  const [reminder, setReminder] = useState<ReminderOption>("none");
   const [files, setFiles] = useState<File[]>([]);
   const [calOpen, setCalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -72,15 +83,20 @@ export default function TaskForm() {
 
     setSubmitting(true);
     try {
+      const [hh, mm] = (deadlineTime || "23:59").split(":").map(Number);
+      const combinedDeadline = new Date(deadline);
+      combinedDeadline.setHours(hh, mm, 0, 0);
+
       const res = await fetch("/api/task", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: title.trim(),
           description: description.trim() || undefined,
-          deadline: deadline.toISOString(),
+          deadline: combinedDeadline.toISOString(),
           status: "Pending",
           priority,
+          ...(reminder !== "none" ? { reminder } : {}),
         }),
       });
 
@@ -157,36 +173,57 @@ export default function TaskForm() {
               />
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="font-mono text-xs tracking-wider">
-                DEADLINE *
-              </Label>
-              <Popover open={calOpen} onOpenChange={setCalOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !deadline && "text-muted-foreground",
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {deadline ? format(deadline, "PPP") : "Pick a date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={deadline}
-                    onSelect={(d) => {
-                      setDeadline(d);
-                      setCalOpen(false);
-                    }}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="font-mono text-xs tracking-wider">
+                  DEADLINE DATE *
+                </Label>
+                <Popover open={calOpen} onOpenChange={setCalOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !deadline && "text-muted-foreground",
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {deadline ? format(deadline, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={deadline}
+                      onSelect={(d) => {
+                        setDeadline(d);
+                        setCalOpen(false);
+                      }}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="deadline-time"
+                  className="font-mono text-xs tracking-wider"
+                >
+                  DEADLINE TIME
+                </Label>
+                <Input
+                  id="deadline-time"
+                  type="time"
+                  value={deadlineTime}
+                  onChange={(e) => setDeadlineTime(e.target.value)}
+                  placeholder="23:59"
+                />
+                <p className="font-mono text-[10px] text-muted-foreground">
+                  Defaults to 23:59 if left blank.
+                </p>
+              </div>
             </div>
 
             <div className="space-y-1.5">
@@ -264,6 +301,30 @@ export default function TaskForm() {
                   {priority.toFixed(1)} / 5.0
                 </span>
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="font-mono text-xs tracking-wider">
+                REMINDER
+              </Label>
+              <Select
+                value={reminder}
+                onValueChange={(v) => setReminder(v as ReminderOption)}
+              >
+                <SelectTrigger className="font-mono text-sm w-full min-w-[260px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="min-w-[260px]">
+                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="daily">Every day</SelectItem>
+                  <SelectItem value="every-3-days">Every 3 days</SelectItem>
+                  <SelectItem value="weekly">Every week</SelectItem>
+                  <SelectItem value="biweekly">Every 2 weeks</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="font-mono text-[10px] text-muted-foreground">
+                We&apos;ll nudge you on this cadence until the deadline.
+              </p>
             </div>
 
             <div className="flex gap-3 pt-2">

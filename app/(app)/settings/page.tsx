@@ -4,6 +4,7 @@ import LogoutButton from "@/app/components/auth/logout-button";
 import { ThemeToggle } from "../../components/settings/theme-toggle";
 import { getSession } from "@/lib/firebase/auth";
 import { redirect } from "next/navigation";
+import PushNotificationsToggle from "@/app/components/settings/push-notifications-toggle";
 
 export default async function SettingsPage() {
   const user = await getSession();
@@ -59,6 +60,15 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent className="pt-4">
           <ThemeToggle />
+        </CardContent>
+      </Card>
+
+      <Card className="bg-card border-0 shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="font-display text-lg">Notifications</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-4">
+          <PushNotificationsToggle />
         </CardContent>
       </Card>
 

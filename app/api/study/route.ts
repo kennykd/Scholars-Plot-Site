@@ -231,6 +231,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Invalid JSON body' }, { status: 400 });
     }
 
+    // Input validation using the zod schema, to ensure safe parsing of the input JSON body
     const parsed = createStudySchema.safeParse(body);
 
     if (!parsed.success) {

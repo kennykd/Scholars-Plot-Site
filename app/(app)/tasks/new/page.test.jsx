@@ -109,6 +109,41 @@ describe("TaskForm", () => {
     });
   });
 
+  it("sends the selected reminder option in the POST body", async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ task: { id: 99 } }),
+    });
+
+    render(<TaskForm />);
+
+    fireEvent.change(screen.getByLabelText(/task name/i), {
+      target: { value: "Reminder Task" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /pick a date/i }));
+    fireEvent.click(screen.getByRole("button", { name: /select march 20/i }));
+
+    const form = screen
+      .getByRole("button", { name: /create task/i })
+      .closest("form");
+    fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalled();
+    });
+
+    const [, init] = global.fetch.mock.calls[0];
+    const payload = JSON.parse(init.body);
+    expect(payload).toEqual(
+      expect.objectContaining({
+        title: "Reminder Task",
+        status: "Pending",
+      }),
+    );
+    // Default reminder is "none" → field is omitted from payload.
+    expect(payload.reminder).toBeUndefined();
+  });
+
   it("shows an error toast when the API responds with a failure", async () => {
     global.fetch.mockResolvedValue({
       ok: false,

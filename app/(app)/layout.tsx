@@ -2,6 +2,7 @@ import { Sidebar } from "@/app/components/layout/sidebar";
 import { BottomTabBar } from "@/app/components/layout/bottom-tab-bar";
 import { getSession } from "@/lib/firebase/auth";
 import { redirect } from "next/navigation";
+import { AuthProvider } from "@/lib/firebase/auth-context";
 
 export default async function AppLayout({
   children,
@@ -24,7 +25,14 @@ export default async function AppLayout({
 
       {/* Main content area - solid background, no grid pattern for readability */}
       <main className="flex-1 overflow-y-auto bg-background relative">
-        <div className="min-h-full pb-16 lg:pb-0">{children}</div>
+        {/* 
+        AuthProvider wraps children with the user fetched on the server.
+        Client components use useAuth() to read user data without making
+        additional API calls or calling getSession() from the client.
+         */}
+        <AuthProvider initialUser={user}>
+          <div className="min-h-full pb-16 lg:pb-0">{children}</div>
+        </AuthProvider>
       </main>
 
       {/* Mobile bottom tab bar */}
