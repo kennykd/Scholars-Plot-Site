@@ -102,11 +102,8 @@ export function StudySessionListCard({
   onDeselectAll,
   onSelectSession,
   onOpenSession,
-  emptyPlaceholder = "Nothing here yet...",
 }: StudySessionListCardProps) {
-  if (sectionType !== "upcoming" && sectionType !== "completed" && sessions.length === 0) {
-    return null; 
-  }
+  if (sessions.length === 0) return null;
 
   const showOpenButton =
     sectionType === "in-progress" || sectionType === "upcoming";
@@ -148,26 +145,19 @@ export function StudySessionListCard({
           )}
         </div>
       </CardHeader>
-        <CardContent className="space-y-3">
-        {sessions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center min-h-25 rounded-lg border-2 border-dashed border-muted-foreground/15 bg-muted/5 p-4 text-center">
-            <p className="text-xs font-medium text-muted-foreground/60">
-              {emptyPlaceholder}
-            </p>
-          </div>
-        ) : (
-          sessions.slice(0, 8).map((session) => {
-            const isSelected = selectedSessionIds.includes(session.id);
-            const badge = getStatusBadge(sectionType, session);
+      <CardContent className="space-y-3">
+        {sessions.slice(0, 8).map((session) => {
+          const isSelected = selectedSessionIds.includes(session.id);
+          const badge = getStatusBadge(sectionType, session);
 
-            return (
-              <div
-                key={session.id}
-                className={`flex flex-col gap-3 rounded-lg border px-4 py-3 sm:flex-row sm:items-center sm:justify-between transition-colors ${getItemClasses(
-                  sectionType,
-                  isSelected,
-                )}`}
-              >
+          return (
+            <div
+              key={session.id}
+              className={`flex flex-col gap-3 rounded-lg border px-4 py-3 sm:flex-row sm:items-center sm:justify-between transition-colors ${getItemClasses(
+                sectionType,
+                isSelected,
+              )}`}
+            >
               <div className="space-y-1">
                 <p className="font-medium text-foreground">{session.title}</p>
                 <p className="text-xs text-muted-foreground">
@@ -219,8 +209,7 @@ export function StudySessionListCard({
               </div>
             </div>
           );
-        })
-      )}
+        })}
       </CardContent>
     </Card>
   );

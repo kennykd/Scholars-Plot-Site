@@ -61,6 +61,11 @@ enum ActionStatus {
   pending
   confirmed
   dismissed
+  minutes
+  hours
+  days
+  weeks
+  months
 }
 
 // ─── MODELS ──────────────────────────────────────────────────────────────────
