@@ -82,6 +82,7 @@ model User {
   study_session_user StudySessionUser[]
   user_formula_weights UserFormulaWeights?
   user_availability UserAvailability[]
+  overload_warnings OverloadWarning[]
 
   @@map("user")
 }
@@ -275,6 +276,18 @@ model Alert {
   task_reminder          TaskReminder?         @relation(fields: [task_reminder_id], references: [reminder_id])
 
   @@map("alert")
+}
+
+model OverloadWarning {
+  id          Int      @id @default(autoincrement())
+  user_id     String
+  week_start  DateTime
+  warnings    Json
+  detected_at DateTime @default(now())
+  is_read     Boolean  @default(false)
+
+  user User @relation(fields: [user_id], references: [user_id])
+  @@map("overload_warning")
 }
 
 model Analytics {

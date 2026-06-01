@@ -1,6 +1,7 @@
 import { analyzeTask, TaskAnalysisInput } from "@/lib/ai/taskAnalyzer";
 import { calculatePriorityScore } from "@/lib/ai/priorityFormula";
 import { optimizeSchedule } from "@/lib/ai/scheduleOptimizer";
+import { detectOverload } from "@/lib/ai/overloadDetector";
 import {
   updateTaskAIFields,
   getTaskWithProject,
@@ -13,6 +14,12 @@ import {
   getUserStudyPreferences,
   getUserBehaviorProfile,
 } from "@/lib/services/scheduleService";
+import {
+  getScheduledSessionsForWeek,
+  getUnscheduledTasksForWeek,
+  getTotalAvailableMinutes,
+  saveOverloadWarning,
+} from "@/lib/services/overloadService";
 
 export async function runTaskAnalysis(
   task_id: number,
@@ -62,19 +69,28 @@ export async function runScheduleOptimizer(
   user_id: string,
   targetDate: Date
 ) {
-  const [availability, tasks, preferences, behaviorProfile] = await Promise.all([
-    getUserAvailability(user_id),
-    getUserPendingTasks(user_id),
-    getUserStudyPreferences(user_id),
-    getUserBehaviorProfile(user_id),
-  ]);
+  const weekStart = new Date(targetDate);
+  weekStart.setHours(0, 0, 0, 0);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 7);
+
+  const [availability, tasks, preferences, behaviorProfile] =
+    await Promise.all([
+      getUserAvailability(user_id),
+      getUserPendingTasks(user_id),
+      getUserStudyPreferences(user_id),
+      getUserBehaviorProfile(user_id),
+    ]);
 
   if (availability.length === 0) {
     return {
       proposed_sessions: [],
-      warnings: ["No availability set. Please configure your weekly availability before generating a schedule."],
+      warnings: [
+        "No availability set. Please configure your weekly availability before generating a schedule.",
+      ],
       total_scheduled_minutes: 0,
       total_available_minutes: 0,
+      overload: null,
     };
   }
 
@@ -84,10 +100,11 @@ export async function runScheduleOptimizer(
       warnings: ["No pending tasks with priority scores found."],
       total_scheduled_minutes: 0,
       total_available_minutes: 0,
+      overload: null,
     };
   }
 
-  return optimizeSchedule(
+  const scheduleResult = await optimizeSchedule(
     availability,
     tasks.map((t) => ({
       task_id: t.task_id,
@@ -104,4 +121,47 @@ export async function runScheduleOptimizer(
     behaviorProfile as object | null,
     targetDate
   );
+
+  // Run overload detection after schedule is generated
+  // Uses the proposed sessions as the scheduled context
+  const overloadResult = await runOverloadDetector(
+    user_id,
+    weekStart,
+    weekEnd,
+    scheduleResult.total_available_minutes
+  );
+
+  return {
+    ...scheduleResult,
+    overload: overloadResult,
+  };
+}
+
+export async function runOverloadDetector(
+  user_id: string,
+  weekStart: Date,
+  weekEnd: Date,
+  totalAvailableMinutes?: number
+) {
+  const [scheduledSessions, unscheduledTasks, availableMinutes] =
+    await Promise.all([
+      getScheduledSessionsForWeek(user_id, weekStart, weekEnd),
+      getUnscheduledTasksForWeek(user_id, weekEnd),
+      totalAvailableMinutes !== undefined
+        ? Promise.resolve(totalAvailableMinutes)
+        : getTotalAvailableMinutes(user_id, weekStart),
+    ]);
+
+  const result = await detectOverload({
+    scheduled_sessions: scheduledSessions,
+    unscheduled_tasks: unscheduledTasks,
+    total_available_minutes: availableMinutes,
+    week_start: weekStart,
+    week_end: weekEnd,
+  });
+
+  // Always persist the detection result regardless of severity
+  await saveOverloadWarning(user_id, weekStart, result);
+
+  return result;
 }
