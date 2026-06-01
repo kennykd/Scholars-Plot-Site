@@ -116,7 +116,7 @@ export interface Notification {
   /** Motivational or convincing message to display */
   message: string;
   /** Optional deadline associated with the notification */
-  deadline?: Date;
+  deadline?: string;
   /** Type of notification */
   type: "reminder" | "timer-complete" | "deadline-approaching";
 }

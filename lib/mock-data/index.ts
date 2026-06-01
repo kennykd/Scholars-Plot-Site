@@ -15,9 +15,11 @@ import {
 // Helper functions for relative dates
 const now = new Date();
 const daysFromNow = (n: number) =>
-  new Date(now.getTime() + n * 24 * 60 * 60 * 1000);
+  new Date(now.getTime() + n * 24 * 60 * 60 * 1000).toISOString();
 const hoursFromNow = (n: number) =>
-  new Date(now.getTime() + n * 60 * 60 * 1000);
+  new Date(now.getTime() + n * 60 * 60 * 1000).toISOString();
+const daysFromNowDate = (n: number) =>
+  new Date(now.getTime() + n * 24 * 60 * 60 * 1000);
 
 // ============================================================================
 // MOCK STUDY SESSIONS
@@ -26,94 +28,51 @@ const hoursFromNow = (n: number) =>
 export const mockStudySessions: StudySession[] = [
   {
     id: "00000000-0000-4000-8000-000000000101",
-    taskId: "00000000-0000-4000-8000-000000000001",
-    taskTitle: "Calculus II Problem Set 5",
-    duration: 25,
-    breakDuration: 5,
-    checklist: [
-      {
-        id: "00000000-0000-4000-8000-000000000201",
-        text: "Review lecture notes on integration by parts",
-        completed: true,
-      },
-      { id: "00000000-0000-4000-8000-000000000202", text: "Complete exercises 1-5", completed: true },
-      { id: "00000000-0000-4000-8000-000000000203", text: "Complete exercises 6-10", completed: false },
-      {
-        id: "00000000-0000-4000-8000-000000000204",
-        text: "Review partial fractions method",
-        completed: false,
-      },
-    ],
-    status: "active",
+    title: "Calculus II Problem Set 5",
+    notes: "Focus on integration by parts and partial fractions",
+    attachments: [],
     scheduledAt: hoursFromNow(1),
+    focusMinutes: 25,
+    breakMinutes: 5,
+    totalMinutes: 30,
+    sessionStatus: "idle",
+    createdAt: daysFromNow(-1),
   },
   {
     id: "00000000-0000-4000-8000-000000000102",
-    taskId: "00000000-0000-4000-8000-000000000002",
-    taskTitle: "Data Structures Assignment 3",
-    duration: 50,
-    breakDuration: 10,
-    checklist: [
-      {
-        id: "00000000-0000-4000-8000-000000000205",
-        text: "Implement BST insert operation",
-        completed: true,
-      },
-      {
-        id: "00000000-0000-4000-8000-000000000206",
-        text: "Implement BST delete operation",
-        completed: false,
-      },
-      {
-        id: "00000000-0000-4000-8000-000000000207",
-        text: "Implement BST search operation",
-        completed: false,
-      },
-      { id: "00000000-0000-4000-8000-000000000208", text: "Write unit tests", completed: false },
-    ],
-    status: "pending",
+    title: "Data Structures Assignment 3",
+    notes: "Implement BST operations",
+    attachments: [],
     scheduledAt: daysFromNow(1),
+    focusMinutes: 50,
+    breakMinutes: 10,
+    totalMinutes: 60,
+    sessionStatus: "idle",
+    createdAt: daysFromNow(-2),
   },
   {
     id: "00000000-0000-4000-8000-000000000103",
-    taskId: "00000000-0000-4000-8000-000000000003",
-    taskTitle: "Physics Lab Report",
-    duration: 45,
-    breakDuration: 10,
-    checklist: [
-      { id: "00000000-0000-4000-8000-000000000209", text: "Organize experimental data", completed: false },
-      {
-        id: "00000000-0000-4000-8000-000000000210",
-        text: "Write introduction and methodology",
-        completed: false,
-      },
-      {
-        id: "00000000-0000-4000-8000-000000000211",
-        text: "Analyze results and create graphs",
-        completed: false,
-      },
-    ],
-    status: "pending",
+    title: "Physics Lab Report",
+    notes: "Organize and analyze experimental data",
+    attachments: [],
     scheduledAt: daysFromNow(1),
+    focusMinutes: 45,
+    breakMinutes: 10,
+    totalMinutes: 55,
+    sessionStatus: "idle",
+    createdAt: daysFromNow(-3),
   },
   {
     id: "00000000-0000-4000-8000-000000000104",
-    taskId: "00000000-0000-4000-8000-000000000004",
-    taskTitle: "English Composition Essay",
-    duration: 60,
-    breakDuration: 15,
-    checklist: [
-      {
-        id: "00000000-0000-4000-8000-000000000212",
-        text: "Research and gather sources",
-        completed: false,
-      },
-      { id: "00000000-0000-4000-8000-000000000213", text: "Create outline", completed: false },
-      { id: "00000000-0000-4000-8000-000000000214", text: "Write first draft", completed: false },
-      { id: "00000000-0000-4000-8000-000000000215", text: "Revise and proofread", completed: false },
-    ],
-    status: "pending",
+    title: "English Composition Essay",
+    notes: "Research and write essay",
+    attachments: [],
     scheduledAt: daysFromNow(2),
+    focusMinutes: 60,
+    breakMinutes: 15,
+    totalMinutes: 75,
+    sessionStatus: "idle",
+    createdAt: daysFromNow(-4),
   },
 ];
 
@@ -236,7 +195,7 @@ export const mockProjects: Project[] = [
     id: "00000000-0000-4000-8000-000000000501",
     name: "Capstone Collaboration",
     description: "Team coordination for the semester capstone build.",
-    deadline: daysFromNow(30),
+    deadline: daysFromNowDate(30),
     priority: 5,
     status: "active",
     ownerId: "00000000-0000-4000-8000-000000000601",
@@ -268,9 +227,9 @@ export const mockProjects: Project[] = [
         description: "Lock requirements and success criteria for the MVP.",
 
         priority: 5,
-        status: "Pending",
+        status: "pending",
         assignedTo: "00000000-0000-4000-8000-000000000603",
-        createdAt: daysFromNow(-5),
+        createdAt: daysFromNowDate(-5),
       },
       {
         id: "00000000-0000-4000-8000-000000000702",
@@ -278,9 +237,9 @@ export const mockProjects: Project[] = [
         description: "Build the column layout and task cards.",
 
         priority: 3,
-        status: "In_Progress",
+        status: "not-done",
         assignedTo: "00000000-0000-4000-8000-000000000602",
-        createdAt: daysFromNow(-4),
+        createdAt: daysFromNowDate(-4),
       },
       {
         id: "00000000-0000-4000-8000-000000000703",
@@ -288,18 +247,18 @@ export const mockProjects: Project[] = [
         description: "Validate endpoints and data contracts.",
 
         priority: 1.5,
-        status: "Completed",
+        status: "done",
         assignedTo: "00000000-0000-4000-8000-000000000601",
-        createdAt: daysFromNow(-8),
+        createdAt: daysFromNowDate(-8),
       },
     ],
-    createdAt: daysFromNow(-10),
+    createdAt: daysFromNowDate(-10),
   },
   {
     id: "00000000-0000-4000-8000-000000000502",
     name: "Open Study Group",
     description: "Shared tasks for the weekly study group.",
-    deadline: daysFromNow(14),
+    deadline: daysFromNowDate(14),
     priority: 3,
     status: "active",
     ownerId: "00000000-0000-4000-8000-000000000605",
@@ -325,8 +284,8 @@ export const mockProjects: Project[] = [
         description: "Summarize decisions and next steps.",
 
         priority: 3,
-        status: "Pending",
-        createdAt: daysFromNow(-1),
+        status: "pending",
+        createdAt: daysFromNowDate(-1),
       },
       {
         id: "00000000-0000-4000-8000-000000000705",
@@ -334,9 +293,9 @@ export const mockProjects: Project[] = [
         description: "Gather references and practice sets.",
 
         priority: 1.5,
-        status: "In_Progress",
+        status: "not-done",
         assignedTo: "00000000-0000-4000-8000-000000000607",
-        createdAt: daysFromNow(-2),
+        createdAt: daysFromNowDate(-2),
       },
       {
         id: "00000000-0000-4000-8000-000000000706",
@@ -344,12 +303,11 @@ export const mockProjects: Project[] = [
         description: "Confirm topics for the next session.",
 
         priority: 5,
-        status: "Completed",
+        status: "done",
         assignedTo: "00000000-0000-4000-8000-000000000606",
-        createdAt: daysFromNow(-4),
+        createdAt: daysFromNowDate(-4),
       },
     ],
-    createdAt: daysFromNow(-3),
+    createdAt: daysFromNowDate(-3),
   },
 ];
-
