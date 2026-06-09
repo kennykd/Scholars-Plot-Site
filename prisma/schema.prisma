@@ -88,16 +88,17 @@ model User {
 }
 
 model UserFormulaWeights {
-  id            Int      @id @default(autoincrement())
-  user_id       String   @unique
-  w_impact      Decimal  @default(3.0) @db.Decimal(4, 2)
-  w_confidence  Decimal  @default(1.0) @db.Decimal(4, 2)
-  w_ease        Decimal  @default(2.0) @db.Decimal(4, 2)
-  w_urgency     Decimal  @default(4.0) @db.Decimal(4, 2)
-  updated_at    DateTime @updatedAt
+  id                Int       @id @default(autoincrement())
+  user_id           String    @unique
+  w_impact          Decimal   @default(3.0) @db.Decimal(4, 2)
+  w_ease            Decimal   @default(3.0) @db.Decimal(4, 2)
+  w_urgency         Decimal   @default(4.0) @db.Decimal(4, 2)
+  last_adapted_at   DateTime?
+  tasks_since_last  Int       @default(0)
+  updated_at        DateTime  @updatedAt
 
   user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-
+  
   @@map("user_formula_weights")
 }
 

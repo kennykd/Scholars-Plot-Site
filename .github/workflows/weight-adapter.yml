@@ -1,0 +1,27 @@
+name: Weekly Weight Adapter
+
+on:
+  schedule:
+    - cron: '0 2 * * 0'  # Every Sunday at 2am UTC
+  workflow_dispatch:       # Allows manual trigger from GitHub Actions UI
+
+jobs:
+  run-weight-adapter:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger weight adapter for all users
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "${{ secrets.APP_URL }}/api/ai/weight-adapter" \
+            -H "Content-Type: application/json" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            -d '{"run_all_users": true}')
+          
+          echo "Response status: $response"
+          
+          if [ "$response" != "200" ]; then
+            echo "Weight adapter failed with status $response"
+            exit 1
+          fi
+          
+          echo "Weight adapter completed successfully"

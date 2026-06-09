@@ -20,6 +20,14 @@ import {
   getTotalAvailableMinutes,
   saveOverloadWarning,
 } from "@/lib/services/overloadService";
+import { adaptWeights } from "@/lib/ai/weightAdapter";
+import {
+  getCompletedTasksForUser,
+  getTotalCompletedCount,
+  getCurrentWeights,
+  saveAdaptedWeights,
+  getAllActiveUserIds,
+} from "@/lib/services/weightService";
 
 export async function runTaskAnalysis(
   task_id: number,
@@ -164,4 +172,54 @@ export async function runOverloadDetector(
   await saveOverloadWarning(user_id, weekStart, result);
 
   return result;
+}
+
+export async function runWeightAdapter(user_id: string) {
+  const [completedTasks, totalCompleted, currentWeights] = await Promise.all([
+    getCompletedTasksForUser(user_id),
+    getTotalCompletedCount(user_id),
+    getCurrentWeights(user_id),
+  ]);
+
+  const result = await adaptWeights({
+    completed_tasks: completedTasks,
+    current_weights: currentWeights,
+    total_completed_count: totalCompleted,
+  });
+
+  await saveAdaptedWeights(user_id, result);
+
+  // Update behavior profile on user record
+  await prisma.user.update({
+    where: { user_id },
+    data: {
+      ai_behavior_profile: result.behavior_profile,
+      ai_profile_updated_at: new Date(),
+    },
+  });
+
+  return result;
+}
+
+export async function runWeightAdapterForAllUsers() {
+  const userIds = await getAllActiveUserIds();
+
+  const results = await Promise.allSettled(
+    userIds.map((user_id) => runWeightAdapter(user_id))
+  );
+
+  const summary = {
+    total: userIds.length,
+    succeeded: results.filter((r) => r.status === "fulfilled").length,
+    failed: results.filter((r) => r.status === "rejected").length,
+    errors: results
+      .map((r, i) =>
+        r.status === "rejected"
+          ? { user_id: userIds[i], error: r.reason?.message }
+          : null
+      )
+      .filter(Boolean),
+  };
+
+  return summary;
 }

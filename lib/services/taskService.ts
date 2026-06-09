@@ -3,6 +3,7 @@ import type { Task as PrismaTask } from '@/lib/generated/prisma/client';
 import type { CreateTaskInput, ReminderOption, UpdateTaskInput } from '@/lib/validation/task';
 import type { Attachment, Task, TaskStatus } from '@/types';
 import { TaskAttachment } from '@/lib/ai/taskAnalyzer';
+import { incrementTasksSinceLast, shouldRunAdapter } from "@/lib/services/weightService";
 
 type ReminderInterval = { interval_type: 'days' | 'weeks'; interval_value: number };
 
@@ -198,6 +199,22 @@ export async function deleteTaskById(taskId: number, userId: string) {
   await prisma.task.delete({
     where: { task_id: taskId },
   });
+}
+
+export async function completeTask(task_id: number, user_id: string) {
+  const task = await prisma.task.update({
+    where: { task_id },
+    data: {
+      task_status: "Completed",
+      task_completed_at: new Date(),
+    },
+  });
+
+  // Increment counter and check if adapter should run
+  await incrementTasksSinceLast(user_id);
+  const shouldAdapt = await shouldRunAdapter(user_id);
+
+  return { task, shouldAdapt };
 }
 
 // ─── AI helpers (used by lib/services/aiService.ts) ──────────────────────────

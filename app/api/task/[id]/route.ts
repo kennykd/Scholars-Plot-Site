@@ -9,6 +9,8 @@ import {
   updateTaskById,
 } from '@/lib/services/taskService';
 import { getSession } from '@/lib/firebase/auth';
+import { completeTask } from "@/lib/services/taskService";
+import { runWeightAdapter } from "@/lib/services/aiService";
 
 /**
  * @swagger
@@ -196,6 +198,14 @@ export async function PATCH(request: Request, context: RouteContext) {
     }
 
     const updated = await updateTaskById(parsedId.data, session.id, parsed.data);
+
+    const { task, shouldAdapt } = await completeTask(parsedId.data, session.id);
+
+    if (shouldAdapt) {
+      runWeightAdapter(session.id).catch((error) => {
+        console.error(`Weight adapter failed for user ${session.id}:`, error);
+      });
+    }
 
     return NextResponse.json(
       { message: 'Task updated successfully', task: serializeTask(updated) },
