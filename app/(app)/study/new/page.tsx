@@ -17,16 +17,16 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { ArrowLeft, CalendarIcon, Paperclip, X, Sparkles } from "lucide-react";
 import {
-  ArrowLeft,
-  CalendarIcon,
-  Paperclip,
-  X,
-  Upload,
-  Loader2,
-  Sparkles,
-} from "lucide-react";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { format } from "date-fns";
+import { StudyReminderOffset, StudyReminderValueUnit } from "@/types";
 
 const combineDateTime = (date: Date, time: string) => {
   const [hours, minutes] = time.split(":").map(Number);
@@ -35,6 +35,17 @@ const combineDateTime = (date: Date, time: string) => {
   next.setMinutes(minutes);
   next.setSeconds(0, 0);
   return next;
+};
+
+const valueToMs = (valueUnit: StudyReminderValueUnit, value: number) => {
+  const normalizedValue = Math.max(1, value);
+
+  switch (valueUnit) {
+    case "minutes":
+      return normalizedValue * 60 * 1000;
+    case "hours":
+      return normalizedValue * 60 * 60 * 1000;
+  }
 };
 
 export default function StudyNewPage() {
@@ -47,15 +58,67 @@ export default function StudyNewPage() {
   const [focusMinutes, setFocusMinutes] = useState(25);
   const [breakMinutes, setBreakMinutes] = useState(5);
   const [totalPomodoro, setTotalPomodoro] = useState(2);
-  const [descriptionAsChecklist, setDescriptionAsChecklist] = useState(true);
+  const [descriptionAsChecklist, setDescriptionAsChecklist] = useState(false);
   const [calOpen, setCalOpen] = useState(false);
   const [attachments, setAttachments] = useState<string[]>([]);
+  const [reminderEnabled, setReminderEnabled] = useState(false);
+  const [reminders, setReminders] = useState<StudyReminderOffset[]>([
+    { unit: "minutes", value: 15 },
+    { unit: "minutes", value: 5 },
+    { unit: "minutes", value: 0, atStart: true },
+  ]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const totalMinutesComputed =
     (Math.max(1, Number(focusMinutes) || 0) +
       Math.max(1, Number(breakMinutes) || 0)) *
     Math.max(1, Number(totalPomodoro) || 0);
+
+  const scheduledAt =
+    scheduledDate && scheduledTime
+      ? combineDateTime(scheduledDate, scheduledTime)
+      : null;
+
+  const normalizedReminders = reminders.filter(() => reminderEnabled);
+
+  const updateReminder = (
+    index: number,
+    updates: Partial<StudyReminderOffset>,
+  ) => {
+    setReminders((prev) =>
+      prev.map((reminder, reminderIndex) =>
+        reminderIndex === index ? { ...reminder, ...updates } : reminder,
+      ),
+    );
+  };
+
+  const addReminder = () => {
+    setReminders((prev) => [...prev, { unit: "minutes", value: 10 }]);
+  };
+
+  const toggleStartReminder = (index: number, checked: boolean) => {
+    setReminders((prev) =>
+      prev.map((reminder, reminderIndex) => {
+        if (reminderIndex !== index) return reminder;
+
+        if (checked) {
+          return { ...reminder, atStart: true, value: 0 };
+        }
+
+        return {
+          ...reminder,
+          atStart: false,
+          value: reminder.value === 0 ? 1 : reminder.value,
+        };
+      }),
+    );
+  };
+
+  const removeReminder = (index: number) => {
+    setReminders((prev) =>
+      prev.filter((_, reminderIndex) => reminderIndex !== index),
+    );
+  };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -65,7 +128,6 @@ export default function StudyNewPage() {
       setAttachments((prev) => [...prev, file.name]);
     }
 
-    // Reset input
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -96,6 +158,8 @@ export default function StudyNewPage() {
       return;
     }
 
+    const sessionScheduledAt = combineDateTime(scheduledDate, scheduledTime);
+
     const payload = {
       study_session_name: title.trim(),
       study_session_description: notes.trim() || undefined,
@@ -103,7 +167,6 @@ export default function StudyNewPage() {
       break_minutes: Math.max(0, Number(breakMinutes) || 5),
       total_pomodoros: Math.max(1, Number(totalPomodoro) || 2),
       total_minutes: totalMinutesComputed,
-      // First it checks if the user wants the description to be written as a checklist, if not then the checklist will be null
       checklist_json: descriptionAsChecklist
         ? notes
             .split("\n")
@@ -115,13 +178,14 @@ export default function StudyNewPage() {
               completed: false,
             }))
         : null,
-      study_session_scheduled_at: combineDateTime(
-        scheduledDate,
-        scheduledTime,
-      ).toISOString(),
-      // For now, only include the first attachment
-      // In the future, this can be extended to support multiple attachments
+      study_session_scheduled_at: sessionScheduledAt.toISOString(),
       attachment_names: attachments.length > 0 ? attachments : undefined,
+      reminders: reminderEnabled
+        ? normalizedReminders.map((reminder) =>
+            reminder.atStart ? 0 : Math.max(1, Number(reminder.value) || 1),
+          )
+        : [],
+      reminder_enabled: reminderEnabled,
     };
 
     try {
@@ -173,7 +237,6 @@ export default function StudyNewPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleCreateSession} className="space-y-5 pt-2">
-            {/* Insert Title */}
             <div className="space-y-1.5">
               <Label className="font-mono text-xs tracking-wider">TITLE</Label>
               <Input
@@ -183,7 +246,6 @@ export default function StudyNewPage() {
               />
             </div>
 
-            {/* Insert Date and Time (using calendar popup for date) */}
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1.5">
                 <Label className="font-mono text-xs tracking-wider">
@@ -199,7 +261,6 @@ export default function StudyNewPage() {
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {/* Displays the value of the date with format "PPP" (e.g. April 1st, 2026) */}
                       {scheduledDate
                         ? format(scheduledDate, "PPP")
                         : "Pick a date"}
@@ -218,7 +279,6 @@ export default function StudyNewPage() {
                 </Popover>
               </div>
 
-              {/* Setting the time */}
               <div className="space-y-1.5">
                 <Label className="font-mono text-xs tracking-wider">TIME</Label>
                 <Input
@@ -229,7 +289,6 @@ export default function StudyNewPage() {
               </div>
             </div>
 
-            {/* Insert Focus Minutes and Break Minutes (For Pomodoro) */}
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1.5">
                 <Label className="font-mono text-xs tracking-wider">
@@ -258,7 +317,6 @@ export default function StudyNewPage() {
               </p>
             </div>
 
-            {/* Insert total duration of study session */}
             <div className="space-y-2">
               <Label className="font-mono text-xs tracking-wider">
                 How many Pomodoro sessions?
@@ -274,7 +332,6 @@ export default function StudyNewPage() {
               </p>
             </div>
 
-            {/* Insert Notes (If the study session is derived from task/project, AI will fill this with a checklist of what to do) */}
             <div className="space-y-1.5">
               <Label className="font-mono text-xs tracking-wider">NOTES</Label>
               <div className="flex items-center gap-2">
@@ -304,7 +361,6 @@ export default function StudyNewPage() {
               />
             </div>
 
-            {/* Insert Attachments */}
             <div className="space-y-1.5">
               <Label className="font-mono text-xs tracking-wider">
                 ATTACHMENTS
@@ -320,11 +376,7 @@ export default function StudyNewPage() {
                       <span className="text-sm flex-1 truncate">{file}</span>
                       <button
                         type="button"
-                        onClick={() =>
-                          setAttachments((prev) =>
-                            prev.filter((_, i) => i !== index),
-                          )
-                        }
+                        onClick={() => handleRemoveAttachment(index)}
                       >
                         <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
                       </button>
@@ -350,6 +402,151 @@ export default function StudyNewPage() {
                   />
                 </label>
               )}
+            </div>
+
+            <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <Label className="font-mono text-xs tracking-wider">
+                    REMINDER
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Configure how long before the session you want to be
+                    reminded.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="study-reminder-enabled"
+                    checked={reminderEnabled}
+                    onCheckedChange={(checked) =>
+                      setReminderEnabled(checked === true)
+                    }
+                  />
+                  <Label
+                    htmlFor="study-reminder-enabled"
+                    className="font-mono text-xs tracking-wider"
+                  >
+                    Enable reminder
+                  </Label>
+                </div>
+              </div>
+
+              {reminderEnabled ? (
+                <>
+                  <div className="space-y-3">
+                    {reminders.map((reminder, index) => {
+                      const reminderTime = scheduledAt
+                        ? new Date(
+                            scheduledAt.getTime() -
+                              valueToMs(
+                                reminder.unit,
+                                reminder.atStart ? 0 : reminder.value,
+                              ),
+                          )
+                        : null;
+                      const isAtStart = reminder.atStart === true;
+
+                      return (
+                        <div
+                          key={`${reminder.unit}-${index}`}
+                          className="grid gap-3 rounded-lg border border-border/50 bg-background/80 p-3 md:grid-cols-[1fr_180px_auto]"
+                        >
+                          <div className="space-y-1.5">
+                            <Label className="font-mono text-xs tracking-wider">
+                              VALUE UNIT
+                            </Label>
+                            <Select
+                              value={reminder.unit}
+                              onValueChange={(v) =>
+                                updateReminder(index, {
+                                  unit: v as StudyReminderValueUnit,
+                                })
+                              }
+                              disabled={!reminderEnabled}
+                            >
+                              <SelectTrigger className="font-mono text-sm w-full">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="minutes">
+                                  Minutes before
+                                </SelectItem>
+                                <SelectItem value="hours">
+                                  Hours before
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label className="font-mono text-xs tracking-wider">
+                              VALUE
+                            </Label>
+                            <div className="flex items-center gap-2">
+                              <Checkbox
+                                checked={isAtStart}
+                                onCheckedChange={(checked) =>
+                                  toggleStartReminder(index, checked === true)
+                                }
+                                disabled={!reminderEnabled}
+                              />
+                              <Label className="font-mono text-xs tracking-wider">
+                                At Start
+                              </Label>
+                            </div>
+                            {isAtStart ? (
+                              <div className="flex h-10 items-center rounded-md border border-dashed border-border/60 bg-muted/30 px-3 text-sm text-muted-foreground">
+                                At Start
+                              </div>
+                            ) : (
+                              <Input
+                                type="number"
+                                min={1}
+                                value={reminder.value}
+                                onChange={(e) =>
+                                  updateReminder(index, {
+                                    value: Number(e.target.value),
+                                  })
+                                }
+                                disabled={!reminderEnabled}
+                              />
+                            )}
+                          </div>
+
+                          <div className="flex items-end justify-between gap-2">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeReminder(index)}
+                              disabled={!reminderEnabled}
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-border/60 px-3 py-2">
+                    <p className="text-xs text-muted-foreground">
+                      Default reminders are 15 minutes, 5 minutes, and an At
+                      Start reminder.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addReminder}
+                      disabled={!reminderEnabled}
+                    >
+                      Add reminder
+                    </Button>
+                  </div>
+                </>
+              ) : null}
             </div>
 
             <div className="flex items-center justify-between rounded-lg border border-accent/20 bg-accent/5 px-4 py-3">

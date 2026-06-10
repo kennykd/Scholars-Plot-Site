@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createStudySchema } from '../../../lib/validation/study';
-import { prisma } from '@/lib/prisma';
-import { Prisma } from '@/lib/generated/prisma/client';
+import { getStudySessionsForUser, createStudySessionForUser } from '@/lib/services/studySessionService';
 import { getSession } from '@/lib/firebase/auth';
-import { get } from 'http';
 
 /**
  * @swagger
@@ -182,31 +180,13 @@ import { get } from 'http';
 export async function GET() {
   try {
     const session = await getSession();
-
     if (!session) {
       return NextResponse.json({ message: 'User is not authenticated!' }, { status: 401 });
     }
 
-    const studySessions = await prisma.studySession.findMany({
-      where: {
-        study_session_user: {
-          some: {
-            user_id: session.id,
-          },
-        },
-      },
-      include: {
-        study_session_user: true,
-      },
-      orderBy: {
-        study_session_scheduled_at: 'asc',
-      },
-    });
+    const studySessions = await getStudySessionsForUser(session.id);
 
-    return NextResponse.json(
-      { message: 'Study sessions retrieved successfully', studySessions },
-      { status: 200 },
-    );
+    return NextResponse.json({ message: 'Study sessions retrieved successfully', studySessions }, { status: 200 });
   } catch (error) {
     return NextResponse.json({ message: 'Error retrieving study sessions', error }, { status: 500 });
   }
@@ -214,13 +194,11 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    // Get the session to get the userID currently logged in
     const session = await getSession();
     
     if(!session) {
       return NextResponse.json({ message: "User is not authenticated!" }, { status: 401 })
     }
-    // Take the authenticated userId
     const userId = session.id; 
 
     let body: unknown;
@@ -231,7 +209,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Invalid JSON body' }, { status: 400 });
     }
 
-    // Input validation using the zod schema, to ensure safe parsing of the input JSON body
     const parsed = createStudySchema.safeParse(body);
 
     if (!parsed.success) {
@@ -245,50 +222,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'No fields provided for update' }, { status: 400 });
     }
 
-    const {
-      study_session_name,
-      study_session_description,
-      focus_minutes,
-      break_minutes,
-      total_pomodoros,
-      total_minutes,
-      study_session_scheduled_at,
-      checklist_json,
-      task_id,
-      attachment_id,
-    } = parsed.data;
+    const studySession = await createStudySessionForUser(userId, parsed.data);
 
-    const newStudySession = await prisma.studySession.create({
-      data: {
-        study_session_name,
-        study_session_description,
-        focus_minutes,
-        break_minutes,
-        total_pomodoros,
-        total_minutes,
-        study_session_scheduled_at,
-        // If the input is null for the json checklist, make the database store SQL NULL in the checklist_json column
-        checklist_json: checklist_json === null ? Prisma.DbNull : checklist_json,
-        // Also create the junction table: study_session_user 
-        // Required field: user_id, 
-        // Optional fields: task_id, attachment_id. Where the option fields are only filled when the Study Session is linked with a task
-        study_session_user: {
-          create: {
-            user_id: userId,
-            task_id: task_id || null,
-            attachment_id: attachment_id || null,
-          },
-        },
-      },
-      include: {
-        study_session_user: true,
-      },
-    });
-
-    return NextResponse.json(
-      { message: 'Study session created successfully', studySession: newStudySession },
-      { status: 201 },
-    );
+    return NextResponse.json({ message: 'Study session created successfully', studySession }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ message: 'Error creating study session', error }, { status: 500 });
   }

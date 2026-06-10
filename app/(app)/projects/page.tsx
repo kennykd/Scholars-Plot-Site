@@ -75,8 +75,6 @@ type CurrentUser = {
   image: string | null;
 };
 
-const STORAGE_KEY = "scholarsPlot.projects";
-
 const STATUS_ORDER: ProjectTaskStatus[] = ["not-done", "pending", "done"];
 
 const STATUS_META: Array<{
@@ -144,9 +142,14 @@ export default function ProjectsPage() {
 
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectDescription, setNewProjectDescription] = useState("");
-  const [newProjectDeadline, setNewProjectDeadline] = useState<string | null>(null);
-  const [newProjectPriorityRating, setNewProjectPriorityRating] = useState<number>(2.5);
-  const [newProjectStatus, setNewProjectStatus] = useState<"active" | "completed" | "archived">("active");
+  const [newProjectDeadline, setNewProjectDeadline] = useState<string | null>(
+    null,
+  );
+  const [newProjectPriorityRating, setNewProjectPriorityRating] =
+    useState<number>(2.5);
+  const [newProjectStatus, setNewProjectStatus] = useState<
+    "active" | "completed" | "archived"
+  >("active");
 
   const [inviteHandle, setInviteHandle] = useState("");
   const [inviteRole, setInviteRole] = useState<ProjectRole>("member");
@@ -204,8 +207,9 @@ export default function ProjectsPage() {
             description: t.description,
             attachments: t.attachments || [],
             reminder: t.reminder || "none",
-            priority: t.priority >= 4 ? "high" : t.priority >= 2.5 ? "medium" : "low",
-            status: (t.status as any) || "not-done" as const,
+            priority:
+              t.priority >= 4 ? "high" : t.priority >= 2.5 ? "medium" : "low",
+            status: (t.status as any) || ("not-done" as const),
             assignedTo: undefined,
             createdAt: t.createdAt.toISOString(),
           })),
@@ -273,9 +277,7 @@ export default function ProjectsPage() {
       );
 
       // Add current user as owner member
-      newProject.members = [
-        createMemberFromUser(currentUser, "owner"),
-      ];
+      newProject.members = [createMemberFromUser(currentUser, "owner")];
 
       setProjects((prev) => [newProject, ...prev]);
       setActiveProjectId(newProject.id);
@@ -322,15 +324,12 @@ export default function ProjectsPage() {
         `user-${Date.now()}`,
         inviteHandle.trim(),
         inviteHandle.trim(),
-        inviteRole
+        inviteRole,
       );
 
       updateProject(activeProject.id, (project) => ({
         ...project,
-        members: [
-          ...project.members,
-          newMember,
-        ],
+        members: [...project.members, newMember],
       }));
 
       setInviteHandle("");
@@ -391,7 +390,7 @@ export default function ProjectsPage() {
         taskDescription.trim() || undefined,
         undefined,
         taskAttachment || undefined,
-        taskReminder as string
+        taskReminder as string,
       );
 
       updateProject(activeProject.id, (project) => ({
@@ -417,15 +416,22 @@ export default function ProjectsPage() {
     if (!activeProject) return;
 
     try {
-      const updatedTask = await updateProjectTaskApi(taskId, undefined, undefined, undefined, undefined, memberId);
-      
+      const updatedTask = await updateProjectTaskApi(
+        taskId,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        memberId,
+      );
+
       updateProject(activeProject.id, (project) => ({
         ...project,
         tasks: project.tasks.map((task) =>
           task.id === taskId ? { ...task, assignedTo: memberId } : task,
         ),
       }));
-      
+
       toast.success("Task assigned successfully");
     } catch (error) {
       const message =
@@ -453,15 +459,21 @@ export default function ProjectsPage() {
     if (nextStatus === task.status) return;
 
     try {
-      await updateProjectTaskApi(taskId, undefined, undefined, undefined, nextStatus);
-      
+      await updateProjectTaskApi(
+        taskId,
+        undefined,
+        undefined,
+        undefined,
+        nextStatus,
+      );
+
       updateProject(activeProject.id, (project) => ({
         ...project,
         tasks: project.tasks.map((t) =>
           t.id === taskId ? { ...t, status: nextStatus } : t,
         ),
       }));
-      
+
       toast.success("Task moved successfully");
     } catch (error) {
       const message =
@@ -506,7 +518,7 @@ export default function ProjectsPage() {
             value={projectSelectValue}
             onValueChange={(value) => setActiveProjectId(value)}
           >
-            <SelectTrigger className="min-w-[220px] font-mono text-xs">
+            <SelectTrigger className="min-w-55 font-mono text-xs">
               <SelectValue
                 placeholder={
                   projects.length ? "Select project" : "No projects yet"
@@ -565,7 +577,7 @@ export default function ProjectsPage() {
                   placeholder="Optional description"
                   value={newProjectDescription}
                   onChange={(e) => setNewProjectDescription(e.target.value)}
-                  className="min-h-[90px]"
+                  className="min-h-22.5"
                 />
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <div>
@@ -574,21 +586,31 @@ export default function ProjectsPage() {
                       className="mt-1"
                       type="date"
                       value={newProjectDeadline ?? ""}
-                      onChange={(e) => setNewProjectDeadline(e.target.value || null)}
+                      onChange={(e) =>
+                        setNewProjectDeadline(e.target.value || null)
+                      }
                     />
                   </div>
 
                   <div>
                     <Label className="font-mono text-xs">Priority</Label>
                     <div className="mt-1 flex h-10 flex-nowrap items-center gap-2 whitespace-nowrap">
-                      <StarRating value={newProjectPriorityRating} onChange={setNewProjectPriorityRating} />
-                      <span className="font-mono text-sm text-muted-foreground">{newProjectPriorityRating.toFixed(1)} / 5.0</span>
+                      <StarRating
+                        value={newProjectPriorityRating}
+                        onChange={setNewProjectPriorityRating}
+                      />
+                      <span className="font-mono text-sm text-muted-foreground">
+                        {newProjectPriorityRating.toFixed(1)} / 5.0
+                      </span>
                     </div>
                   </div>
 
                   <div>
                     <Label className="font-mono text-xs">Status</Label>
-                    <Select value={newProjectStatus} onValueChange={(v) => setNewProjectStatus(v as any)}>
+                    <Select
+                      value={newProjectStatus}
+                      onValueChange={(v) => setNewProjectStatus(v as any)}
+                    >
                       <SelectTrigger className="mt-1 w-full font-mono text-sm">
                         <SelectValue />
                       </SelectTrigger>
@@ -711,7 +733,10 @@ export default function ProjectsPage() {
                       </p>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="destructive" className="font-mono text-xs">
+                          <Button
+                            variant="destructive"
+                            className="font-mono text-xs"
+                          >
                             <Trash2 className="h-4 w-4 mr-2" />
                             Delete project
                           </Button>
@@ -784,7 +809,7 @@ export default function ProjectsPage() {
                       placeholder="Optional task description..."
                       value={taskDescription}
                       onChange={(e) => setTaskDescription(e.target.value)}
-                      className="resize-y min-h-[80px]"
+                      className="resize-y min-h-20"
                     />
                   </div>
 

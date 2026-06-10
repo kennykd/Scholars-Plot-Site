@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminAuth } from "@/lib/firebase/firebase-admin";
-import { prisma } from "@/lib/prisma";
+import { getAdminAuth } from "@/lib/firebase/firebase-admin";
+import prisma from "@/lib/prisma";
 
 /**
  * @swagger
@@ -93,7 +93,7 @@ const idToken = authorization.split("Bearer ")[1];
 try {
   // The bearer value here is a Firebase ID token. Verify it first, then
   // exchange it for the long-lived httpOnly session cookie below.
-  const decodedToken = await adminAuth.verifyIdToken(idToken, true);
+  const decodedToken = await getAdminAuth().verifyIdToken(idToken, true);
 
   // Anonymous auth and phone-auth tokens carry no email, which would crash
   // the Prisma upsert below. Guard here so the error is explicit and clean
@@ -134,7 +134,7 @@ try {
     raw ID token in the cookie instead would let an attacker replay it
     directly against Firebase APIs, the session cookie is only valid here.
    */
-  const sessionCookie = await adminAuth.createSessionCookie(idToken, {
+  const sessionCookie = await getAdminAuth().createSessionCookie(idToken, {
     expiresIn: SESSION_DURATION_MS,
   });
 

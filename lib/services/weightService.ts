@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/prisma";
 import type { WeightAdapterResult } from "@/lib/ai/weightAdapter";
 
 export async function getCompletedTasksForUser(

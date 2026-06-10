@@ -1,61 +1,26 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { mockStudySessions } from "@/lib/mock-data";
 import { CalendarClock, Timer } from "lucide-react";
 import { format, formatDistanceToNow, isAfter, parseISO } from "date-fns";
-
-type StoredSession = {
-  id: string;
-  title: string;
-  scheduledAt: string;
-  focusMinutes: number;
-  breakMinutes: number;
-  status: "planned" | "in-progress" | "completed";
+import type { StudySession } from "@/types";
+type ActiveStudySessionProps = {
+  sessions: StudySession[];
 };
 
-const STORAGE_KEY = "scholarsPlot.studySessions";
-
-const seedSessions = (): StoredSession[] =>
-  mockStudySessions.map((session) => ({
-    id: session.id,
-    title: session.taskTitle ?? "Study Session",
-    scheduledAt: (session.scheduledAt ?? new Date()).toISOString(),
-    focusMinutes: session.duration ?? 25,
-    breakMinutes: session.breakDuration ?? 5,
-    status: session.status === "completed" ? "completed" : "planned",
-  }));
-
-export function ActiveStudySession() {
-  const [sessions, setSessions] = useState<StoredSession[]>([]);
-
-  useEffect(() => {
-    const stored =
-      typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
-
-    if (stored) {
-      try {
-        setSessions(JSON.parse(stored));
-        return;
-      } catch {
-        setSessions(seedSessions());
-        return;
-      }
-    }
-
-    setSessions(seedSessions());
-  }, []);
+export function ActiveStudySession({ sessions }: ActiveStudySessionProps) {
+  const loading = false;
 
   const upcomingSessions = useMemo(() => {
     const now = new Date();
     return sessions
       .filter(
         (session) =>
-          session.status !== "completed" &&
+          session.sessionStatus !== "completed" &&
           isAfter(parseISO(session.scheduledAt), now),
       )
       .sort(
@@ -64,7 +29,17 @@ export function ActiveStudySession() {
       );
   }, [sessions]);
 
-  const nextSession = upcomingSessions[0];
+  const activeSessions = useMemo(
+    () =>
+      sessions.filter(
+        (session) =>
+          session.sessionStatus === "running" ||
+          session.sessionStatus === "paused",
+      ),
+    [sessions],
+  );
+
+  const nextSession = activeSessions[0] ?? upcomingSessions[0];
 
   return (
     <Card className="bg-card/80 backdrop-blur-sm border-0">
@@ -74,7 +49,16 @@ export function ActiveStudySession() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {!nextSession ? (
+        {loading ? (
+          <div className="space-y-3 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-dashed border-muted-foreground/30 mx-auto">
+              <Timer className="h-6 w-6 text-muted-foreground/50" />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Loading study sessions...
+            </p>
+          </div>
+        ) : !nextSession ? (
           <div className="space-y-4 text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-dashed border-muted-foreground/30 mx-auto">
               <Timer className="h-6 w-6 text-muted-foreground/50" />
@@ -104,6 +88,9 @@ export function ActiveStudySession() {
                 <CalendarClock className="h-5 w-5 text-muted-foreground" />
               </div>
               <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="secondary" className="text-[10px] capitalize">
+                  {nextSession.sessionStatus}
+                </Badge>
                 <Badge variant="outline" className="font-mono text-[10px]">
                   {nextSession.focusMinutes}m / {nextSession.breakMinutes}m
                 </Badge>

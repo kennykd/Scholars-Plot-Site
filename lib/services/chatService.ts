@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/prisma";
-import { MessageRole, ActionStatus } from "@prisma/client";
+import prisma from '../prisma';
+import { MessageRole, ActionStatus } from "../generated/prisma/client";
 import { getUserPendingTasks, getUserAvailability } from "./scheduleService";
 import { getCurrentWeights } from "./weightService";
 import { getScheduledSessionsForWeek, getOverloadWarningsForUser } from "./overloadService";
@@ -264,7 +264,7 @@ export async function saveMessagePair(
         conversation_id: conversationId,
         role: MessageRole.user,
         text_content: userText,
-        structured_json: null,
+        structured_json: undefined,
         action_status: ActionStatus.none,
       },
     }),

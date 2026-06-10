@@ -1,6 +1,6 @@
 import prisma from "@/lib/prisma";
 import { Prisma } from "@/lib/generated/prisma/client";
-import type { StudySession, CreateStudySessionPayload, UpdateStudySessionPayload } from "@/types";
+import type { StudySession } from "@/types";
 
 type StudySessionRow = Prisma.StudySessionGetPayload<{
   include: {
@@ -59,7 +59,7 @@ export async function getStudySessionsForDashboard(userId: string) {
   return getStudySessionsForUser(userId);
 }
 
-export async function createStudySessionForUser(userId: string, payload: CreateStudySessionPayload) {
+export async function createStudySessionForUser(userId: string, payload: any) {
   const {
     study_session_name,
     study_session_description,
@@ -136,7 +136,7 @@ export async function deleteStudySessionIfMember(studySessionId: number, userId:
   return true;
 }
 
-export async function updateStudySessionForMember(studySessionId: number, userId: string, parsedData: UpdateStudySessionPayload) {
+export async function updateStudySessionForMember(studySessionId: number, userId: string, parsedData: any) {
   const membership = await prisma.studySessionUser.findUnique({
     where: {
       study_session_id_user_id: {

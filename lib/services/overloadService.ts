@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/prisma";
 import type { OverloadDetectorResult } from "@/lib/ai/overloadDetector";
 
 export async function getScheduledSessionsForWeek(

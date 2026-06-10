@@ -1,57 +1,85 @@
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-// Create the client for the BackBlaze B2 storage bucket using environment variables
-// requireEnv acts a helper to ensure all necessary environment variables are set and throws an error if any are missing
 function requireEnv(name: string): string {
   const value = process.env[name];
   if (!value) {
+    // During build time, return a dummy value so module can load
+    if (process.env.NODE_ENV === 'production' && !process.env.B2_REGION) {
+      return '';
+    }
     throw new Error(`Missing required environment variable: ${name}`);
   }
   return value;
 }
 
-const s3 = new S3Client({
-  region: requireEnv("B2_REGION"),
-  endpoint: requireEnv("B2_ENDPOINT"),
-  credentials: {
-    accessKeyId: requireEnv("B2_KEY_ID"),
-    secretAccessKey: requireEnv("B2_APP_KEY"),
-  },
-});
+let s3Client: S3Client | null = null;
+let bucketName: string | null = null;
 
-export const BUCKET = requireEnv("B2_BUCKET_NAME");
+function initializeS3() {
+  if (s3Client && bucketName) return { s3Client, bucketName };
+  
+  const region = requireEnv("B2_REGION");
+  const endpoint = requireEnv("B2_ENDPOINT");
+  const keyId = requireEnv("B2_KEY_ID");
+  const appKey = requireEnv("B2_APP_KEY");
+  bucketName = requireEnv("B2_BUCKET_NAME");
 
-// Upload a file
-export async function uploadFile(fileBuffer: Buffer, fileName: string, mimeType: string) {
-  const command = new PutObjectCommand({
-    Bucket: BUCKET,
-    Key: fileName,         // the path/name inside your bucket
-    Body: fileBuffer,      // the actual file data as a Buffer
-    ContentType: mimeType, // e.g. "image/jpeg" or "application/pdf"
-  });
-
-  await s3.send(command);
-  return fileName; // return the key so you can store it in your DB
+  // Only initialize if all vars are present
+  if (region && endpoint && keyId && appKey && bucketName) {
+    s3Client = new S3Client({
+      region,
+      endpoint,
+      credentials: {
+        accessKeyId: keyId,
+        secretAccessKey: appKey,
+      },
+    });
+  }
+  
+  return { s3Client, bucketName };
 }
 
-// Generate a temporary URL to view/download a file (expires after 1 hour)
+export function getBucket(): string {
+  return initializeS3().bucketName || '';
+}
+
+export async function uploadFile(fileBuffer: Buffer, fileName: string, mimeType: string) {
+  const { s3Client, bucketName } = initializeS3();
+  if (!s3Client || !bucketName) throw new Error('S3 not initialized');
+  
+  const command = new PutObjectCommand({
+    Bucket: bucketName,
+    Key: fileName,
+    Body: fileBuffer,
+    ContentType: mimeType,
+  });
+
+  await s3Client.send(command);
+  return fileName;
+}
+
 export async function getFileUrl(fileName: string) {
+  const { s3Client, bucketName } = initializeS3();
+  if (!s3Client || !bucketName) throw new Error('S3 not initialized');
+  
   const command = new GetObjectCommand({
-    Bucket: BUCKET,
+    Bucket: bucketName,
     Key: fileName,
   });
 
-  const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
+  const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
   return url;
 }
 
-// Delete a file
 export async function deleteFile(fileName: string) {
+  const { s3Client, bucketName } = initializeS3();
+  if (!s3Client || !bucketName) throw new Error('S3 not initialized');
+  
   const command = new DeleteObjectCommand({
-    Bucket: BUCKET,
+    Bucket: bucketName,
     Key: fileName,
   });
 
-  await s3.send(command);
+  await s3Client.send(command);
 }

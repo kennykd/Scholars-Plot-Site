@@ -124,7 +124,9 @@ export default function TaskForm() {
           if (!uploadRes.ok) failures.push(f.name);
         }
         if (failures.length > 0) {
-          toast.warning(`Task created. Some files failed: ${failures.join(", ")}`);
+          toast.warning(
+            `Task created. Some files failed: ${failures.join(", ")}`,
+          );
         } else {
           toast.success("Task created");
         }
@@ -238,7 +240,7 @@ export default function TaskForm() {
                 placeholder="Optional task description..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="resize-y min-h-[80px]"
+                className="resize-y min-h-20"
               />
             </div>
 
@@ -292,11 +294,7 @@ export default function TaskForm() {
                 PRIORITY
               </Label>
               <div className="flex items-center gap-3">
-                <StarRating
-                  value={priority}
-                  onChange={setPriority}
-                  size="lg"
-                />
+                <StarRating value={priority} onChange={setPriority} size="lg" />
                 <span className="font-mono text-sm text-muted-foreground">
                   {priority.toFixed(1)} / 5.0
                 </span>
@@ -311,10 +309,10 @@ export default function TaskForm() {
                 value={reminder}
                 onValueChange={(v) => setReminder(v as ReminderOption)}
               >
-                <SelectTrigger className="font-mono text-sm w-full min-w-[260px]">
+                <SelectTrigger className="font-mono text-sm w-full min-w-65">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="min-w-[260px]">
+                <SelectContent className="min-w-65">
                   <SelectItem value="none">None</SelectItem>
                   <SelectItem value="daily">Every day</SelectItem>
                   <SelectItem value="every-3-days">Every 3 days</SelectItem>

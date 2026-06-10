@@ -2,7 +2,7 @@
 
 import { cache } from "react";
 import { cookies } from "next/headers";
-import { adminAuth } from "@/lib/firebase/firebase-admin";
+import { getAdminAuth } from "@/lib/firebase/firebase-admin";
 import type { DecodedIdToken } from "firebase-admin/auth";
 
 interface SessionUser {
@@ -21,7 +21,7 @@ export const getSession = cache(async (): Promise<SessionUser | null> => {
 
   try {
     // Verify the server-issued Firebase session cookie.
-    const decodedToken: DecodedIdToken = await adminAuth.verifySessionCookie(session, true);
+    const decodedToken: DecodedIdToken = await getAdminAuth().verifySessionCookie(session, true);
 
     if (!decodedToken.email) return null;
 

@@ -1,0 +1,27 @@
+# Dependencies & build output
+node_modules
+.next
+out
+
+# Git & IDE
+.git
+.gitignore
+.cursor
+*.md
+
+# Tests & coverage
+__tests__
+coverage
+jest.config.ts
+jest.setup.ts
+
+# Env (inject at runtime / build via CI)
+.env
+.env.*
+!.env.example
+
+# Misc
+*.log
+.DS_Store
+npm-debug.log*
+tsconfig.tsbuildinfo
