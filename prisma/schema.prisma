@@ -60,6 +60,18 @@ enum AlertType {
   timer_complete       @map("timer-complete")
 }
 
+enum MessageRole {
+  user
+  assistant
+}
+
+enum ActionStatus {
+  none
+  pending
+  confirmed
+  dismissed
+}
+
 // ─── MODELS ──────────────────────────────────────────────────────────────────
 
 model User {
@@ -76,13 +88,14 @@ model User {
   ai_behavior_profile   Json?
   ai_profile_updated_at DateTime?
 
-  analytics       Analytics?      @relation(fields: [analytics_id], references: [analytics_id])
-  project_members ProjectUser[]
-  task_users      TaskUser[]
-  study_session_user StudySessionUser[]
+  analytics            Analytics?      @relation(fields: [analytics_id], references: [analytics_id])
+  project_members      ProjectUser[]
+  task_users           TaskUser[]
+  study_session_user   StudySessionUser[]
   user_formula_weights UserFormulaWeights?
-  user_availability UserAvailability[]
-  overload_warnings OverloadWarning[]
+  user_availability    UserAvailability[]
+  overload_warnings    OverloadWarning[]
+  chat_conversations   ChatConversation[]
 
   @@map("user")
 }
@@ -125,7 +138,7 @@ model Project {
   project_created_at  DateTime      @default(now())
 
   project_user ProjectUser[]
-  tasks           Task[]
+  tasks        Task[]
 
   @@map("project")
 }
@@ -160,11 +173,11 @@ model Task {
   ai_priority_score    Int?      // the 0-100 output of the formula
   ai_analyzed_at       DateTime? // when the AI last processed this task
 
-  project        Project?       @relation(fields: [project_id], references: [project_id], onDelete: SetNull)
-  task_users     TaskUser[]
+  project            Project?       @relation(fields: [project_id], references: [project_id], onDelete: SetNull)
+  task_users         TaskUser[]
   study_session_user StudySessionUser[]
-  task_reminders TaskReminder[]
-  attachments    Attachment[]
+  task_reminders     TaskReminder[]
+  attachments        Attachment[]
 
   @@map("task")
 }
@@ -234,6 +247,33 @@ model StudySessionUser {
   @@map("study_session_user")
 }
 
+model ChatConversation {
+  id           Int           @id @default(autoincrement())
+  user_id      String
+  title        String?
+  created_at   DateTime      @default(now())
+  updated_at   DateTime      @updatedAt
+
+  user     User          @relation(fields: [user_id], references: [user_id])
+  messages ChatMessage[]
+
+  @@map("chat_conversation")
+}
+
+model ChatMessage {
+  id              Int              @id @default(autoincrement())
+  conversation_id Int
+  role            MessageRole
+  text_content    String           @db.Text
+  structured_json Json?
+  action_status   ActionStatus     @default(none)
+  created_at      DateTime         @default(now())
+
+  conversation ChatConversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+
+  @@map("chat_message")
+}
+
 model StudySessionReminder {
   reminder_id      Int                  @id @default(autoincrement())
   study_session_id Int
@@ -288,6 +328,7 @@ model OverloadWarning {
   is_read     Boolean  @default(false)
 
   user User @relation(fields: [user_id], references: [user_id])
+
   @@map("overload_warning")
 }
 
