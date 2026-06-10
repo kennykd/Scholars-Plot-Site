@@ -72,7 +72,7 @@ export function Sidebar({ user }: { user: SidebarUser }) {
   const handleLogout = async () => {
     try {
       setLogoutLoading(true);
-      const res = await fetch("/api/logout", { method: "POST" });
+      const res = await fetch("/api/auth/logout", { method: "POST" });
       if (!res.ok) throw new Error("Logout failed");
       toast.success("Logged out successfully");
       router.push("/login");

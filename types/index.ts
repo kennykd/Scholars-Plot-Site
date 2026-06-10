@@ -44,7 +44,36 @@ export type StudySession = {
   paused_total_seconds_remaining?: number;
 };
 
+/** Payload required to create a new study session */
+export interface CreateStudySessionPayload extends Omit<StudySession, 'id' | 'createdAt' | 'sessionStatus' | 'attachments' | 'scheduledAt'> {
+  study_session_name: string;
+  study_session_description?: string | null;
+  focus_minutes?: number;
+  break_minutes?: number;
+  total_pomodoros?: number;
+  total_minutes?: number;
+  study_session_scheduled_at: Date | string;
+  checklist_json?: any;
+  reminder_enabled?: boolean;
+  reminders?: number[];
+  task_id?: number | null;
+  attachment_id?: number | null;
+}
 
+/** Payload allowed for updating a study session */
+export interface UpdateStudySessionPayload {
+  status?: "idle" | "running" | "paused" | "completed";
+  started_at?: Date | string | null;
+  current_time?: number | null;
+  completed_at?: Date | string | null;
+  actual_duration?: number | null;
+  study_session_name?: string;
+  study_session_description?: string | null;
+  focus_minutes?: number;
+  break_minutes?: number;
+  total_minutes?: number;
+  checklist_json?: any;
+}
 
 export interface AnalyticsData {
   /** Task completion metrics categorized by timing */
