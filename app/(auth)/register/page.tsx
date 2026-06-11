@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -20,6 +21,8 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const createSession = async (idToken: string, name?: string) => {
     const res = await fetch("/api/auth/firebase", {
@@ -117,7 +120,7 @@ export default function RegisterPage() {
               <div className="w-full border-t border-white/10" />
             </div>
             <div className="relative flex justify-center text-xs">
-              <span className="bg-[#1A2DAB] px-2 text-white/40 font-mono">
+              <span className="text-l px-3 text-white/40 font-mono">
                 OR
               </span>
             </div>
@@ -139,24 +142,48 @@ export default function RegisterPage() {
               required
               className="bg-white/5 border-white/20 text-white placeholder:text-white/40 h-12 focus:border-[#FF4D2E] focus:ring-[#FF4D2E]"
             />
-            <Input
-              type="password"
-              placeholder="Password (min 6 chars)"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-              className="bg-white/5 border-white/20 text-white placeholder:text-white/40 h-12 focus:border-[#FF4D2E] focus:ring-[#FF4D2E]"
-            />
-            <Input
-              type="password"
-              placeholder="Confirm Password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              minLength={6}
-              className="bg-white/5 border-white/20 text-white placeholder:text-white/40 h-12 focus:border-[#FF4D2E] focus:ring-[#FF4D2E]"
-            />
+
+            {/* 3. Password Input Wrapper */}
+            <div className="relative">
+              <Input
+                type={showPassword ? "text" : "password"} // Dynamic input type
+                placeholder="Password (min 6 chars)"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+                className="bg-white/5 border-white/20 text-white placeholder:text-white/40 h-12 pr-10 focus:border-[#FF4D2E] focus:ring-[#FF4D2E]"
+              />
+              <button
+                type="button" // CRITICAL: type="button" prevents form submission trigger
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/80 transition-colors"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+
+            {/* 4. Confirm Password Input Wrapper */}
+            <div className="relative">
+              <Input
+                type={showConfirmPassword ? "text" : "password"} // Dynamic input type
+                placeholder="Confirm Password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                minLength={6}
+                className="bg-white/5 border-white/20 text-white placeholder:text-white/40 h-12 pr-10 focus:border-[#FF4D2E] focus:ring-[#FF4D2E]"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/80 transition-colors"
+                aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+              >
+                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
             <Button
               className="w-full bg-[#FF4D2E] hover:bg-[#e04327] text-white font-semibold h-12"
               type="submit"
@@ -181,7 +208,7 @@ export default function RegisterPage() {
 
           <Link
             href="/"
-            className="text-xs text-white/40 hover:text-white/60 transition-colors"
+            className="text-l text-white/40 hover:text-white/60 transition-colors"
           >
             ← Back to home
           </Link>

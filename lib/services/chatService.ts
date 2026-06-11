@@ -139,15 +139,21 @@ export async function buildChatContext(userId: string): Promise<ChatContext> {
     }));
 
   // Build scheduled sessions
-  const scheduled_sessions: ContextSession[] = rawSessions.map((s) => ({
-    study_session_name: s.study_session_name,
-    scheduled_at: new Date(s.study_session_scheduled_at).toISOString(),
-    total_minutes: s.total_minutes,
-    // pull task name from the first linked TaskUser if available
-    task_name:
-      (s as any).study_session_user?.[0]?.task?.task_name ?? null,
-    status: (s as any).study_session_user?.[0]?.status ?? "idle",
-  }));
+  const scheduled_sessions: ContextSession[] = rawSessions.map((s) => {
+    const sessionDate = s.scheduled_at;
+    const isValidDate = sessionDate && !isNaN(sessionDate.getTime());
+    const formattedDate = isValidDate ? sessionDate.toISOString() : new Date().toISOString();
+
+    return {
+      study_session_name: s.study_session_name,
+      scheduled_at: formattedDate, 
+      total_minutes: s.total_minutes,
+      task_name: s.task_name,
+      // 1. Add the missing status property here!
+      // Try s.status, s.sessionStatus, or use a fallback string if it isn't on the database object
+      status: (s as any).status || (s as any).sessionStatus || "idle", 
+    };
+  });
 
   // Active overload warning — most recent unread only
   const latestWarning = rawWarnings.find((w) => !w.is_read) ?? null;

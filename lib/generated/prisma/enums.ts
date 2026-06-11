@@ -29,6 +29,7 @@ export type ProjectStatus = (typeof ProjectStatus)[keyof typeof ProjectStatus]
 export const ProjectUserRole = {
   owner: 'owner',
   moderator: 'moderator',
+  collaborator: 'collaborator',
   member: 'member'
 } as const
 
