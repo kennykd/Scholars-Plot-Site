@@ -12,12 +12,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
@@ -127,7 +129,7 @@ export default function LoginPage() {
               <div className="w-full border-t border-white/10" />
             </div>
             <div className="relative flex justify-center text-xs">
-              <span className="bg-[#0f1a66] px-2 text-white/40 font-mono">
+              <span className="text-lpx-2 text-white/40 font-mono">
                 OR
               </span>
             </div>
@@ -149,14 +151,26 @@ export default function LoginPage() {
               className="bg-white/5 border-white/20 text-white placeholder:text-white/40 h-12 focus:border-[#FF4D2E] focus:ring-[#FF4D2E]"
             />
 
-            <Input
-              type="password"
-              placeholder="Password"
-              value={password}
-              required
-              onChange={(e) => setPassword(e.target.value)}
-              className="bg-white/5 border-white/20 text-white placeholder:text-white/40 h-12 focus:border-[#FF4D2E] focus:ring-[#FF4D2E]"
-            />
+            {/* 3. Password Input Wrapper */}
+            <div className="relative">
+              <Input
+                type={showPassword ? "text" : "password"} // Dynamic input type
+                placeholder="Password (min 6 chars)"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+                className="bg-white/5 border-white/20 text-white placeholder:text-white/40 h-12 pr-10 focus:border-[#FF4D2E] focus:ring-[#FF4D2E]"
+              />
+              <button
+                type="button" // CRITICAL: type="button" prevents form submission trigger
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/80 transition-colors"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
 
             <Button
               className="w-full bg-[#FF4D2E] hover:bg-[#e04327] text-white font-semibold h-12"
@@ -182,7 +196,7 @@ export default function LoginPage() {
 
           <Link
             href="/"
-            className="text-xs text-white/40 hover:text-white/60 transition-colors"
+            className="text-l text-white/40 hover:text-white/60 transition-colors"
           >
             ← Back to home
           </Link>
