@@ -23,7 +23,7 @@ const config: runtime.GetPrismaClientConfig = {
       "value": "prisma-client"
     },
     "output": {
-      "value": "C:\\Users\\Barri\\Documents\\University\\WADS\\scholars-plot-site\\lib\\generated\\prisma",
+      "value": "D:\\K\\Tech\\Code\\Scholars-Plot-Site\\lib\\generated\\prisma",
       "fromEnvVar": null
     },
     "config": {
@@ -37,7 +37,7 @@ const config: runtime.GetPrismaClientConfig = {
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "C:\\Users\\Barri\\Documents\\University\\WADS\\scholars-plot-site\\prisma\\schema.prisma",
+    "sourceFilePath": "D:\\K\\Tech\\Code\\Scholars-Plot-Site\\prisma\\schema.prisma",
     "isCustomOutput": true
   },
   "relativePath": "../../../prisma",
