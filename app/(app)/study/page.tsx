@@ -18,7 +18,7 @@ export default async function StudyPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <StudyPageHeader />
+      <StudyPageHeader sessionCount={initialSessions.length} />
       <StudyPageClient initialSessions={initialSessions} />
     </div>
   );

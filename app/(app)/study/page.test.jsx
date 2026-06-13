@@ -15,7 +15,7 @@ jest.mock("@/lib/firebase/auth-context", () => ({
 const renderStudyPage = (initialSessions = []) =>
   render(
     <div className="p-6 space-y-6">
-      <StudyPageHeader />
+      <StudyPageHeader sessionCount={initialSessions.length} />
       <StudyPageClient initialSessions={initialSessions} />
     </div>,
   );
@@ -35,7 +35,8 @@ describe("StudyPage client sections", () => {
     expect(
       screen.getByRole("heading", { name: /STUDY SESSIONS/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/UPCOMING STUDY PLAN/i)).toBeInTheDocument();
+    expect(screen.getByText(/0 sessions/i)).toBeInTheDocument();
+    expect(screen.queryByText(/UPCOMING STUDY PLAN/i)).not.toBeInTheDocument();
   });
 
   it("allows a user to input a quick timer and add it to the list", async () => {
@@ -52,7 +53,7 @@ describe("StudyPage client sections", () => {
     ).toBeInTheDocument();
   });
 
-  it("navigates to the session detail page when Start is clicked", () => {
+  it("navigates to the session detail page from the compact row control", () => {
     renderStudyPage([
       {
         id: "42",
@@ -69,7 +70,13 @@ describe("StudyPage client sections", () => {
       },
     ]);
 
-    fireEvent.click(screen.getByRole("button", { name: /Start/i }));
+    expect(
+      screen.queryByRole("button", { name: /^Start$/i }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /open physics review/i }),
+    );
 
     expect(mockPush).toHaveBeenCalledWith("/study/42");
   });
@@ -136,5 +143,32 @@ describe("StudyPage client sections", () => {
 
     expect(screen.getByText(/Upcoming Reminders/i)).toBeInTheDocument();
     expect(screen.getByText("Reminder Session")).toBeInTheDocument();
+  });
+
+  it("uses task-style compact row sizing for study sessions", () => {
+    renderStudyPage([
+      {
+        id: "77",
+        title: "Compact Session",
+        notes: "Bring formula sheet",
+        attachments: [],
+        scheduledAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        focusMinutes: 25,
+        breakMinutes: 5,
+        totalMinutes: 60,
+        sessionStatus: "idle",
+        createdAt: new Date().toISOString(),
+        isTimerOnly: false,
+      },
+    ]);
+
+    const rowButton = screen.getByRole("button", {
+      name: /open compact session/i,
+    });
+    const row = rowButton.closest("[data-study-row]");
+
+    expect(row).toHaveClass("py-3.5");
+    expect(row).not.toHaveClass("grid");
+    expect(screen.queryByText(/June|January|February|March|April|May|July|August|September|October|November|December/)).not.toBeInTheDocument();
   });
 });

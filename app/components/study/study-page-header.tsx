@@ -2,7 +2,11 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 
-export function StudyPageHeader() {
+type StudyPageHeaderProps = {
+  sessionCount?: number;
+};
+
+export function StudyPageHeader({ sessionCount = 0 }: StudyPageHeaderProps) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
@@ -10,7 +14,7 @@ export function StudyPageHeader() {
           STUDY SESSIONS
         </h1>
         <p className="font-mono text-xs text-muted-foreground mt-1 tracking-widest">
-          UPCOMING STUDY PLAN
+          {sessionCount} session{sessionCount !== 1 ? "s" : ""}
         </p>
       </div>
       <div className="flex gap-2">

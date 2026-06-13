@@ -6,6 +6,9 @@ import {
   differenceInSeconds,
   format,
   formatDistanceToNow,
+  isPast,
+  isToday,
+  isTomorrow,
   parseISO,
 } from "date-fns";
 import { Bell, ChevronRight, Timer } from "lucide-react";
@@ -105,14 +108,33 @@ function getStatusBadge(sectionType: StudySectionType, session: StudySession) {
 function getRowAccent(sectionType: StudySectionType) {
   if (sectionType === "in-progress") return "border-l-amber-500";
   if (sectionType === "completed") return "border-l-green-500";
-  if (sectionType === "expired") return "border-l-orange-500";
+  if (sectionType === "expired") return "border-l-red-500";
   return "border-l-accent";
 }
 
-function getActionLabel(sectionType: StudySectionType) {
-  if (sectionType === "in-progress") return "Open";
-  if (sectionType === "upcoming") return "Start";
-  return "Open";
+function getScheduleBadge(date: Date, sectionType: StudySectionType) {
+  if (sectionType === "expired" || (isPast(date) && !isToday(date))) {
+    return {
+      label: "Expired",
+      className: "bg-red-500/20 text-red-400 border-red-500/30",
+    };
+  }
+  if (isToday(date)) {
+    return {
+      label: "Today",
+      className: "bg-orange-500/20 text-orange-400 border-orange-500/30",
+    };
+  }
+  if (isTomorrow(date)) {
+    return {
+      label: "Tomorrow",
+      className: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+    };
+  }
+  return {
+    label: format(date, "MMM d"),
+    className: "bg-muted text-muted-foreground border-border",
+  };
 }
 
 function buildRows(
@@ -444,14 +466,19 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
       />
 
       <div className="space-y-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
           <Tabs
             value={filter}
             onValueChange={(value) => setFilter(value as StudyFilter)}
+            className="flex-1"
           >
-            <TabsList className="flex-wrap justify-start h-auto">
+            <TabsList className="bg-muted/50">
               {FILTERS.map((item) => (
-                <TabsTrigger key={item.value} value={item.value}>
+                <TabsTrigger
+                  key={item.value}
+                  value={item.value}
+                  className="font-mono text-xs"
+                >
                   {item.label}
                 </TabsTrigger>
               ))}
@@ -459,21 +486,11 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
           </Tabs>
 
           <div className="flex flex-wrap items-center gap-2">
-            {visibleRows.length > 0 && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={selectVisibleSessions}
-                className="font-semibold"
-              >
-                Select All
-              </Button>
-            )}
             <Select
               value={sortMode}
               onValueChange={(value) => setSortMode(value as StudySort)}
             >
-              <SelectTrigger className="w-[198px] font-mono text-sm">
+              <SelectTrigger className="w-44 font-mono text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -483,7 +500,11 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
             </Select>
             <Dialog open={quickTimerOpen} onOpenChange={setQuickTimerOpen}>
               <DialogTrigger asChild>
-                <Button type="button" className="gap-2 font-semibold">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="gap-2 font-mono text-xs"
+                >
                   <Timer className="h-4 w-4" />
                   Quick Timer
                 </Button>
@@ -509,15 +530,13 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 rounded-lg border border-border/60 bg-card/80 px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-2 font-mono text-xs text-muted-foreground">
           <div className="flex items-center gap-2">
             <Bell className="h-4 w-4 text-accent" />
-            <p className="font-display text-sm font-bold">
-              Upcoming Reminders
-            </p>
+            <p className="font-semibold text-foreground">Upcoming Reminders</p>
           </div>
           {upcomingSoon.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
+            <p>
               No study reminders are due soon.
             </p>
           ) : (
@@ -552,83 +571,79 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
             visibleRows.map(({ session, sectionType }) => {
               const isSelected = selectedSessionIds.includes(session.id);
               const statusBadge = getStatusBadge(sectionType, session);
+              const scheduledDate = parseISO(session.scheduledAt);
+              const scheduleBadge = getScheduleBadge(scheduledDate, sectionType);
 
               return (
                 <div
                   key={session.id}
+                  data-study-row
                   className={cn(
-                    "grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-lg border border-l-4 bg-card px-4 py-3 shadow-sm transition-colors hover:bg-muted/20",
+                    "flex items-center gap-3 rounded-lg px-4 py-3.5 border-l-4 bg-card",
+                    "hover:bg-card/90 transition-all duration-150 group shadow-sm",
                     getRowAccent(sectionType),
-                    isSelected && "border-accent bg-accent/10",
+                    isSelected && "ring-1 ring-accent/40 bg-card/95",
                   )}
                 >
                   <Checkbox
                     aria-label={`Select ${session.title}`}
                     checked={isSelected}
                     onCheckedChange={() => selectSession(session.id)}
+                    className="shrink-0"
                   />
 
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="truncate font-semibold text-foreground">
+                  <button
+                    type="button"
+                    aria-label={`Open ${session.title}`}
+                    onClick={() => openSession(session)}
+                    className="flex-1 flex items-center gap-3 min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 rounded-md"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate text-foreground">
                         {session.title}
                       </p>
-                      <Badge variant="outline" className="font-mono text-[10px]">
-                        {format(parseISO(session.scheduledAt), "MMM d")}
-                      </Badge>
-                    </div>
-                    <div className="mt-1 flex flex-wrap gap-2">
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "font-mono text-[10px]",
-                          statusBadge.className,
+                      <div className="mt-1 flex flex-wrap gap-1.5">
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "font-mono text-[10px]",
+                            statusBadge.className,
+                          )}
+                        >
+                          {statusBadge.label}
+                        </Badge>
+                        <Badge variant="secondary" className="font-mono text-[10px]">
+                          {session.focusMinutes}m / {session.breakMinutes}m
+                        </Badge>
+                        <Badge variant="secondary" className="font-mono text-[10px]">
+                          Total {session.totalMinutes}m
+                        </Badge>
+                        {session.notes && (
+                          <Badge variant="secondary" className="font-mono text-[10px]">
+                            Notes
+                          </Badge>
                         )}
-                      >
-                        {statusBadge.label}
-                      </Badge>
-                      <Badge variant="secondary" className="font-mono text-[10px]">
-                        {session.focusMinutes}m / {session.breakMinutes}m
-                      </Badge>
-                      <Badge variant="secondary" className="font-mono text-[10px]">
-                        Total {session.totalMinutes}m
-                      </Badge>
-                      {session.notes && (
-                        <Badge variant="secondary" className="font-mono text-[10px]">
-                          Notes
-                        </Badge>
-                      )}
-                      {session.attachments.length > 0 && (
-                        <Badge variant="secondary" className="font-mono text-[10px]">
-                          {session.attachments.length} attachment
-                          {session.attachments.length > 1 ? "s" : ""}
-                        </Badge>
-                      )}
+                        {session.attachments.length > 0 && (
+                          <Badge variant="secondary" className="font-mono text-[10px]">
+                            {session.attachments.length} attachment
+                            {session.attachments.length > 1 ? "s" : ""}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {format(parseISO(session.scheduledAt), "PPP p")}
-                    </p>
-                  </div>
 
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => openSession(session)}
-                      className="bg-accent text-accent-foreground hover:bg-accent/90"
+                    <Badge
+                      className={cn(
+                        "shrink-0 font-mono text-xs border",
+                        scheduleBadge.className,
+                      )}
+                      variant="outline"
                     >
-                      {getActionLabel(sectionType)}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Open ${session.title}`}
-                      onClick={() => openSession(session)}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
+                      {scheduleBadge.label}
+                    </Badge>
+
+                    <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0 group-hover:text-muted-foreground transition-colors" />
+                  </button>
                 </div>
               );
             })

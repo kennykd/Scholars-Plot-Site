@@ -1074,14 +1074,14 @@ export default function StudyNewPage() {
                   onChange={(e) => setBreakMinutes(Number(e.target.value))}
                 />
               </div>
-              <p className="text-xs text-muted-foreground md:col-span-2">
+              <p className="font-mono text-[10px] text-muted-foreground md:col-span-2">
                 Defaults are 25 minutes focus and 5 minutes break.
               </p>
             </div>
 
             <div className="space-y-2">
               <Label className="font-mono text-xs tracking-wider">
-                How many Pomodoro sessions?
+                POMODOROS
               </Label>
               <Input
                 type="number"
@@ -1089,8 +1089,8 @@ export default function StudyNewPage() {
                 value={totalPomodoro}
                 onChange={(e) => setTotalPomodoro(Number(e.target.value))}
               />
-              <p className="text-xs text-muted-foreground">
-                Total Minutes: {totalMinutesComputed}m
+              <p className="font-mono text-[10px] text-muted-foreground">
+                Total minutes: {totalMinutesComputed}m
               </p>
             </div>
 
