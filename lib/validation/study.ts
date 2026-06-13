@@ -36,16 +36,16 @@ export const createStudySchema = z.object({
   )
 });
 
-const studyTrackSchema = z.object({
-  client_track_id: z.string().min(1, 'Track id is required'),
+const studySessionPlanSchema = z.object({
+  client_plan_id: z.string().min(1, 'Plan id is required'),
   title: z.string()
-    .min(1, 'Track title is required')
-    .max(100, 'Track title cannot exceed 100 characters'),
-  weekdays: z.array(z.coerce.number().int().min(0).max(6))
-    .min(1, 'Choose at least one weekday for each track')
-    .max(7, 'A track can include up to 7 weekdays'),
+    .min(1, 'Session topic is required')
+    .max(100, 'Session topic cannot exceed 100 characters'),
+  start_date: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must use YYYY-MM-DD format'),
+  repeat: z.enum(['none', 'weekly', 'biweekly']).default('none'),
   time: z.string()
-    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Track time must use HH:mm format'),
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Session time must use HH:mm format'),
   focus_minutes: z.coerce.number()
     .int('Focus minutes must be a whole number')
     .min(1, 'Focus minutes must be at least 1 minute'),
@@ -61,9 +61,15 @@ const studyTrackSchema = z.object({
 
 export const createStudyBatchSchema = z.object({
   task_id: z.number().int().positive(),
-  tracks: z.array(studyTrackSchema)
-    .min(1, 'Add at least one study track')
-    .max(20, 'You can create up to 20 tracks at once'),
+  reminder_enabled: z.boolean().optional(),
+  reminders: z.array(z.coerce.number()
+    .int('Reminder value must be a whole number')
+    .min(0, 'Reminder value cannot be negative'))
+    .optional()
+    .default([]),
+  plans: z.array(studySessionPlanSchema)
+    .min(1, 'Add at least one study session')
+    .max(20, 'You can create up to 20 sessions at once'),
 });
 
 export const updateStudySchema = z.object({

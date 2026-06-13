@@ -23,6 +23,11 @@ type StudySessionRow = Prisma.StudySessionGetPayload<{
   };
 }>;
 
+type BatchReminderSettings = {
+  reminderEnabled?: boolean;
+  reminders?: number[];
+};
+
 function mapStudySessionRow(row: StudySessionRow): StudySession {
   const userStudySession = row.study_session_user?.[0];
   const rawStatus = userStudySession?.status;
@@ -86,30 +91,59 @@ function combineDateAndTime(date: Date, time: string) {
   return scheduled;
 }
 
-function generateSessionsFromTracks(
-  tracks: CreateStudyBatchInput["tracks"],
+function parseLocalDateString(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return date;
+}
+
+function generateSessionsFromPlans(
+  plans: CreateStudyBatchInput["plans"],
   deadline: Date,
   now = new Date(),
 ) {
   const generated: Array<{
-    track: CreateStudyBatchInput["tracks"][number];
+    plan: CreateStudyBatchInput["plans"][number];
     scheduledAt: Date;
   }> = [];
+  const seen = new Set<string>();
 
-  for (const track of tracks) {
-    const cursor = new Date(now);
-    cursor.setHours(0, 0, 0, 0);
-    const selectedWeekdays = new Set(track.weekdays);
+  const addCandidate = (
+    plan: CreateStudyBatchInput["plans"][number],
+    date: Date,
+  ) => {
+    const scheduledAt = combineDateAndTime(date, plan.time);
+    if (scheduledAt < now || scheduledAt > deadline) return;
+
+    const key = `${plan.client_plan_id}:${scheduledAt.getTime()}`;
+    if (seen.has(key)) return;
+
+    seen.add(key);
+    generated.push({ plan, scheduledAt });
+  };
+
+  for (const plan of plans) {
+    const startDate = parseLocalDateString(plan.start_date);
+    if (!startDate) continue;
+
+    const repeatDays =
+      plan.repeat === "weekly" ? 7 : plan.repeat === "biweekly" ? 14 : 0;
+    const cursor = new Date(startDate);
 
     while (cursor <= deadline) {
-      if (selectedWeekdays.has(cursor.getDay())) {
-        const scheduledAt = combineDateAndTime(cursor, track.time);
-        if (scheduledAt > now && scheduledAt <= deadline) {
-          generated.push({ track, scheduledAt });
-        }
-      }
+      addCandidate(plan, cursor);
 
-      cursor.setDate(cursor.getDate() + 1);
+      if (repeatDays === 0) break;
+      cursor.setDate(cursor.getDate() + repeatDays);
     }
   }
 
@@ -202,11 +236,12 @@ export async function createStudySessionForUser(
 export async function createStudySessionsForTask(
   userId: string,
   taskId: number,
-  tracks: CreateStudyBatchInput["tracks"],
+  plans: CreateStudyBatchInput["plans"],
+  reminderSettings: BatchReminderSettings = {},
 ) {
   const task = await requireTaskAccess(taskId, userId);
-  const generatedSessions = generateSessionsFromTracks(
-    tracks,
+  const generatedSessions = generateSessionsFromPlans(
+    plans,
     task.task_deadline,
   );
 
@@ -219,30 +254,37 @@ export async function createStudySessionsForTask(
 
   return prisma.$transaction(async (tx) => {
     const studySessions = [];
-    const createdByTrack: Record<string, number[]> = {};
+    const createdByPlan: Record<string, number[]> = {};
+    const reminderMinutes = (reminderSettings.reminders ?? []).map(
+      (reminderMinute) => Math.max(0, reminderMinute),
+    );
+    const reminderEnabled =
+      reminderSettings.reminderEnabled ?? reminderMinutes.length > 0;
 
     for (const generated of generatedSessions) {
-      const { track, scheduledAt } = generated;
+      const { plan, scheduledAt } = generated;
       const totalMinutes =
-        (Math.max(1, track.focus_minutes) + Math.max(0, track.break_minutes)) *
-        Math.max(1, track.total_pomodoros);
+        (Math.max(1, plan.focus_minutes) + Math.max(0, plan.break_minutes)) *
+        Math.max(1, plan.total_pomodoros);
       const checklist = checklistFromNotes(
-        track.notes,
-        track.description_as_checklist,
+        plan.notes,
+        plan.description_as_checklist,
       );
 
       const created = await tx.studySession.create({
           data: {
-            study_session_name: track.title,
-            study_session_description: track.notes?.trim() || undefined,
-            focus_minutes: track.focus_minutes,
-            break_minutes: track.break_minutes,
-            total_pomodoros: track.total_pomodoros,
+            study_session_name: plan.title,
+            study_session_description: plan.notes?.trim() || undefined,
+            focus_minutes: plan.focus_minutes,
+            break_minutes: plan.break_minutes,
+            total_pomodoros: plan.total_pomodoros,
             total_minutes: totalMinutes,
             study_session_scheduled_at: scheduledAt,
             checklist_json: checklist === null ? Prisma.DbNull : checklist,
-            study_session_reminder_enabled: false,
-            study_session_remind_at_minutes: [],
+            study_session_reminder_enabled: reminderEnabled,
+            study_session_remind_at_minutes: reminderEnabled
+              ? reminderMinutes
+              : [],
             study_session_user: {
               create: {
                 user_id: userId,
@@ -260,13 +302,13 @@ export async function createStudySessionsForTask(
         });
 
       studySessions.push(created);
-      createdByTrack[track.client_track_id] = [
-        ...(createdByTrack[track.client_track_id] ?? []),
+      createdByPlan[plan.client_plan_id] = [
+        ...(createdByPlan[plan.client_plan_id] ?? []),
         created.study_session_id,
       ];
     }
 
-    return { studySessions, createdByTrack };
+    return { studySessions, createdByPlan };
   });
 }
 

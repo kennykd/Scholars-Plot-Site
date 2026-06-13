@@ -19,19 +19,19 @@ export default async function AppLayout({
   }
 
   return (
-    <div className="flex min-h-dvh bg-background">
+    <div className="flex h-dvh overflow-hidden bg-background">
       {/* Desktop sidebar (pass user variable into the component) */}
       <Sidebar user={user} />
 
       {/* Main content area - solid background, no grid pattern for readability */}
-      <main className="flex-1 min-h-dvh overflow-y-auto bg-background relative">
+      <main className="relative h-dvh min-w-0 flex-1 overflow-y-auto bg-background">
         {/* 
         AuthProvider wraps children with the user fetched on the server.
         Client components use useAuth() to read user data without making
         additional API calls or calling getSession() from the client.
          */}
         <AuthProvider initialUser={user}>
-          <div className="min-h-dvh pb-16 lg:pb-0">{children}</div>
+          <div className="min-h-full pb-16 lg:pb-0">{children}</div>
         </AuthProvider>
       </main>
 
