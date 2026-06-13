@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -57,10 +57,12 @@ type SidebarUser = {
 export function Sidebar({ user }: { user: SidebarUser }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [collapsed, setCollapsed] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem("sidebar-collapsed") === "true";
-  });
+  const [collapsed, setCollapsed] = useState(false); // server-safe default
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    setCollapsed(localStorage.getItem("sidebarCollapsed") === "true");
+  }, []);
   const [logoutLoading, setLogoutLoading] = useState(false);
 
   const toggleCollapsed = () => {
@@ -106,7 +108,7 @@ export function Sidebar({ user }: { user: SidebarUser }) {
         <div
           className={cn(
             "flex items-center gap-4 px-5 py-5 shrink-0",
-            collapsed && "justify-center px-0",
+            mounted && collapsed && "justify-center px-0"
           )}
         >
           <Avatar className="h-10 w-10 shrink-0">

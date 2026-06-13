@@ -195,8 +195,8 @@ function TaskCard({ payload }: TaskCardProps) {
       </div>
       <div className="task-card__row">
         <span className="task-card__label">Priority</span>
-        <span className={`task-card__value task-card__priority task-card__priority--${priorityLabel.toLowerCase()}`}>
-          {priorityLabel}
+        <span className={`task-card__value task-card__priority task-card__priority--${priorityLabel(task_priority).toLowerCase()}`}>
+          {priorityLabel(task_priority)}
         </span>
       </div>
     </div>

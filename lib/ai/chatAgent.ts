@@ -1,5 +1,6 @@
 import { geminiFlash } from "@/lib/gemini";
-import type { ChatMessage } from "@prisma/client";
+import { z } from "zod";
+import type { ChatMessage } from "../generated/prisma/client";
 import type { ChatContext } from "@/lib/services/chatService";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -14,6 +15,55 @@ export interface ChatAction {
   type: ActionType;
   payload: Record<string, unknown> | null;
 }
+
+// ─── Payload Schemas ──────────────────────────────────────────────────────────
+// NOTE: This is a deliberate exception to the "Zod only in route handlers" rule.
+// Gemini's output is untrusted by definition — these schemas verify the SHAPE
+// of action.payload matches what we told Gemini to produce, before it's saved
+// to structured_json and rendered as an ActionCard on the frontend. Downstream
+// route handlers (POST /api/task, PUT /api/ai/schedule) still validate
+// independently when the user confirms the action — this is an earlier,
+// softer check that lets us fall back to action: null instead of saving a
+// payload that will fail when the user clicks "Confirm".
+
+const proposedSessionSchema = z.object({
+  task_id: z.number().int(),
+  task_name: z.string().min(1),
+  study_session_name: z.string().min(1),
+  scheduled_at: z.string().min(1),
+  focus_minutes: z.number().positive(),
+  break_minutes: z.number().nonnegative(),
+  total_pomodoros: z.number().int().positive(),
+  total_minutes: z.number().positive(),
+  reasoning: z.string(),
+});
+
+const createStudyPlanPayloadSchema = z.object({
+  proposed_sessions: z.array(proposedSessionSchema),
+  warnings: z.array(z.string()),
+  total_scheduled_minutes: z.number().nonnegative(),
+});
+
+const createTaskPayloadSchema = z.object({
+  task_name: z.string().min(1),
+  task_description: z.string().nullable(),
+  task_deadline: z.string().min(1),
+  task_priority: z.number().min(0.5).max(5.0),
+});
+
+const updateSchedulePayloadSchema = z.object({
+  suggestions: z.array(z.string()),
+  affected_task_ids: z.array(z.number().int()),
+});
+
+const payloadSchemaMap: Record<
+  Exclude<ActionType, null>,
+  z.ZodSchema
+> = {
+  CREATE_STUDY_PLAN: createStudyPlanPayloadSchema,
+  CREATE_TASK: createTaskPayloadSchema,
+  UPDATE_SCHEDULE: updateSchedulePayloadSchema,
+};
 
 export interface ChatAgentResult {
   text: string;
@@ -82,7 +132,7 @@ CREATE_TASK payload:
   "task_name": string,
   "task_description": string | null,
   "task_deadline": "ISO 8601 string",
-  "task_priority": number (0.5–5.0 scale)
+  "task_priority": number (0.5-5.0 scale)
 }
 
 UPDATE_SCHEDULE payload:
@@ -226,12 +276,26 @@ function parseEnvelope(raw: string): { text: string; action: ChatAction | null }
 
     const actionType = parsed.action?.type ?? null;
     const validTypes: ActionType[] = ["CREATE_STUDY_PLAN", "CREATE_TASK", "UPDATE_SCHEDULE"];
-    const action: ChatAction | null =
-      validTypes.includes(actionType)
-        ? { type: actionType, payload: parsed.action?.payload ?? null }
-        : null;
 
-    return { text, action };
+    if (!validTypes.includes(actionType)) {
+      // Unknown or null action type — no action, but text is still valid
+      return { text, action: null };
+    }
+
+    // Validate payload shape against the schema for this action type.
+    // If it doesn't match what we told Gemini to produce, drop the action
+    // rather than saving a payload that will fail when the user confirms it.
+    const schema = payloadSchemaMap[actionType as Exclude<ActionType, null>];
+    const payloadResult = schema.safeParse(parsed.action?.payload);
+
+    if (!payloadResult.success) {
+      return { text, action: null };
+    }
+
+    return {
+      text,
+      action: { type: actionType, payload: payloadResult.data },
+    };
   } catch {
     // Malformed JSON — return raw text as a plain response, no action
     return {
