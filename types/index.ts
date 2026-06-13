@@ -19,6 +19,7 @@ export type Phase = "idle" | "focus" | "break";
 export interface Attachment {
   id: number;
   taskId: number | null;
+  userId?: string | null;
   fileName: string;
   fileKey: string;
   fileType: string;
@@ -43,7 +44,7 @@ export type StudySession = {
   id: string;
   title: string;
   notes: string;
-  attachments: string[];
+  attachments: Attachment[];
   scheduledAt: string;
   focusMinutes: number;
   breakMinutes: number;

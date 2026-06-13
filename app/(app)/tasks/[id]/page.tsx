@@ -17,7 +17,7 @@ import {
 import { listTaskAttachments } from "@/lib/services/attachmentService";
 import type { Attachment, Task } from "@/types";
 import { format, formatDistanceToNow } from "date-fns";
-import { ArrowLeft, BookOpen, Paperclip, Timer } from "lucide-react";
+import { ArrowLeft, BookOpen, Paperclip } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface LinkedStudySession {
@@ -152,9 +152,9 @@ export default async function TaskDetailPage({
               STUDY SESSIONS
             </p>
             {sessions.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No study sessions yet — start one below.
-              </p>
+                <p className="text-sm text-muted-foreground">
+                  No study sessions planned yet.
+                </p>
             ) : (
               <ul className="space-y-1.5">
                 {sessions.map((s) => (
@@ -210,14 +210,6 @@ export default async function TaskDetailPage({
             <TaskCompleteButton taskId={task.id} />
           )}
           <div className="flex gap-3 pt-2">
-            <Button
-              asChild
-              className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground font-semibold"
-            >
-              <Link href={`/study/new?taskId=${task.id}`}>
-                <Timer className="h-4 w-4 mr-2" /> Start Study Session
-              </Link>
-            </Button>
             <Button variant="outline" disabled className="font-mono text-xs">
               Edit
             </Button>

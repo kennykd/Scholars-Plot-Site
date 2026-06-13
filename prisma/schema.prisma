@@ -81,7 +81,6 @@ model User {
   user_last_login   DateTime
   user_created_at   DateTime @default(now())
 
-  // AI Profile data from dev-ai
   ai_behavior_profile   Json?
   ai_profile_updated_at DateTime?
 
@@ -196,13 +195,16 @@ model TaskUser {
 model Attachment {
   attachment_id          Int      @id @default(autoincrement())
   task_id                Int?
+  user_id                String?
   file_name              String
   file_path              String
   file_type              String
   attachment_uploaded_at DateTime @default(now())
 
   task               Task?              @relation(fields: [task_id], references: [task_id], onDelete: SetNull)
+  user               User?              @relation(fields: [user_id], references: [user_id], onDelete: SetNull)
   study_session_user StudySessionUser[]
+  study_session_attachments StudySessionAttachment[]
 
   @@map("attachment")
 }
@@ -223,10 +225,24 @@ model StudySession {
   study_session_reminder_enabled Boolean  @default(true)
   study_session_remind_at_minutes Int[]    @default([])
 
-  study_session_user      StudySessionUser[]
-  study_session_reminders StudySessionReminder[] // Kept relational engine from dev-ai
+  study_session_user StudySessionUser[]
+  study_session_attachments StudySessionAttachment[]
 
   @@map("study_session")
+}
+
+model StudySessionAttachment {
+  study_session_id Int
+  attachment_id    Int
+  user_id          String
+  linked_at        DateTime @default(now())
+
+  study_session StudySession @relation(fields: [study_session_id], references: [study_session_id], onDelete: Cascade)
+  attachment    Attachment   @relation(fields: [attachment_id], references: [attachment_id], onDelete: Cascade)
+  user          User         @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@id([study_session_id, attachment_id, user_id])
+  @@map("study_session_attachment")
 }
 
 model StudySessionUser {

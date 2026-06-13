@@ -33,7 +33,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className="min-h-dvh bg-background">
       <body
         className={`
           ${sora.variable}
@@ -42,6 +42,7 @@ export default function RootLayout({
           antialiased
           bg-background
           text-foreground
+          min-h-dvh
         `}
       >
         <Providers>{children}</Providers>

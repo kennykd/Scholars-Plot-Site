@@ -11,6 +11,7 @@ jest.mock("sonner", () => ({
   toast: {
     success: jest.fn(),
     error: jest.fn(),
+    warning: jest.fn(),
   },
 }));
 
@@ -77,7 +78,7 @@ describe("TaskForm", () => {
     expect(toast.error).toHaveBeenCalledWith("Deadline is required");
   });
 
-  it("posts to /api/task and redirects on success", async () => {
+  it("posts to /api/task and shows the study-session choice prompt on success", async () => {
     global.fetch.mockResolvedValue({
       ok: true,
       json: async () => ({ task: { id: 42 } }),
@@ -105,8 +106,68 @@ describe("TaskForm", () => {
 
     await waitFor(() => {
       expect(toast.success).toHaveBeenCalledWith("Task created");
-      expect(mockPush).toHaveBeenCalledWith("/tasks");
+      expect(mockPush).not.toHaveBeenCalled();
     });
+
+    expect(
+      screen.getByRole("heading", { name: /schedule study sessions/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /plan study sessions/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /not now/i })).toBeInTheDocument();
+  });
+
+  it("returns to the tasks list when the user skips study-session planning", async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ task: { id: 42 } }),
+    });
+
+    render(<TaskForm />);
+
+    fireEvent.change(screen.getByLabelText(/task name/i), {
+      target: { value: "Data Science Quiz" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /pick a date/i }));
+    fireEvent.click(screen.getByRole("button", { name: /select march 20/i }));
+
+    fireEvent.submit(
+      screen.getByRole("button", { name: /create task/i }).closest("form"),
+    );
+
+    const skipButton = await screen.findByRole("button", { name: /not now/i });
+    fireEvent.click(skipButton);
+
+    expect(mockPush).toHaveBeenCalledWith("/tasks");
+    expect(mockRefresh).toHaveBeenCalled();
+  });
+
+  it("opens the linked study planner when the user chooses to plan sessions", async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ task: { id: 42 } }),
+    });
+
+    render(<TaskForm />);
+
+    fireEvent.change(screen.getByLabelText(/task name/i), {
+      target: { value: "Data Science Quiz" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /pick a date/i }));
+    fireEvent.click(screen.getByRole("button", { name: /select march 20/i }));
+
+    fireEvent.submit(
+      screen.getByRole("button", { name: /create task/i }).closest("form"),
+    );
+
+    const planButton = await screen.findByRole("button", {
+      name: /plan study sessions/i,
+    });
+    fireEvent.click(planButton);
+
+    expect(mockPush).toHaveBeenCalledWith("/study/new?taskId=42");
+    expect(mockRefresh).toHaveBeenCalled();
   });
 
   it("sends the selected reminder option in the POST body", async () => {
