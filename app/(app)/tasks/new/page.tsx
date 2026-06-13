@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { StarRating } from "@/app/components/common/star-rating";
+import { StudySessionPrompt } from "@/app/components/tasks/study-session-prompt";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { CalendarIcon, Paperclip, X } from "lucide-react";
@@ -42,6 +43,7 @@ export default function TaskForm() {
   const [files, setFiles] = useState<File[]>([]);
   const [calOpen, setCalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [createdTask, setCreatedTask] = useState<{ id: number; title: string } | null>(null);
 
   const addFiles = (incoming: FileList | File[]) => {
     const arr = Array.from(incoming);
@@ -134,16 +136,40 @@ export default function TaskForm() {
         toast.success("Task created");
       }
 
-      router.push("/tasks");
-      router.refresh();
+      if (taskId) {
+        setCreatedTask({ id: taskId, title: title.trim() });
+        setSubmitting(false);
+      } else {
+        router.push("/tasks");
+        router.refresh();
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not create task");
       setSubmitting(false);
     }
   };
 
+  const finishWithoutPlanning = () => {
+    router.push("/tasks");
+    router.refresh();
+  };
+
+  const openStudyPlanner = () => {
+    if (!createdTask) return;
+    router.push(`/study/new?taskId=${createdTask.id}`);
+    router.refresh();
+  };
+
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-6">
+      {createdTask && (
+        <StudySessionPrompt
+          taskName={createdTask.title}
+          onPlan={openStudyPlanner}
+          onSkip={finishWithoutPlanning}
+        />
+      )}
+
       <div>
         <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">
           NEW TASK

@@ -1,81 +1,80 @@
 import { render, screen, fireEvent } from "@testing-library/react";
-import StudyPage from "./page";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/firebase/auth-context";
+import { StudyPageHeader } from "@/app/components/study/study-page-header";
+import { StudyPageClient } from "@/app/components/study/study-page-client";
 
-// Mock the NextJS router
 jest.mock("next/navigation", () => ({
   useRouter: jest.fn(),
 }));
 
-// Mock LocalStorage
-const localStorageMock = (() => {
-  let store = {};
-  return {
-    getItem: jest.fn((key) => store[key] || null),
-    setItem: jest.fn((key, value) => {
-      store[key] = value.toString();
-    }),
-    clear: jest.fn(() => {
-      store = {};
-    }),
-  };
-})();
-Object.defineProperty(window, "localStorage", { value: localStorageMock });
+jest.mock("@/lib/firebase/auth-context", () => ({
+  useAuth: jest.fn(),
+}));
 
-describe("StudyPage Client Component", () => {
+const renderStudyPage = (initialSessions = []) =>
+  render(
+    <div className="p-6 space-y-6">
+      <StudyPageHeader />
+      <StudyPageClient initialSessions={initialSessions} />
+    </div>,
+  );
+
+describe("StudyPage client sections", () => {
   const mockPush = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
     useRouter.mockReturnValue({ push: mockPush });
-    localStorage.clear();
+    useAuth.mockReturnValue({ user: null });
   });
 
   it("renders the study sessions header", () => {
-    render(<StudyPage />);
+    renderStudyPage();
+
     expect(screen.getByText(/STUDY SESSIONS/i)).toBeInTheDocument();
     expect(screen.getByText(/UPCOMING STUDY PLAN/i)).toBeInTheDocument();
   });
 
   it("allows a user to input a quick timer and add it to the list", async () => {
-    render(<StudyPage />);
+    renderStudyPage();
 
-    const titleInput = screen.getByPlaceholderText(/Timer only/i);
-    const addButton = screen.getByText(/Add Timer/i);
-
-    // Simulate user typing
-    fireEvent.change(titleInput, {
+    fireEvent.change(screen.getByPlaceholderText(/Timer only/i), {
       target: { value: "Website Application Design" },
     });
-    fireEvent.click(addButton);
+    fireEvent.click(screen.getByText(/Add Timer/i));
 
-    // Check if the new session appears in the list, uses await since the component may not appear instantly
     expect(
       await screen.findByText("Website Application Design"),
     ).toBeInTheDocument();
-
-    // Check if it was saved to localStorage
-    expect(localStorage.setItem).toHaveBeenCalled();
   });
 
-  it("navigates to the session detail page when 'Start' is clicked", () => {
-    render(<StudyPage />);
+  it("navigates to the session detail page when Start is clicked", () => {
+    renderStudyPage([
+      {
+        id: "42",
+        title: "Physics Review",
+        notes: "",
+        attachments: [],
+        scheduledAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        focusMinutes: 25,
+        breakMinutes: 5,
+        totalMinutes: 60,
+        sessionStatus: "idle",
+        createdAt: new Date().toISOString(),
+        isTimerOnly: false,
+      },
+    ]);
 
-    // We need to find a 'Start' button. Since mock data is seeded
-    // in the component's useEffect, we'll wait for it to render.
-    const startButtons = screen.getAllByText(/Start/i);
-    fireEvent.click(startButtons[0]);
+    fireEvent.click(screen.getByRole("button", { name: /Start/i }));
 
-    // Verify it calls router.push with the expected path format
-    expect(mockPush).toHaveBeenCalledWith(expect.stringMatching(/\/study\/.+/));
+    expect(mockPush).toHaveBeenCalledWith("/study/42");
   });
 
-  it("displays the empty state message when no sessions exist", () => {
-    // Force sessions to be empty by mocking an empty array in localStorage
-    localStorage.getItem.mockReturnValue(JSON.stringify([]));
+  it("keeps the quick timer available when no sessions exist", () => {
+    renderStudyPage();
 
-    render(<StudyPage />);
-
-    expect(screen.getByText(/No upcoming sessions/i)).toBeInTheDocument();
+    expect(screen.getByText(/Quick Timer/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Timer only/i)).toBeInTheDocument();
   });
 });

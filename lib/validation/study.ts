@@ -36,6 +36,36 @@ export const createStudySchema = z.object({
   )
 });
 
+const studyTrackSchema = z.object({
+  client_track_id: z.string().min(1, 'Track id is required'),
+  title: z.string()
+    .min(1, 'Track title is required')
+    .max(100, 'Track title cannot exceed 100 characters'),
+  weekdays: z.array(z.coerce.number().int().min(0).max(6))
+    .min(1, 'Choose at least one weekday for each track')
+    .max(7, 'A track can include up to 7 weekdays'),
+  time: z.string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Track time must use HH:mm format'),
+  focus_minutes: z.coerce.number()
+    .int('Focus minutes must be a whole number')
+    .min(1, 'Focus minutes must be at least 1 minute'),
+  break_minutes: z.coerce.number()
+    .int('Break minutes must be a whole number')
+    .min(0, 'Break minutes cannot be negative'),
+  total_pomodoros: z.coerce.number()
+    .int('Total pomodoros must be a whole number')
+    .min(1, 'Total pomodoros must be at least 1'),
+  notes: z.string().optional(),
+  description_as_checklist: z.boolean().optional(),
+});
+
+export const createStudyBatchSchema = z.object({
+  task_id: z.number().int().positive(),
+  tracks: z.array(studyTrackSchema)
+    .min(1, 'Add at least one study track')
+    .max(20, 'You can create up to 20 tracks at once'),
+});
+
 export const updateStudySchema = z.object({
   study_session_name: z.string()
   .min(1, 'Study session name is required')
@@ -95,4 +125,5 @@ export const updateStudySchema = z.object({
 });
 
 export type CreateStudyInput = z.infer<typeof createStudySchema>;
+export type CreateStudyBatchInput = z.infer<typeof createStudyBatchSchema>;
 export type UpdateStudyInput = z.infer<typeof updateStudySchema>;

@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable react-hooks/set-state-in-effect */
+
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -12,6 +14,24 @@ import { Paperclip, Timer } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { StudySession, Phase } from "@/types";
 import { useRouter } from "next/navigation";
+
+type ApiStudyAttachmentLink = {
+  attachment?: {
+    attachment_id: number;
+    task_id?: number | null;
+    user_id?: string | null;
+    file_name: string;
+    file_path: string;
+    file_type: string;
+    url?: string | null;
+    attachment_uploaded_at?: string | Date | null;
+  } | null;
+};
+
+const isApiAttachment = (
+  attachment: ApiStudyAttachmentLink["attachment"],
+): attachment is NonNullable<ApiStudyAttachmentLink["attachment"]> =>
+  Boolean(attachment);
 
 const formatDuration = (totalMinutes: number) => {
   const hours = Math.floor(totalMinutes / 60);
@@ -147,24 +167,29 @@ export default function StudySessionPage() {
           return;
         }
 
-        // Extract attachment names from study_session_user if available
-        const attachmentNames: string[] = [];
-        if (
-          apiStudy.study_session_user &&
-          Array.isArray(apiStudy.study_session_user)
-        ) {
-          apiStudy.study_session_user.forEach((ssu: any) => {
-            if (ssu.attachment && ssu.attachment.file_name) {
-              attachmentNames.push(ssu.attachment.file_name);
-            }
-          });
-        }
+        const attachments = Array.isArray(apiStudy.study_session_attachments)
+          ? (apiStudy.study_session_attachments as ApiStudyAttachmentLink[])
+              .map((link) => link?.attachment)
+              .filter(isApiAttachment)
+              .map((attachment) => ({
+                id: attachment.attachment_id,
+                taskId: attachment.task_id ?? null,
+                userId: attachment.user_id ?? null,
+                fileName: attachment.file_name,
+                fileKey: attachment.file_path,
+                fileType: attachment.file_type,
+                url: attachment.url ?? "",
+                uploadedAt: attachment.attachment_uploaded_at
+                  ? new Date(attachment.attachment_uploaded_at).toISOString()
+                  : new Date().toISOString(),
+              }))
+          : [];
 
         const mapped: StudySession = {
           id: String(apiStudy.study_session_id),
           title: apiStudy.study_session_name,
           notes: apiStudy.study_session_description ?? "",
-          attachments: attachmentNames,
+          attachments,
           scheduledAt: apiStudy.study_session_scheduled_at
             ? new Date(apiStudy.study_session_scheduled_at).toISOString()
             : new Date().toISOString(),
@@ -330,7 +355,7 @@ export default function StudySessionPage() {
     }
 
     setRunning(false);
-  }, [session, focusSeconds, totalSeconds]);
+  }, [session, focusSeconds, breakSeconds, totalSeconds]);
 
   useEffect(() => {
     if (!running || phase === "idle") return;
@@ -732,14 +757,17 @@ export default function StudySessionPage() {
             </CardHeader>
             <CardContent className="space-y-2">
               {session.attachments.length ? (
-                session.attachments.map((file, index) => (
-                  <div
-                    key={`${file}-${index}`}
-                    className="flex items-center gap-2 rounded-lg border border-border/40 bg-muted/30 px-3 py-2 text-xs"
+                session.attachments.map((file) => (
+                  <a
+                    key={`${file.id}-${file.fileKey}`}
+                    href={file.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 rounded-lg border border-border/40 bg-muted/30 px-3 py-2 text-xs transition-colors hover:border-accent/50 hover:text-accent"
                   >
                     <Paperclip className="h-3 w-3 text-muted-foreground" />
-                    <span className="truncate">{file}</span>
-                  </div>
+                    <span className="truncate">{file.fileName}</span>
+                  </a>
                 ))
               ) : (
                 <p className="text-sm text-muted-foreground">

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,7 +18,15 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { ArrowLeft, CalendarIcon, Paperclip, X, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarIcon,
+  Paperclip,
+  Plus,
+  Sparkles,
+  Trash2,
+  X,
+} from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -26,7 +35,47 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { format } from "date-fns";
-import { StudyReminderOffset, StudyReminderValueUnit } from "@/types";
+import { StudyReminderOffset, StudyReminderValueUnit, type Task } from "@/types";
+
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+
+const WEEKDAYS = [
+  { value: 1, label: "Mon" },
+  { value: 2, label: "Tue" },
+  { value: 3, label: "Wed" },
+  { value: 4, label: "Thu" },
+  { value: 5, label: "Fri" },
+  { value: 6, label: "Sat" },
+  { value: 0, label: "Sun" },
+];
+
+type StudyTrack = {
+  id: string;
+  title: string;
+  weekdays: number[];
+  time: string;
+  focusMinutes: number;
+  breakMinutes: number;
+  totalPomodoro: number;
+  notes: string;
+  descriptionAsChecklist: boolean;
+  attachments: File[];
+};
+
+function createEmptyTrack(title = ""): StudyTrack {
+  return {
+    id: crypto.randomUUID(),
+    title,
+    weekdays: [],
+    time: "15:00",
+    focusMinutes: 25,
+    breakMinutes: 5,
+    totalPomodoro: 2,
+    notes: "",
+    descriptionAsChecklist: false,
+    attachments: [],
+  };
+}
 
 const combineDateTime = (date: Date, time: string) => {
   const [hours, minutes] = time.split(":").map(Number);
@@ -37,19 +86,11 @@ const combineDateTime = (date: Date, time: string) => {
   return next;
 };
 
-const valueToMs = (valueUnit: StudyReminderValueUnit, value: number) => {
-  const normalizedValue = Math.max(1, value);
-
-  switch (valueUnit) {
-    case "minutes":
-      return normalizedValue * 60 * 1000;
-    case "hours":
-      return normalizedValue * 60 * 60 * 1000;
-  }
-};
-
 export default function StudyNewPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const taskIdParam = searchParams.get("taskId");
+  const taskId = taskIdParam ? Number(taskIdParam) : null;
 
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
@@ -60,7 +101,7 @@ export default function StudyNewPage() {
   const [totalPomodoro, setTotalPomodoro] = useState(2);
   const [descriptionAsChecklist, setDescriptionAsChecklist] = useState(false);
   const [calOpen, setCalOpen] = useState(false);
-  const [attachments, setAttachments] = useState<string[]>([]);
+  const [attachments, setAttachments] = useState<File[]>([]);
   const [reminderEnabled, setReminderEnabled] = useState(false);
   const [reminders, setReminders] = useState<StudyReminderOffset[]>([
     { unit: "minutes", value: 15 },
@@ -68,18 +109,198 @@ export default function StudyNewPage() {
     { unit: "minutes", value: 0, atStart: true },
   ]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [taskContext, setTaskContext] = useState<Task | null>(null);
+  const [taskLoading, setTaskLoading] = useState(Boolean(taskId));
+  const [taskLoadError, setTaskLoadError] = useState<string | null>(null);
+  const [tracks, setTracks] = useState<StudyTrack[]>([createEmptyTrack()]);
+  const [savingBatch, setSavingBatch] = useState(false);
+
+  useEffect(() => {
+    if (!taskId || !Number.isInteger(taskId) || taskId <= 0) {
+      setTaskLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+    setTaskLoading(true);
+
+    fetch(`/api/task/${taskId}`)
+      .then(async (response) => {
+        const data = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(data?.message ?? "Could not load task");
+        }
+        return data?.task as Task;
+      })
+      .then((task) => {
+        if (!isMounted) return;
+        setTaskContext(task);
+        setTitle(task.title);
+        setNotes(task.description ?? "");
+        setTracks((currentTracks) => {
+          if (currentTracks.length !== 1 || currentTracks[0].title.trim()) {
+            return currentTracks;
+          }
+          return [{ ...currentTracks[0], title: task.title }];
+        });
+      })
+      .catch((error) => {
+        if (!isMounted) return;
+        setTaskLoadError(error instanceof Error ? error.message : "Could not load task");
+      })
+      .finally(() => {
+        if (isMounted) setTaskLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [taskId]);
 
   const totalMinutesComputed =
     (Math.max(1, Number(focusMinutes) || 0) +
       Math.max(1, Number(breakMinutes) || 0)) *
     Math.max(1, Number(totalPomodoro) || 0);
 
-  const scheduledAt =
-    scheduledDate && scheduledTime
-      ? combineDateTime(scheduledDate, scheduledTime)
-      : null;
-
   const normalizedReminders = reminders.filter(() => reminderEnabled);
+
+  const taskDeadline = useMemo(() => {
+    if (!taskContext?.deadline) return null;
+    const deadline = new Date(taskContext.deadline);
+    return Number.isNaN(deadline.getTime()) ? null : deadline;
+  }, [taskContext]);
+
+  const updateTrack = (trackId: string, updates: Partial<StudyTrack>) => {
+    setTracks((prev) =>
+      prev.map((track) => (track.id === trackId ? { ...track, ...updates } : track)),
+    );
+  };
+
+  const toggleTrackWeekday = (trackId: string, weekday: number) => {
+    setTracks((prev) =>
+      prev.map((track) => {
+        if (track.id !== trackId) return track;
+        const nextWeekdays = track.weekdays.includes(weekday)
+          ? track.weekdays.filter((day) => day !== weekday)
+          : [...track.weekdays, weekday];
+        return { ...track, weekdays: nextWeekdays.sort((a, b) => a - b) };
+      }),
+    );
+  };
+
+  const addTrack = () => {
+    setTracks((prev) => [...prev, createEmptyTrack()]);
+  };
+
+  const removeTrack = (trackId: string) => {
+    setTracks((prev) =>
+      prev.length === 1 ? prev : prev.filter((track) => track.id !== trackId),
+    );
+  };
+
+  const validateTracks = () => {
+    if (!taskDeadline || !taskId) {
+      toast.error("Task deadline is required before planning sessions");
+      return false;
+    }
+
+    for (const track of tracks) {
+      if (!track.title.trim()) {
+        toast.error("Each study track needs a topic");
+        return false;
+      }
+      if (track.weekdays.length === 0) {
+        toast.error("Choose at least one weekday for each track");
+        return false;
+      }
+      if (!track.time) {
+        toast.error("Choose a preferred time for each track");
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const uploadTrackAttachments = async (
+    createdByTrack: Record<string, number[]>,
+  ) => {
+    const failures: string[] = [];
+
+    for (const track of tracks) {
+      const studySessionIds = createdByTrack[track.id] ?? [];
+      if (studySessionIds.length === 0 || track.attachments.length === 0) {
+        continue;
+      }
+
+      for (const file of track.attachments) {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("studySessionIds", JSON.stringify(studySessionIds));
+
+        const response = await fetch("/api/study/attachment", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) failures.push(file.name);
+      }
+    }
+
+    return failures;
+  };
+
+  const saveGeneratedSessions = async () => {
+    if (!taskId) return;
+    if (!validateTracks()) {
+      return;
+    }
+
+    setSavingBatch(true);
+    try {
+      const response = await fetch("/api/study/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          task_id: taskId,
+          tracks: tracks.map((track) => ({
+            client_track_id: track.id,
+            title: track.title.trim(),
+            weekdays: track.weekdays,
+            time: track.time,
+            focus_minutes: Math.max(1, Number(track.focusMinutes) || 25),
+            break_minutes: Math.max(0, Number(track.breakMinutes) || 0),
+            total_pomodoros: Math.max(1, Number(track.totalPomodoro) || 1),
+            notes: track.notes.trim() || undefined,
+            description_as_checklist: track.descriptionAsChecklist,
+          })),
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        const firstError =
+          data?.errors && typeof data.errors === "object"
+            ? Object.values(data.errors).flat()[0]
+            : null;
+        throw new Error(firstError ?? data?.message ?? "Failed to create sessions");
+      }
+
+      const uploadFailures = await uploadTrackAttachments(data?.createdByTrack ?? {});
+      if (uploadFailures.length > 0) {
+        toast.warning(
+          `Study sessions created. Some files failed: ${uploadFailures.join(", ")}`,
+        );
+      } else {
+        toast.success("Study sessions created");
+      }
+      router.push(`/tasks/${taskId}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to create sessions");
+    } finally {
+      setSavingBatch(false);
+    }
+  };
 
   const updateReminder = (
     index: number,
@@ -120,13 +341,48 @@ export default function StudyNewPage() {
     );
   };
 
+  const getAcceptedFiles = (incoming: FileList | File[]) => {
+    const accepted: File[] = [];
+    for (const file of Array.from(incoming)) {
+      if (file.size > MAX_FILE_BYTES) {
+        toast.error(`"${file.name}" exceeds 10MB and was skipped`);
+        continue;
+      }
+      accepted.push(file);
+    }
+    return accepted;
+  };
+
+  const addTrackFiles = (trackId: string, incoming: FileList | File[]) => {
+    const accepted = getAcceptedFiles(incoming);
+    if (accepted.length === 0) return;
+    updateTrack(trackId, {
+      attachments: [
+        ...(tracks.find((track) => track.id === trackId)?.attachments ?? []),
+        ...accepted,
+      ],
+    });
+  };
+
+  const removeTrackFile = (trackId: string, fileIndex: number) => {
+    setTracks((prev) =>
+      prev.map((track) =>
+        track.id === trackId
+          ? {
+              ...track,
+              attachments: track.attachments.filter((_, index) => index !== fileIndex),
+            }
+          : track,
+      ),
+    );
+  };
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
 
-    for (const file of Array.from(files)) {
-      setAttachments((prev) => [...prev, file.name]);
-    }
+    const accepted = getAcceptedFiles(files);
+    if (accepted.length > 0) setAttachments((prev) => [...prev, ...accepted]);
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -138,9 +394,8 @@ export default function StudyNewPage() {
     const files = event.dataTransfer.files;
     if (!files) return;
 
-    for (const file of Array.from(files)) {
-      setAttachments((prev) => [...prev, file.name]);
-    }
+    const accepted = getAcceptedFiles(files);
+    if (accepted.length > 0) setAttachments((prev) => [...prev, ...accepted]);
   };
 
   const handleRemoveAttachment = (index: number) => {
@@ -179,7 +434,6 @@ export default function StudyNewPage() {
             }))
         : null,
       study_session_scheduled_at: sessionScheduledAt.toISOString(),
-      attachment_names: attachments.length > 0 ? attachments : undefined,
       reminders: reminderEnabled
         ? normalizedReminders.map((reminder) =>
             reminder.atStart ? 0 : Math.max(1, Number(reminder.value) || 1),
@@ -204,12 +458,347 @@ export default function StudyNewPage() {
         return;
       }
 
-      toast.success("Study session created");
+      const studySessionId = data?.studySession?.study_session_id ?? data?.studySession?.id;
+      const failures: string[] = [];
+      if (studySessionId && attachments.length > 0) {
+        for (const file of attachments) {
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("studySessionIds", JSON.stringify([studySessionId]));
+          const uploadResponse = await fetch("/api/study/attachment", {
+            method: "POST",
+            body: formData,
+          });
+          if (!uploadResponse.ok) failures.push(file.name);
+        }
+      }
+
+      if (failures.length > 0) {
+        toast.warning(
+          `Study session created. Some files failed: ${failures.join(", ")}`,
+        );
+      } else {
+        toast.success("Study session created");
+      }
       router.push("/study");
     } catch {
       toast.error("Network error while creating study session");
     }
   };
+
+  if (taskId) {
+    if (taskLoading) {
+      return (
+        <div className="p-6 space-y-6">
+          <p className="text-sm text-muted-foreground">Loading task...</p>
+        </div>
+      );
+    }
+
+    if (taskLoadError || !taskContext || !taskDeadline) {
+      return (
+        <div className="p-6 space-y-4">
+          <h1 className="font-display text-2xl font-bold text-foreground">
+            Task not available
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {taskLoadError ?? "This task could not be loaded for study planning."}
+          </p>
+          <Button asChild variant="outline">
+            <Link href="/tasks">Back to Tasks</Link>
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">
+              PLAN STUDY SESSIONS
+            </h1>
+            <p className="font-mono text-xs text-muted-foreground mt-1 tracking-widest">
+              BUILD A STUDY RHYTHM BEFORE THE DEADLINE
+            </p>
+          </div>
+          <Button variant="outline" asChild className="font-mono text-xs">
+            <Link href={`/tasks/${taskContext.id}`}>
+              <ArrowLeft className="h-4 w-4 mr-2" /> Back to Task
+            </Link>
+          </Button>
+        </div>
+
+        <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+          <CardHeader className="pb-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <CardTitle className="font-display text-lg">
+                  {taskContext.title}
+                </CardTitle>
+                {taskContext.description && (
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {taskContext.description}
+                  </p>
+                )}
+              </div>
+              <Badge variant="outline" className="w-fit font-mono text-[10px]">
+                Due {format(taskDeadline, "MMM d, yyyy p")}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6 pt-2">
+            <div className="rounded-lg border border-border/50 bg-muted/20 p-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="font-display text-lg font-semibold">
+                    Study Tracks
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Add one track for each topic, choose weekdays, and attach study materials.
+                  </p>
+                </div>
+                <Button type="button" variant="outline" onClick={addTrack}>
+                  <Plus className="h-4 w-4 mr-2" /> Add track
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {tracks.map((track, index) => (
+                <div
+                  key={track.id}
+                  className="rounded-xl border border-border/50 bg-card/60 p-4 space-y-4"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-mono text-xs text-muted-foreground tracking-wider">
+                      TRACK {index + 1}
+                    </p>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={tracks.length === 1}
+                      onClick={() => removeTrack(track.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-[1.4fr_180px]">
+                    <div className="space-y-1.5">
+                      <Label
+                        htmlFor={`track-topic-${track.id}`}
+                        className="font-mono text-xs tracking-wider"
+                      >
+                        TRACK TOPIC
+                      </Label>
+                      <Input
+                        id={`track-topic-${track.id}`}
+                        placeholder="e.g. Mechanical Physics"
+                        value={track.title}
+                        onChange={(event) =>
+                          updateTrack(track.id, { title: event.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label
+                        htmlFor={`track-time-${track.id}`}
+                        className="font-mono text-xs tracking-wider"
+                      >
+                        PREFERRED TIME
+                      </Label>
+                      <Input
+                        id={`track-time-${track.id}`}
+                        type="time"
+                        value={track.time}
+                        onChange={(event) =>
+                          updateTrack(track.id, { time: event.target.value })
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="font-mono text-xs tracking-wider">
+                      WEEKDAYS
+                    </Label>
+                    <div className="flex flex-wrap gap-2">
+                      {WEEKDAYS.map((weekday) => {
+                        const selected = track.weekdays.includes(weekday.value);
+                        return (
+                          <Button
+                            key={weekday.value}
+                            type="button"
+                            variant={selected ? "default" : "outline"}
+                            size="sm"
+                            className={cn(
+                              "font-mono text-xs",
+                              selected &&
+                                "bg-accent text-accent-foreground hover:bg-accent/90",
+                            )}
+                            onClick={() => toggleTrackWeekday(track.id, weekday.value)}
+                          >
+                            {weekday.label}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="space-y-1.5">
+                      <Label className="font-mono text-xs tracking-wider">
+                        FOCUS MINUTES
+                      </Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={track.focusMinutes}
+                        onChange={(event) =>
+                          updateTrack(track.id, {
+                            focusMinutes: Number(event.target.value),
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="font-mono text-xs tracking-wider">
+                        BREAK MINUTES
+                      </Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={track.breakMinutes}
+                        onChange={(event) =>
+                          updateTrack(track.id, {
+                            breakMinutes: Number(event.target.value),
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="font-mono text-xs tracking-wider">
+                        POMODOROS
+                      </Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={track.totalPomodoro}
+                        onChange={(event) =>
+                          updateTrack(track.id, {
+                            totalPomodoro: Number(event.target.value),
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id={`track-checklist-${track.id}`}
+                        checked={track.descriptionAsChecklist}
+                        onCheckedChange={(checked) =>
+                          updateTrack(track.id, {
+                            descriptionAsChecklist: checked === true,
+                          })
+                        }
+                      />
+                      <Label
+                        htmlFor={`track-checklist-${track.id}`}
+                        className="font-mono text-xs tracking-wider"
+                      >
+                        Make notes a checklist
+                      </Label>
+                    </div>
+                    <Textarea
+                      placeholder="Optional notes for this track..."
+                      value={track.notes}
+                      onChange={(event) =>
+                        updateTrack(track.id, { notes: event.target.value })
+                      }
+                      className="resize-y min-h-20"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="font-mono text-xs tracking-wider">
+                      TRACK ATTACHMENTS
+                    </Label>
+                    {track.attachments.length > 0 && (
+                      <div className="space-y-2">
+                        {track.attachments.map((file, fileIndex) => (
+                          <div
+                            key={`${file.name}-${fileIndex}`}
+                            className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/30 px-3 py-2"
+                          >
+                            <Paperclip className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm flex-1 truncate">
+                              {file.name}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => removeTrackFile(track.id, fileIndex)}
+                            >
+                              <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <label
+                      className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border/50 bg-muted/20 px-4 py-5 cursor-pointer hover:border-accent/50 transition-colors"
+                      onDragOver={(event) => event.preventDefault()}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        if (event.dataTransfer.files?.length) {
+                          addTrackFiles(track.id, event.dataTransfer.files);
+                        }
+                      }}
+                    >
+                      <Paperclip className="h-5 w-5 text-muted-foreground" />
+                      <span className="font-mono text-xs text-muted-foreground">
+                        Drop track files here or click to browse
+                      </span>
+                      <input
+                        aria-label="Track attachments"
+                        type="file"
+                        className="hidden"
+                        multiple
+                        onChange={(event) => {
+                          if (event.target.files?.length) {
+                            addTrackFiles(track.id, event.target.files);
+                          }
+                          event.target.value = "";
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button
+                type="button"
+                disabled={savingBatch}
+                onClick={saveGeneratedSessions}
+                className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground font-semibold"
+              >
+                {savingBatch ? "Creating..." : "Create Sessions"}
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href={`/tasks/${taskContext.id}`}>Cancel</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -230,17 +819,15 @@ export default function StudyNewPage() {
       </div>
 
       <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-        <CardHeader className="border-t-2 border-accent rounded-t-xl">
-          <CardTitle className="font-display text-lg mt-3.5">
-            Session Details
-          </CardTitle>
+        <CardHeader className="pb-2">
+          <CardTitle className="font-display text-lg">Session Details</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleCreateSession} className="space-y-5 pt-2">
             <div className="space-y-1.5">
               <Label className="font-mono text-xs tracking-wider">TITLE</Label>
               <Input
-                placeholder="e.g. Website Application Design and Security Self-Study"
+                placeholder="e.g. Biology chapter 6 review"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
               />
@@ -369,11 +956,11 @@ export default function StudyNewPage() {
                 <div className="space-y-2">
                   {attachments.map((file, index) => (
                     <div
-                      key={`${file}-${index}`}
+                      key={`${file.name}-${index}`}
                       className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/30 px-3 py-2"
                     >
                       <Paperclip className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm flex-1 truncate">{file}</span>
+                      <span className="text-sm flex-1 truncate">{file.name}</span>
                       <button
                         type="button"
                         onClick={() => handleRemoveAttachment(index)}
@@ -383,25 +970,24 @@ export default function StudyNewPage() {
                     </div>
                   ))}
                 </div>
-              ) : (
-                <label
-                  className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border/50 bg-muted/20 px-4 py-6 cursor-pointer hover:border-accent/50 transition-colors"
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={handleDrop}
-                >
-                  <Paperclip className="h-6 w-6 text-muted-foreground" />
-                  <span className="font-mono text-xs text-muted-foreground">
-                    Drop files here or click to browse
-                  </span>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    className="hidden"
-                    multiple
-                    onChange={handleFileSelect}
-                  />
-                </label>
-              )}
+              ) : null}
+              <label
+                className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border/50 bg-muted/20 px-4 py-6 cursor-pointer hover:border-accent/50 transition-colors"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={handleDrop}
+              >
+                <Paperclip className="h-6 w-6 text-muted-foreground" />
+                <span className="font-mono text-xs text-muted-foreground">
+                  Drop files here or click to browse
+                </span>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  multiple
+                  onChange={handleFileSelect}
+                />
+              </label>
             </div>
 
             <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-4">
@@ -436,15 +1022,6 @@ export default function StudyNewPage() {
                 <>
                   <div className="space-y-3">
                     {reminders.map((reminder, index) => {
-                      const reminderTime = scheduledAt
-                        ? new Date(
-                            scheduledAt.getTime() -
-                              valueToMs(
-                                reminder.unit,
-                                reminder.atStart ? 0 : reminder.value,
-                              ),
-                          )
-                        : null;
                       const isAtStart = reminder.atStart === true;
 
                       return (

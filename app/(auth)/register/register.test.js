@@ -90,8 +90,11 @@ describe("RegisterPage", () => {
 
     expect(global.fetch).toHaveBeenCalledWith("/api/auth/firebase", {
       method: "POST",
-      headers: { Authorization: "Bearer fake-token" },
-      body: JSON.stringify({ displayName: "John Doe" }),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer fake-token",
+      },
+      body: JSON.stringify({ name: "John Doe" }),
     });
 
     expect(toast.success).toHaveBeenCalledWith("Account created! Welcome 🎉");

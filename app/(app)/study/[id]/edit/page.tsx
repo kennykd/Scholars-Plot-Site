@@ -19,6 +19,27 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ArrowLeft, CalendarIcon, Paperclip, X, Sparkles } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import type { Attachment } from "@/types";
+
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+
+type ApiStudyAttachmentLink = {
+  attachment?: {
+    attachment_id: number;
+    task_id?: number | null;
+    user_id?: string | null;
+    file_name: string;
+    file_path: string;
+    file_type: string;
+    url?: string | null;
+    attachment_uploaded_at?: string | Date | null;
+  } | null;
+};
+
+const isApiAttachment = (
+  attachment: ApiStudyAttachmentLink["attachment"],
+): attachment is NonNullable<ApiStudyAttachmentLink["attachment"]> =>
+  Boolean(attachment);
 
 const combineDateTime = (date: Date, time: string) => {
   const [hours, minutes] = time.split(":").map(Number);
@@ -29,7 +50,7 @@ const combineDateTime = (date: Date, time: string) => {
   return next;
 };
 
-export default function StudyEditPage({ params }: { params: { id: string } }) {
+export default function StudyEditPage() {
   const router = useRouter();
   const routeParams = useParams<{ id: string }>();
   const sessionId = Array.isArray(routeParams.id)
@@ -45,7 +66,8 @@ export default function StudyEditPage({ params }: { params: { id: string } }) {
   const [totalPomodoro, setTotalPomodoro] = useState(2);
   const [descriptionAsChecklist, setDescriptionAsChecklist] = useState(true);
   const [calOpen, setCalOpen] = useState(false);
-  const [attachments, setAttachments] = useState<string[]>([]);
+  const [existingAttachments, setExistingAttachments] = useState<Attachment[]>([]);
+  const [attachments, setAttachments] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
 
@@ -89,22 +111,27 @@ export default function StudyEditPage({ params }: { params: { id: string } }) {
                 .join("\n")
             : (apiStudy.study_session_description ?? "");
 
-        // Extract attachment names from study_session_user if available
-        const attachmentNames: string[] = [];
-        if (
-          apiStudy.study_session_user &&
-          Array.isArray(apiStudy.study_session_user)
-        ) {
-          apiStudy.study_session_user.forEach((ssu: any) => {
-            if (ssu.attachment && ssu.attachment.file_name) {
-              attachmentNames.push(ssu.attachment.file_name);
-            }
-          });
-        }
+        const persistedAttachments = Array.isArray(apiStudy.study_session_attachments)
+          ? (apiStudy.study_session_attachments as ApiStudyAttachmentLink[])
+              .map((link) => link?.attachment)
+              .filter(isApiAttachment)
+              .map((attachment) => ({
+                id: attachment.attachment_id,
+                taskId: attachment.task_id ?? null,
+                userId: attachment.user_id ?? null,
+                fileName: attachment.file_name,
+                fileKey: attachment.file_path,
+                fileType: attachment.file_type,
+                url: attachment.url ?? "",
+                uploadedAt: attachment.attachment_uploaded_at
+                  ? new Date(attachment.attachment_uploaded_at).toISOString()
+                  : new Date().toISOString(),
+              }))
+          : [];
 
         setTitle(apiStudy.study_session_name ?? "");
         setNotes(nextNotes);
-        setAttachments(attachmentNames);
+        setExistingAttachments(persistedAttachments);
         setScheduledDate(scheduledAt);
         setScheduledTime(scheduledAt ? format(scheduledAt, "HH:mm") : "");
         setFocusMinutes(apiStudy.focus_minutes ?? 25);
@@ -127,12 +154,25 @@ export default function StudyEditPage({ params }: { params: { id: string } }) {
       Math.max(1, Number(breakMinutes) || 0)) *
     Math.max(1, Number(totalPomodoro) || 0);
 
+  const getAcceptedFiles = (incoming: FileList | File[]) => {
+    const accepted: File[] = [];
+    for (const file of Array.from(incoming)) {
+      if (file.size > MAX_FILE_BYTES) {
+        toast.error(`"${file.name}" exceeds 10MB and was skipped`);
+        continue;
+      }
+      accepted.push(file);
+    }
+    return accepted;
+  };
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
 
-    for (const file of Array.from(files)) {
-      setAttachments((prev) => [...prev, file.name]);
+    const accepted = getAcceptedFiles(files);
+    if (accepted.length > 0) {
+      setAttachments((prev) => [...prev, ...accepted]);
     }
 
     // Reset input
@@ -146,9 +186,27 @@ export default function StudyEditPage({ params }: { params: { id: string } }) {
     const files = event.dataTransfer.files;
     if (!files) return;
 
-    for (const file of Array.from(files)) {
-      setAttachments((prev) => [...prev, file.name]);
+    const accepted = getAcceptedFiles(files);
+    if (accepted.length > 0) {
+      setAttachments((prev) => [...prev, ...accepted]);
     }
+  };
+
+  const removeExistingAttachment = async (attachmentId: number) => {
+    const response = await fetch(
+      `/api/study/${sessionId}/attachment/${attachmentId}`,
+      { method: "DELETE" },
+    );
+
+    if (!response.ok) {
+      toast.error("Failed to remove attachment");
+      return;
+    }
+
+    setExistingAttachments((prev) =>
+      prev.filter((attachment) => attachment.id !== attachmentId),
+    );
+    toast.success("Attachment removed");
   };
 
   const handleEditSession = async (e: React.FormEvent) => {
@@ -185,7 +243,6 @@ export default function StudyEditPage({ params }: { params: { id: string } }) {
         scheduledDate,
         scheduledTime,
       ).toISOString(),
-      attachment_names: attachments.length > 0 ? attachments : undefined,
     };
 
     try {
@@ -204,7 +261,28 @@ export default function StudyEditPage({ params }: { params: { id: string } }) {
         return;
       }
 
-      toast.success("Study session updated");
+      const failures: string[] = [];
+      if (attachments.length > 0) {
+        for (const file of attachments) {
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("studySessionIds", JSON.stringify([Number(sessionId)]));
+
+          const uploadResponse = await fetch("/api/study/attachment", {
+            method: "POST",
+            body: formData,
+          });
+          if (!uploadResponse.ok) failures.push(file.name);
+        }
+      }
+
+      if (failures.length > 0) {
+        toast.warning(
+          `Study session updated. Some files failed: ${failures.join(", ")}`,
+        );
+      } else {
+        toast.success("Study session updated");
+      }
       router.push("/study");
     } catch {
       toast.error("Network error while updating study session");
@@ -259,9 +337,7 @@ export default function StudyEditPage({ params }: { params: { id: string } }) {
 
       <Card className="bg-card/80 backdrop-blur-sm border-border/50">
         <CardHeader className="pb-2">
-          <CardTitle className="font-display text-lg">
-            Session Details
-          </CardTitle>
+          <CardTitle className="font-display text-lg">Session Details</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleEditSession} className="space-y-5 pt-2">
@@ -269,7 +345,7 @@ export default function StudyEditPage({ params }: { params: { id: string } }) {
             <div className="space-y-1.5">
               <Label className="font-mono text-xs tracking-wider">TITLE</Label>
               <Input
-                placeholder="e.g. Website Application Design and Security Self-Study"
+                placeholder="e.g. Biology chapter 6 review"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
               />
@@ -340,7 +416,7 @@ export default function StudyEditPage({ params }: { params: { id: string } }) {
                 </Label>
                 <Input
                   type="number"
-                  min={1}
+                  min={0}
                   value={breakMinutes}
                   onChange={(e) => setBreakMinutes(Number(e.target.value))}
                 />
@@ -401,15 +477,37 @@ export default function StudyEditPage({ params }: { params: { id: string } }) {
               <Label className="font-mono text-xs tracking-wider">
                 ATTACHMENTS
               </Label>
-              {attachments.length ? (
+              {existingAttachments.length > 0 || attachments.length > 0 ? (
                 <div className="space-y-2">
-                  {attachments.map((file, index) => (
+                  {existingAttachments.map((file) => (
                     <div
-                      key={`${file}-${index}`}
+                      key={`existing-${file.id}-${file.fileKey}`}
                       className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/30 px-3 py-2"
                     >
                       <Paperclip className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm flex-1 truncate">{file}</span>
+                      <a
+                        href={file.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm flex-1 truncate hover:text-accent"
+                      >
+                        {file.fileName}
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => removeExistingAttachment(file.id)}
+                      >
+                        <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                      </button>
+                    </div>
+                  ))}
+                  {attachments.map((file, index) => (
+                    <div
+                      key={`new-${file.name}-${index}`}
+                      className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/30 px-3 py-2"
+                    >
+                      <Paperclip className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm flex-1 truncate">{file.name}</span>
                       <button
                         type="button"
                         onClick={() =>
@@ -423,25 +521,24 @@ export default function StudyEditPage({ params }: { params: { id: string } }) {
                     </div>
                   ))}
                 </div>
-              ) : (
-                <label
-                  className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border/50 bg-muted/20 px-4 py-6 cursor-pointer hover:border-accent/50 transition-colors"
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={handleDrop}
-                >
-                  <Paperclip className="h-6 w-6 text-muted-foreground" />
-                  <span className="font-mono text-xs text-muted-foreground">
-                    Drop files here or click to browse
-                  </span>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    className="hidden"
-                    multiple
-                    onChange={handleFileSelect}
-                  />
-                </label>
-              )}
+              ) : null}
+              <label
+                className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border/50 bg-muted/20 px-4 py-6 cursor-pointer hover:border-accent/50 transition-colors"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={handleDrop}
+              >
+                <Paperclip className="h-6 w-6 text-muted-foreground" />
+                <span className="font-mono text-xs text-muted-foreground">
+                  Drop files here or click to browse
+                </span>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  multiple
+                  onChange={handleFileSelect}
+                />
+              </label>
             </div>
 
             <div className="flex items-center justify-between rounded-lg border border-accent/20 bg-accent/5 px-4 py-3">
