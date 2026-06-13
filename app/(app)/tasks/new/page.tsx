@@ -25,7 +25,7 @@ import { StarRating } from "@/app/components/common/star-rating";
 import { StudySessionPrompt } from "@/app/components/tasks/study-session-prompt";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { CalendarIcon, Paperclip, X } from "lucide-react";
+import { ArrowLeft, CalendarIcon, Paperclip, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type ReminderOption = "none" | "daily" | "every-3-days" | "weekly" | "biweekly";
@@ -170,13 +170,20 @@ export default function TaskForm() {
         />
       )}
 
-      <div>
-        <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">
-          NEW TASK
-        </h1>
-        <p className="font-mono text-xs text-muted-foreground mt-1 tracking-widest">
-          CREATE A NEW TASK
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">
+            NEW TASK
+          </h1>
+          <p className="font-mono text-xs text-muted-foreground mt-1 tracking-widest">
+            CREATE A NEW TASK
+          </p>
+        </div>
+        <Button variant="outline" asChild className="font-mono text-xs">
+          <Link href="/tasks">
+            <ArrowLeft className="h-4 w-4 mr-2" /> Back to Tasks
+          </Link>
+        </Button>
       </div>
 
       <Card className="bg-card/80 backdrop-blur-sm border-border/50">
@@ -274,24 +281,8 @@ export default function TaskForm() {
               <Label className="font-mono text-xs tracking-wider">
                 ATTACHMENTS
               </Label>
-              <label
-                className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border/50 bg-muted/20 px-4 py-6 cursor-pointer hover:border-accent/50 transition-colors"
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={handleDrop}
-              >
-                <Paperclip className="h-6 w-6 text-muted-foreground" />
-                <span className="font-mono text-xs text-muted-foreground">
-                  Drop files here or click to browse (10MB max each)
-                </span>
-                <input
-                  type="file"
-                  multiple
-                  className="hidden"
-                  onChange={handleFileSelect}
-                />
-              </label>
               {files.length > 0 && (
-                <ul className="space-y-1.5 pt-1">
+                <ul className="space-y-1.5">
                   {files.map((f, i) => (
                     <li
                       key={`${f.name}-${i}`}
@@ -313,6 +304,22 @@ export default function TaskForm() {
                   ))}
                 </ul>
               )}
+              <label
+                className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border/50 bg-muted/20 px-4 py-6 cursor-pointer hover:border-accent/50 transition-colors"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={handleDrop}
+              >
+                <Paperclip className="h-6 w-6 text-muted-foreground" />
+                <span className="font-mono text-xs text-muted-foreground">
+                  Drop files here or click to browse (10MB max each)
+                </span>
+                <input
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+              </label>
             </div>
 
             <div className="space-y-1.5">

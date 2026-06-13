@@ -59,6 +59,10 @@ describe("StudyNewPage", () => {
     expect(
       screen.getByRole("button", { name: /create session/i }),
     ).toBeInTheDocument();
+    expect(screen.getByText("POMODOROS")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/How many Pomodoro sessions/i),
+    ).not.toBeInTheDocument();
   });
 
   it("shows an error if title is missing", () => {

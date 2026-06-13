@@ -50,6 +50,9 @@ describe("TaskForm", () => {
     expect(
       screen.getByRole("button", { name: /create task/i }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /back to tasks/i }),
+    ).toHaveAttribute("href", "/tasks");
   });
 
   it("shows title validation error when form is submitted without a title", () => {
