@@ -35,14 +35,18 @@ export async function POST(request: Request) {
     const result = await createStudySessionsForTask(
       session.id,
       parsed.data.task_id,
-      parsed.data.tracks,
+      parsed.data.plans,
+      {
+        reminderEnabled: parsed.data.reminder_enabled ?? false,
+        reminders: parsed.data.reminders ?? [],
+      },
     );
 
     return NextResponse.json(
       {
         message: 'Study sessions created successfully',
         studySessions: result.studySessions,
-        createdByTrack: result.createdByTrack,
+        createdByPlan: result.createdByPlan,
       },
       { status: 201 },
     );

@@ -141,7 +141,7 @@ describe("StudyNewPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("saves track rules directly and uploads per-track attachments", async () => {
+  it("saves session plans directly and uploads per-session attachments", async () => {
     mockSearchParams = new URLSearchParams("taskId=42");
     global.fetch = jest.fn(async (url, init) => {
       if (url === "/api/task/42") {
@@ -164,13 +164,13 @@ describe("StudyNewPage", () => {
 
       if (url === "/api/study/batch") {
         const payload = JSON.parse(init.body);
-        const trackId = payload.tracks[0].client_track_id;
+        const planId = payload.plans[0].client_plan_id;
         return {
           ok: true,
           json: async () => ({
             studySessions: [{ study_session_id: 11 }, { study_session_id: 12 }],
-            createdByTrack: {
-              [trackId]: [11, 12],
+            createdByPlan: {
+              [planId]: [11, 12],
             },
           }),
         };
@@ -194,21 +194,24 @@ describe("StudyNewPage", () => {
       screen.queryByRole("button", { name: /generate preview/i }),
     ).not.toBeInTheDocument();
     expect(screen.queryByText(/generated sessions/i)).not.toBeInTheDocument();
+    expect(screen.getByText("Study Sessions")).toBeInTheDocument();
+    expect(screen.getByText(/REPEAT/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Mon" })).not.toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText(/track topic/i), {
+    fireEvent.change(screen.getByLabelText(/session topic/i), {
       target: { value: "Mechanical Physics" },
     });
     fireEvent.change(screen.getByLabelText(/preferred time/i), {
       target: { value: "15:00" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /^mon$/i }));
-    fireEvent.click(screen.getByRole("button", { name: /^thu$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /on task day/i }));
+    fireEvent.click(screen.getByLabelText(/enable reminder/i));
 
     const file = new File(["formula sheet"], "mechanics.pdf", {
       type: "application/pdf",
     });
     const trackFileInput = container.querySelector(
-      'input[aria-label="Track attachments"]',
+      'input[aria-label="Session attachments"]',
     );
     fireEvent.change(trackFileInput, { target: { files: [file] } });
 
@@ -227,14 +230,19 @@ describe("StudyNewPage", () => {
     const payload = JSON.parse(batchCall[1].body);
     expect(payload.task_id).toBe(42);
     expect(payload.sessions).toBeUndefined();
-    expect(payload.tracks).toHaveLength(1);
-    expect(payload.tracks[0]).toEqual(
+    expect(payload.plans).toHaveLength(1);
+    expect(payload.plans[0]).toEqual(
       expect.objectContaining({
         title: "Mechanical Physics",
-        weekdays: expect.arrayContaining([1, 4]),
+        start_date: "2099-03-31",
+        repeat: "none",
         time: "15:00",
       }),
     );
+    expect(payload.plans[0].dates).toBeUndefined();
+    expect(payload.plans[0].weekdays).toBeUndefined();
+    expect(payload.reminder_enabled).toBe(true);
+    expect(payload.reminders).toEqual([15, 5, 0]);
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
@@ -245,7 +253,7 @@ describe("StudyNewPage", () => {
     expect(mockPush).toHaveBeenCalledWith("/tasks/42");
   });
 
-  it("does not save a task-linked planner without selected weekdays", async () => {
+  it("does not save a task-linked planner without a start date", async () => {
     mockSearchParams = new URLSearchParams("taskId=42");
     global.fetch.mockResolvedValueOnce({
         ok: true,
@@ -268,8 +276,11 @@ describe("StudyNewPage", () => {
     await screen.findByText("Physics Final");
     fireEvent.click(screen.getByRole("button", { name: /create sessions/i }));
 
-    expect(toast.error).toHaveBeenCalledWith(
-      "Choose at least one weekday for each track",
+    expect(
+      await screen.findByText(/choose a start date/i),
+    ).toBeInTheDocument();
+    expect(toast.error).not.toHaveBeenCalledWith(
+      "Choose at least one weekday for each session",
     );
     expect(global.fetch).toHaveBeenCalledTimes(1);
   });

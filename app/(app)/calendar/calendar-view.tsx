@@ -8,6 +8,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { StarRating } from "@/app/components/common/star-rating";
 import {
+  STUDY_EVENT_COLOR,
+  TASK_EVENT_COLOR,
   tasksToCalendarEvents,
   studySessionsToCalendarEvents,
   type CalendarStudySession,
@@ -134,6 +136,24 @@ export function CalendarView({ tasks, sessions }: CalendarViewProps) {
               ? `${format(weekStart, "MMM d")} — ${format(addDays(weekStart, 6), "MMM d, yyyy")}`
               : format(anchor, "MMMM yyyy")}
           </p>
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className="h-2.5 w-2.5 rounded-sm"
+                style={{ backgroundColor: TASK_EVENT_COLOR }}
+                aria-hidden="true"
+              />
+              Task deadlines
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className="h-2.5 w-2.5 rounded-sm"
+                style={{ backgroundColor: STUDY_EVENT_COLOR }}
+                aria-hidden="true"
+              />
+              Study sessions
+            </span>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={prev} className="font-mono text-xs">

@@ -39,20 +39,11 @@ import { StudyReminderOffset, StudyReminderValueUnit, type Task } from "@/types"
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
-const WEEKDAYS = [
-  { value: 1, label: "Mon" },
-  { value: 2, label: "Tue" },
-  { value: 3, label: "Wed" },
-  { value: 4, label: "Thu" },
-  { value: 5, label: "Fri" },
-  { value: 6, label: "Sat" },
-  { value: 0, label: "Sun" },
-];
-
 type StudyTrack = {
   id: string;
   title: string;
-  weekdays: number[];
+  startDate: string;
+  repeat: "none" | "weekly" | "biweekly";
   time: string;
   focusMinutes: number;
   breakMinutes: number;
@@ -66,7 +57,8 @@ function createEmptyTrack(title = ""): StudyTrack {
   return {
     id: crypto.randomUUID(),
     title,
-    weekdays: [],
+    startDate: "",
+    repeat: "none",
     time: "15:00",
     focusMinutes: 25,
     breakMinutes: 5,
@@ -114,6 +106,7 @@ export default function StudyNewPage() {
   const [taskLoadError, setTaskLoadError] = useState<string | null>(null);
   const [tracks, setTracks] = useState<StudyTrack[]>([createEmptyTrack()]);
   const [savingBatch, setSavingBatch] = useState(false);
+  const [plannerError, setPlannerError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!taskId || !Number.isInteger(taskId) || taskId <= 0) {
@@ -163,6 +156,11 @@ export default function StudyNewPage() {
     Math.max(1, Number(totalPomodoro) || 0);
 
   const normalizedReminders = reminders.filter(() => reminderEnabled);
+  const reminderOffsetsInMinutes = normalizedReminders.map((reminder) => {
+    if (reminder.atStart) return 0;
+    const value = Math.max(1, Number(reminder.value) || 1);
+    return reminder.unit === "hours" ? value * 60 : value;
+  });
 
   const taskDeadline = useMemo(() => {
     if (!taskContext?.deadline) return null;
@@ -170,29 +168,28 @@ export default function StudyNewPage() {
     return Number.isNaN(deadline.getTime()) ? null : deadline;
   }, [taskContext]);
 
+  const taskDeadlineDateValue = useMemo(() => {
+    const deadline = taskContext?.deadline;
+    if (typeof deadline === "string" && /^\d{4}-\d{2}-\d{2}/.test(deadline)) {
+      return deadline.slice(0, 10);
+    }
+    return taskDeadline ? format(taskDeadline, "yyyy-MM-dd") : null;
+  }, [taskContext, taskDeadline]);
+
   const updateTrack = (trackId: string, updates: Partial<StudyTrack>) => {
+    setPlannerError(null);
     setTracks((prev) =>
       prev.map((track) => (track.id === trackId ? { ...track, ...updates } : track)),
     );
   };
 
-  const toggleTrackWeekday = (trackId: string, weekday: number) => {
-    setTracks((prev) =>
-      prev.map((track) => {
-        if (track.id !== trackId) return track;
-        const nextWeekdays = track.weekdays.includes(weekday)
-          ? track.weekdays.filter((day) => day !== weekday)
-          : [...track.weekdays, weekday];
-        return { ...track, weekdays: nextWeekdays.sort((a, b) => a - b) };
-      }),
-    );
-  };
-
   const addTrack = () => {
+    setPlannerError(null);
     setTracks((prev) => [...prev, createEmptyTrack()]);
   };
 
   const removeTrack = (trackId: string) => {
+    setPlannerError(null);
     setTracks((prev) =>
       prev.length === 1 ? prev : prev.filter((track) => track.id !== trackId),
     );
@@ -200,35 +197,36 @@ export default function StudyNewPage() {
 
   const validateTracks = () => {
     if (!taskDeadline || !taskId) {
-      toast.error("Task deadline is required before planning sessions");
+      setPlannerError("Task deadline is required before planning sessions");
       return false;
     }
 
     for (const track of tracks) {
       if (!track.title.trim()) {
-        toast.error("Each study track needs a topic");
+        setPlannerError("Each study session needs a topic");
         return false;
       }
-      if (track.weekdays.length === 0) {
-        toast.error("Choose at least one weekday for each track");
+      if (!track.startDate) {
+        setPlannerError("Choose a start date for each study session");
         return false;
       }
       if (!track.time) {
-        toast.error("Choose a preferred time for each track");
+        setPlannerError("Choose a preferred time for each study session");
         return false;
       }
     }
 
+    setPlannerError(null);
     return true;
   };
 
   const uploadTrackAttachments = async (
-    createdByTrack: Record<string, number[]>,
+    createdByPlan: Record<string, number[]>,
   ) => {
     const failures: string[] = [];
 
     for (const track of tracks) {
-      const studySessionIds = createdByTrack[track.id] ?? [];
+      const studySessionIds = createdByPlan[track.id] ?? [];
       if (studySessionIds.length === 0 || track.attachments.length === 0) {
         continue;
       }
@@ -263,10 +261,13 @@ export default function StudyNewPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           task_id: taskId,
-          tracks: tracks.map((track) => ({
-            client_track_id: track.id,
+          reminder_enabled: reminderEnabled,
+          reminders: reminderEnabled ? reminderOffsetsInMinutes : [],
+          plans: tracks.map((track) => ({
+            client_plan_id: track.id,
             title: track.title.trim(),
-            weekdays: track.weekdays,
+            start_date: track.startDate,
+            repeat: track.repeat,
             time: track.time,
             focus_minutes: Math.max(1, Number(track.focusMinutes) || 25),
             break_minutes: Math.max(0, Number(track.breakMinutes) || 0),
@@ -286,7 +287,7 @@ export default function StudyNewPage() {
         throw new Error(firstError ?? data?.message ?? "Failed to create sessions");
       }
 
-      const uploadFailures = await uploadTrackAttachments(data?.createdByTrack ?? {});
+      const uploadFailures = await uploadTrackAttachments(data?.createdByPlan ?? {});
       if (uploadFailures.length > 0) {
         toast.warning(
           `Study sessions created. Some files failed: ${uploadFailures.join(", ")}`,
@@ -296,7 +297,10 @@ export default function StudyNewPage() {
       }
       router.push(`/tasks/${taskId}`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to create sessions");
+      const message =
+        error instanceof Error ? error.message : "Failed to create sessions";
+      setPlannerError(message);
+      toast.error(message);
     } finally {
       setSavingBatch(false);
     }
@@ -434,11 +438,7 @@ export default function StudyNewPage() {
             }))
         : null,
       study_session_scheduled_at: sessionScheduledAt.toISOString(),
-      reminders: reminderEnabled
-        ? normalizedReminders.map((reminder) =>
-            reminder.atStart ? 0 : Math.max(1, Number(reminder.value) || 1),
-          )
-        : [],
+      reminders: reminderEnabled ? reminderOffsetsInMinutes : [],
       reminder_enabled: reminderEnabled,
     };
 
@@ -489,7 +489,7 @@ export default function StudyNewPage() {
   if (taskId) {
     if (taskLoading) {
       return (
-        <div className="p-6 space-y-6">
+        <div className="p-6 max-w-2xl mx-auto space-y-6">
           <p className="text-sm text-muted-foreground">Loading task...</p>
         </div>
       );
@@ -497,7 +497,7 @@ export default function StudyNewPage() {
 
     if (taskLoadError || !taskContext || !taskDeadline) {
       return (
-        <div className="p-6 space-y-4">
+        <div className="p-6 max-w-2xl mx-auto space-y-4">
           <h1 className="font-display text-2xl font-bold text-foreground">
             Task not available
           </h1>
@@ -512,7 +512,7 @@ export default function StudyNewPage() {
     }
 
     return (
-      <div className="p-6 space-y-6">
+      <div className="p-6 max-w-2xl mx-auto space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">
@@ -552,17 +552,23 @@ export default function StudyNewPage() {
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="font-display text-lg font-semibold">
-                    Study Tracks
+                    Study Sessions
                   </h2>
                   <p className="text-sm text-muted-foreground">
-                    Add one track for each topic, choose weekdays, and attach study materials.
+                    Add one session plan for each topic, pick the first date, set a cadence, and attach study materials.
                   </p>
                 </div>
                 <Button type="button" variant="outline" onClick={addTrack}>
-                  <Plus className="h-4 w-4 mr-2" /> Add track
+                  <Plus className="h-4 w-4 mr-2" /> Add session
                 </Button>
               </div>
             </div>
+
+            {plannerError && (
+              <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+                {plannerError}
+              </div>
+            )}
 
             <div className="space-y-4">
               {tracks.map((track, index) => (
@@ -572,7 +578,7 @@ export default function StudyNewPage() {
                 >
                   <div className="flex items-center justify-between gap-3">
                     <p className="font-mono text-xs text-muted-foreground tracking-wider">
-                      TRACK {index + 1}
+                      SESSION {index + 1}
                     </p>
                     <Button
                       type="button"
@@ -591,7 +597,7 @@ export default function StudyNewPage() {
                         htmlFor={`track-topic-${track.id}`}
                         className="font-mono text-xs tracking-wider"
                       >
-                        TRACK TOPIC
+                        SESSION TOPIC
                       </Label>
                       <Input
                         id={`track-topic-${track.id}`}
@@ -621,30 +627,64 @@ export default function StudyNewPage() {
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <Label className="font-mono text-xs tracking-wider">
-                      WEEKDAYS
-                    </Label>
-                    <div className="flex flex-wrap gap-2">
-                      {WEEKDAYS.map((weekday) => {
-                        const selected = track.weekdays.includes(weekday.value);
-                        return (
-                          <Button
-                            key={weekday.value}
-                            type="button"
-                            variant={selected ? "default" : "outline"}
-                            size="sm"
-                            className={cn(
-                              "font-mono text-xs",
-                              selected &&
-                                "bg-accent text-accent-foreground hover:bg-accent/90",
-                            )}
-                            onClick={() => toggleTrackWeekday(track.id, weekday.value)}
-                          >
-                            {weekday.label}
-                          </Button>
-                        );
-                      })}
+                  <div className="grid gap-4 md:grid-cols-[1fr_180px]">
+                    <div className="space-y-1.5">
+                      <Label
+                        htmlFor={`track-start-date-${track.id}`}
+                        className="font-mono text-xs tracking-wider"
+                      >
+                        START DATE
+                      </Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id={`track-start-date-${track.id}`}
+                          type="date"
+                          value={track.startDate}
+                          onChange={(event) =>
+                            updateTrack(track.id, {
+                              startDate: event.target.value,
+                            })
+                          }
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={!taskDeadlineDateValue}
+                          onClick={() =>
+                            taskDeadlineDateValue &&
+                            updateTrack(track.id, {
+                              startDate: taskDeadlineDateValue,
+                              repeat: "none",
+                            })
+                          }
+                          className="shrink-0"
+                        >
+                          On task day
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="font-mono text-xs tracking-wider">
+                        REPEAT
+                      </Label>
+                      <Select
+                        value={track.repeat}
+                        onValueChange={(value) =>
+                          updateTrack(track.id, {
+                            repeat: value as StudyTrack["repeat"],
+                          })
+                        }
+                      >
+                        <SelectTrigger className="font-mono text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">None</SelectItem>
+                          <SelectItem value="weekly">Every week</SelectItem>
+                          <SelectItem value="biweekly">Every 2 weeks</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 
@@ -715,7 +755,7 @@ export default function StudyNewPage() {
                       </Label>
                     </div>
                     <Textarea
-                      placeholder="Optional notes for this track..."
+                      placeholder="Optional notes for this session..."
                       value={track.notes}
                       onChange={(event) =>
                         updateTrack(track.id, { notes: event.target.value })
@@ -726,7 +766,7 @@ export default function StudyNewPage() {
 
                   <div className="space-y-2">
                     <Label className="font-mono text-xs tracking-wider">
-                      TRACK ATTACHMENTS
+                      SESSION ATTACHMENTS
                     </Label>
                     {track.attachments.length > 0 && (
                       <div className="space-y-2">
@@ -761,10 +801,10 @@ export default function StudyNewPage() {
                     >
                       <Paperclip className="h-5 w-5 text-muted-foreground" />
                       <span className="font-mono text-xs text-muted-foreground">
-                        Drop track files here or click to browse
+                        Drop session files here or click to browse
                       </span>
                       <input
-                        aria-label="Track attachments"
+                        aria-label="Session attachments"
                         type="file"
                         className="hidden"
                         multiple
@@ -779,6 +819,141 @@ export default function StudyNewPage() {
                   </div>
                 </div>
               ))}
+            </div>
+
+            <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <Label className="font-mono text-xs tracking-wider">
+                    REMINDER
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Apply the same reminder offsets to every generated session.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="study-reminder-enabled"
+                    checked={reminderEnabled}
+                    onCheckedChange={(checked) =>
+                      setReminderEnabled(checked === true)
+                    }
+                  />
+                  <Label
+                    htmlFor="study-reminder-enabled"
+                    className="font-mono text-xs tracking-wider"
+                  >
+                    Enable reminder
+                  </Label>
+                </div>
+              </div>
+
+              {reminderEnabled ? (
+                <>
+                  <div className="space-y-3">
+                    {reminders.map((reminder, index) => {
+                      const isAtStart = reminder.atStart === true;
+
+                      return (
+                        <div
+                          key={`${reminder.unit}-${index}`}
+                          className="grid gap-3 rounded-lg border border-border/50 bg-background/80 p-3 md:grid-cols-[1fr_180px_auto]"
+                        >
+                          <div className="space-y-1.5">
+                            <Label className="font-mono text-xs tracking-wider">
+                              VALUE UNIT
+                            </Label>
+                            <Select
+                              value={reminder.unit}
+                              onValueChange={(v) =>
+                                updateReminder(index, {
+                                  unit: v as StudyReminderValueUnit,
+                                })
+                              }
+                              disabled={!reminderEnabled}
+                            >
+                              <SelectTrigger className="font-mono text-sm w-full">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="minutes">
+                                  Minutes before
+                                </SelectItem>
+                                <SelectItem value="hours">
+                                  Hours before
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label className="font-mono text-xs tracking-wider">
+                              VALUE
+                            </Label>
+                            <div className="flex items-center gap-2">
+                              <Checkbox
+                                checked={isAtStart}
+                                onCheckedChange={(checked) =>
+                                  toggleStartReminder(index, checked === true)
+                                }
+                                disabled={!reminderEnabled}
+                              />
+                              <Label className="font-mono text-xs tracking-wider">
+                                At Start
+                              </Label>
+                            </div>
+                            {isAtStart ? (
+                              <div className="flex h-10 items-center rounded-md border border-dashed border-border/60 bg-muted/30 px-3 text-sm text-muted-foreground">
+                                At Start
+                              </div>
+                            ) : (
+                              <Input
+                                type="number"
+                                min={1}
+                                value={reminder.value}
+                                onChange={(event) =>
+                                  updateReminder(index, {
+                                    value: Number(event.target.value),
+                                  })
+                                }
+                                disabled={!reminderEnabled}
+                              />
+                            )}
+                          </div>
+
+                          <div className="flex items-end justify-between gap-2">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeReminder(index)}
+                              disabled={!reminderEnabled}
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-border/60 px-3 py-2">
+                    <p className="text-xs text-muted-foreground">
+                      Default reminders are 15 minutes, 5 minutes, and an At
+                      Start reminder.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addReminder}
+                      disabled={!reminderEnabled}
+                    >
+                      Add reminder
+                    </Button>
+                  </div>
+                </>
+              ) : null}
             </div>
 
             <div className="flex gap-3 pt-2">
@@ -801,7 +976,7 @@ export default function StudyNewPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 max-w-2xl mx-auto space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">

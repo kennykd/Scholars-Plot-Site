@@ -90,6 +90,13 @@ function getStatusBadge(sectionType: StudySectionType, session: StudySession) {
   };
 }
 
+function getEmptyMessage(sectionType: StudySectionType) {
+  if (sectionType === "in-progress") return "No study sessions are running.";
+  if (sectionType === "completed") return "No completed study sessions yet.";
+  if (sectionType === "expired") return "No expired study sessions.";
+  return "No upcoming study sessions.";
+}
+
 export function StudySessionListCard({
   sectionType,
   title,
@@ -103,8 +110,6 @@ export function StudySessionListCard({
   onSelectSession,
   onOpenSession,
 }: StudySessionListCardProps) {
-  if (sessions.length === 0) return null;
-
   const showOpenButton =
     sectionType === "in-progress" || sectionType === "upcoming";
 
@@ -122,94 +127,102 @@ export function StudySessionListCard({
         >
           {title}
         </CardTitle>
-        <div className="flex gap-2">
-          {selectedCount < sessions.length && (
-            <Button
-              size="sm"
-              onClick={onSelectAll}
-              variant={sectionType === "expired" ? "outline" : "default"}
-              className="font-semibold text-xs"
-            >
-              Select All
-            </Button>
-          )}
-          {selectedCount > 0 && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={onDeselectAll}
-              className="font-semibold text-xs"
-            >
-              Deselect All
-            </Button>
-          )}
-        </div>
+        {sessions.length > 0 && (
+          <div className="flex gap-2">
+            {selectedCount < sessions.length && (
+              <Button
+                size="sm"
+                onClick={onSelectAll}
+                variant={sectionType === "expired" ? "outline" : "default"}
+                className="font-semibold text-xs"
+              >
+                Select All
+              </Button>
+            )}
+            {selectedCount > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onDeselectAll}
+                className="font-semibold text-xs"
+              >
+                Deselect All
+              </Button>
+            )}
+          </div>
+        )}
       </CardHeader>
       <CardContent className="space-y-3">
-        {sessions.slice(0, 8).map((session) => {
-          const isSelected = selectedSessionIds.includes(session.id);
-          const badge = getStatusBadge(sectionType, session);
+        {sessions.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border/60 bg-muted/20 px-4 py-6 text-sm text-muted-foreground">
+            {getEmptyMessage(sectionType)}
+          </div>
+        ) : (
+          sessions.map((session) => {
+            const isSelected = selectedSessionIds.includes(session.id);
+            const badge = getStatusBadge(sectionType, session);
 
-          return (
-            <div
-              key={session.id}
-              className={`flex flex-col gap-3 rounded-lg border px-4 py-3 sm:flex-row sm:items-center sm:justify-between transition-colors ${getItemClasses(
-                sectionType,
-                isSelected,
-              )}`}
-            >
-              <div className="space-y-1">
-                <p className="font-medium text-foreground">{session.title}</p>
-                <p className="text-xs text-muted-foreground">
-                  {getSubtitle(sectionType, session)}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <Badge className={badge.className}>{badge.label}</Badge>
-                  <Badge variant="outline" className="font-mono text-[10px]">
-                    {session.focusMinutes}m / {session.breakMinutes}m
-                  </Badge>
-                  <Badge variant="secondary" className="text-[10px]">
-                    Total {session.totalMinutes}m
-                  </Badge>
-                  {sectionType === "upcoming" &&
-                    session.attachments.length > 0 && (
+            return (
+              <div
+                key={session.id}
+                className={`flex flex-col gap-3 rounded-lg border px-4 py-3 sm:flex-row sm:items-center sm:justify-between transition-colors ${getItemClasses(
+                  sectionType,
+                  isSelected,
+                )}`}
+              >
+                <div className="space-y-1">
+                  <p className="font-medium text-foreground">{session.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {getSubtitle(sectionType, session)}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge className={badge.className}>{badge.label}</Badge>
+                    <Badge variant="outline" className="font-mono text-[10px]">
+                      {session.focusMinutes}m / {session.breakMinutes}m
+                    </Badge>
+                    <Badge variant="secondary" className="text-[10px]">
+                      Total {session.totalMinutes}m
+                    </Badge>
+                    {sectionType === "upcoming" &&
+                      session.attachments.length > 0 && (
+                        <Badge variant="secondary" className="text-[10px]">
+                          {session.attachments.length} attachment
+                          {session.attachments.length > 1 ? "s" : ""}
+                        </Badge>
+                      )}
+                    {sectionType === "upcoming" && session.notes && (
                       <Badge variant="secondary" className="text-[10px]">
-                        {session.attachments.length} attachment
-                        {session.attachments.length > 1 ? "s" : ""}
+                        Notes
                       </Badge>
                     )}
-                  {sectionType === "upcoming" && session.notes && (
-                    <Badge variant="secondary" className="text-[10px]">
-                      Notes
-                    </Badge>
-                  )}
+                  </div>
                 </div>
-              </div>
-              <div className="flex gap-2">
-                {showOpenButton && onOpenSession && (
+                <div className="flex gap-2">
+                  {showOpenButton && onOpenSession && (
+                    <Button
+                      size="sm"
+                      onClick={() => onOpenSession(session)}
+                      className={
+                        sectionType === "in-progress"
+                          ? "bg-amber-600 hover:bg-amber-700 text-white"
+                          : "bg-accent hover:bg-accent/90 text-accent-foreground"
+                      }
+                    >
+                      {sectionType === "in-progress" ? "Open Timer" : "Start"}
+                    </Button>
+                  )}
                   <Button
                     size="sm"
-                    onClick={() => onOpenSession(session)}
-                    className={
-                      sectionType === "in-progress"
-                        ? "bg-amber-600 hover:bg-amber-700 text-white"
-                        : "bg-accent hover:bg-accent/90 text-accent-foreground"
-                    }
+                    variant="outline"
+                    onClick={() => onSelectSession(session.id)}
                   >
-                    {sectionType === "in-progress" ? "Open Timer" : "Start"}
+                    {isSelected ? "Undo Select" : "Select"}
                   </Button>
-                )}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => onSelectSession(session.id)}
-                >
-                  {isSelected ? "Undo Select" : "Select"}
-                </Button>
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </CardContent>
     </Card>
   );

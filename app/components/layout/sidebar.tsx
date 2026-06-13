@@ -16,12 +16,6 @@ import {
   LogOut,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import {
   AlertDialog,
@@ -96,10 +90,9 @@ export function Sidebar({ user }: { user: SidebarUser }) {
     .slice(0, 2);
 
   return (
-    <TooltipProvider delayDuration={0}>
-      <aside
+    <aside
         className={cn(
-          "hidden lg:flex flex-col h-screen shrink-0 transition-all duration-150 ease-in-out",
+          "hidden lg:flex flex-col h-dvh shrink-0 transition-all duration-150 ease-in-out",
           "bg-sidebar",
           collapsed ? "w-20" : "w-72",
         )}
@@ -130,40 +123,33 @@ export function Sidebar({ user }: { user: SidebarUser }) {
         </div>
 
         {/* Navigation - centered vertically */}
-        <nav className="flex-1 flex flex-col justify-center py-4 space-y-1 px-3 overflow-y-auto">
+        <nav className="min-h-0 flex-1 flex flex-col justify-center py-4 space-y-1 px-3 overflow-y-auto">
           {navItems.map(({ href, label, icon: Icon }) => {
             const isActive =
               pathname === href || pathname.startsWith(href + "/");
             return (
-              <Tooltip key={href}>
-                <TooltipTrigger asChild>
-                  <Link
-                    href={href}
-                    className={cn(
-                      "flex items-center gap-4 rounded-lg px-4 py-3 text-sm font-medium transition-colors duration-150",
-                      isActive
-                        ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                        : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground",
-                      collapsed && "justify-center px-0",
-                    )}
-                  >
-                    <Icon
-                      className={cn(
-                        "h-5 w-5 shrink-0",
-                        isActive
-                          ? "text-sidebar-primary-foreground"
-                          : "text-sidebar-foreground/60",
-                      )}
-                    />
-                    {!collapsed && <span>{label}</span>}
-                  </Link>
-                </TooltipTrigger>
-                {collapsed && (
-                  <TooltipContent side="right" className="font-medium">
-                    {label}
-                  </TooltipContent>
+              <Link
+                key={href}
+                href={href}
+                aria-label={label}
+                className={cn(
+                  "flex items-center gap-4 rounded-lg px-4 py-3 text-sm font-medium transition-colors duration-150",
+                  isActive
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                  collapsed && "justify-center px-0",
                 )}
-              </Tooltip>
+              >
+                <Icon
+                  className={cn(
+                    "h-5 w-5 shrink-0",
+                    isActive
+                      ? "text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground/60",
+                  )}
+                />
+                {!collapsed && <span>{label}</span>}
+              </Link>
             );
           })}
         </nav>
@@ -174,6 +160,7 @@ export function Sidebar({ user }: { user: SidebarUser }) {
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <button
+                aria-label="Logout"
                 className={cn(
                   "flex items-center gap-4 w-full rounded-lg px-4 py-3 text-sm font-medium transition-colors duration-150",
                   "text-sidebar-foreground/70 hover:bg-destructive/10 hover:text-destructive",
@@ -222,7 +209,6 @@ export function Sidebar({ user }: { user: SidebarUser }) {
             )}
           </button>
         </div>
-      </aside>
-    </TooltipProvider>
+    </aside>
   );
 }

@@ -25,10 +25,11 @@ jest.mock("@/lib/services/taskService", () => ({
   requireTaskAccess: jest.fn(),
 }));
 
-const baseTrack = {
-  client_track_id: "track-1",
+const basePlan = {
+  client_plan_id: "plan-1",
   title: "Mechanical Physics",
-  weekdays: [1, 4],
+  start_date: "2099-03-23",
+  repeat: "weekly" as const,
   time: "15:00",
   focus_minutes: 25,
   break_minutes: 5,
@@ -54,15 +55,62 @@ describe("createStudySessionsForTask", () => {
   it("requires access to the personal task before creating sessions", async () => {
     (prisma.$transaction as jest.Mock).mockResolvedValue({
       studySessions: [],
-      createdByTrack: {},
+      createdByPlan: {},
     });
 
-    await createStudySessionsForTask("user-1", 42, [baseTrack]);
+    await createStudySessionsForTask("user-1", 42, [basePlan]);
 
     expect(requireTaskAccess).toHaveBeenCalledWith(42, "user-1");
   });
 
-  it("creates generated weekday sessions inside one transaction linked to the task", async () => {
+  it("creates a one-off session from the start date inside one transaction linked to the task", async () => {
+    let id = 20;
+    const createMock = jest.fn(async ({ data }) => ({
+      study_session_id: ++id,
+      study_session_name: data.study_session_name,
+    }));
+    (prisma.$transaction as jest.Mock).mockImplementation((callback) =>
+      callback({ studySession: { create: createMock } }),
+    );
+
+    const result = await createStudySessionsForTask("user-1", 42, [
+      { ...basePlan, start_date: "2099-03-22", repeat: "none" },
+    ]);
+
+    expect(createMock).toHaveBeenCalledTimes(1);
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          study_session_name: "Mechanical Physics",
+          study_session_scheduled_at: new Date(2099, 2, 22, 15, 0, 0, 0),
+        }),
+      }),
+    );
+    expect(result.createdByPlan["plan-1"]).toEqual([21]);
+  });
+
+  it("allows a close-deadline task-day start date", async () => {
+    (requireTaskAccess as jest.Mock).mockResolvedValue({
+      task_id: 42,
+      task_deadline: new Date(2099, 2, 20, 23, 59, 0, 0),
+    });
+    const createMock = jest.fn(async () => ({
+      study_session_id: 31,
+      study_session_name: "Mechanical Physics",
+    }));
+    (prisma.$transaction as jest.Mock).mockImplementation((callback) =>
+      callback({ studySession: { create: createMock } }),
+    );
+
+    const result = await createStudySessionsForTask("user-1", 42, [
+      { ...basePlan, start_date: "2099-03-20", repeat: "none", time: "15:00" },
+    ]);
+
+    expect(createMock).toHaveBeenCalledTimes(1);
+    expect(result.createdByPlan["plan-1"]).toEqual([31]);
+  });
+
+  it("creates weekly sessions from the start date through the task deadline", async () => {
     let id = 10;
     const createMock = jest.fn(async ({ data }) => ({
       study_session_id: ++id,
@@ -72,9 +120,9 @@ describe("createStudySessionsForTask", () => {
       callback({ studySession: { create: createMock } }),
     );
 
-    const result = await createStudySessionsForTask("user-1", 42, [baseTrack]);
+    const result = await createStudySessionsForTask("user-1", 42, [basePlan]);
 
-    expect(createMock).toHaveBeenCalledTimes(3);
+    expect(createMock).toHaveBeenCalledTimes(2);
     expect(createMock).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -90,8 +138,76 @@ describe("createStudySessionsForTask", () => {
         }),
       }),
     );
-    expect(result.studySessions).toHaveLength(3);
-    expect(result.createdByTrack["track-1"]).toEqual([11, 12, 13]);
+    expect(result.studySessions).toHaveLength(2);
+    expect(result.createdByPlan["plan-1"]).toEqual([11, 12]);
+  });
+
+  it("creates biweekly sessions from the start date through the task deadline", async () => {
+    let id = 40;
+    (requireTaskAccess as jest.Mock).mockResolvedValue({
+      task_id: 42,
+      task_deadline: new Date("2099-04-30T23:59:00.000Z"),
+    });
+    const createMock = jest.fn(async ({ data }) => ({
+      study_session_id: ++id,
+      study_session_name: data.study_session_name,
+    }));
+    (prisma.$transaction as jest.Mock).mockImplementation((callback) =>
+      callback({ studySession: { create: createMock } }),
+    );
+
+    const result = await createStudySessionsForTask("user-1", 42, [
+      { ...basePlan, repeat: "biweekly" },
+    ]);
+
+    expect(createMock).toHaveBeenCalledTimes(3);
+    expect(createMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          study_session_scheduled_at: new Date(2099, 3, 6, 15, 0, 0, 0),
+        }),
+      }),
+    );
+    expect(result.createdByPlan["plan-1"]).toEqual([41, 42, 43]);
+  });
+
+  it("rejects plans that cannot generate a future session before the deadline", async () => {
+    (requireTaskAccess as jest.Mock).mockResolvedValue({
+      task_id: 42,
+      task_deadline: new Date(2099, 2, 20, 10, 0, 0, 0),
+    });
+
+    await expect(
+      createStudySessionsForTask("user-1", 42, [
+        { ...basePlan, start_date: "2099-03-20", repeat: "none", time: "15:00" },
+      ]),
+    ).rejects.toThrow("No sessions fit before this task deadline");
+  });
+
+  it("persists reminder settings on every generated session", async () => {
+    let id = 50;
+    const createMock = jest.fn(async ({ data }) => ({
+      study_session_id: ++id,
+      study_session_name: data.study_session_name,
+    }));
+    (prisma.$transaction as jest.Mock).mockImplementation((callback) =>
+      callback({ studySession: { create: createMock } }),
+    );
+
+    await createStudySessionsForTask("user-1", 42, [basePlan], {
+      reminderEnabled: true,
+      reminders: [15, 5, 0],
+    });
+
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          study_session_reminder_enabled: true,
+          study_session_remind_at_minutes: [15, 5, 0],
+        }),
+      }),
+    );
   });
 
   it("caps generated sessions at 50", async () => {
@@ -107,7 +223,7 @@ describe("createStudySessionsForTask", () => {
     );
 
     const result = await createStudySessionsForTask("user-1", 42, [
-      { ...baseTrack, weekdays: [0, 1, 2, 3, 4, 5, 6] },
+      { ...basePlan, repeat: "weekly" },
     ]);
 
     expect(createMock).toHaveBeenCalledTimes(50);
