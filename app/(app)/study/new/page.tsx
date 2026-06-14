@@ -521,18 +521,20 @@ export default function StudyNewPage() {
       total_minutes: totalMinutesComputed,
       checklist_json: descriptionAsChecklist
         ? notes
-            .split("\n")
-            .map((line) => line.trim())
-            .filter(Boolean)
-            .map((text) => ({
-              id: crypto.randomUUID(),
-              text,
-              completed: false,
-            }))
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .map((text) => ({
+            id: crypto.randomUUID(),
+            text,
+            completed: false,
+          }))
         : null,
       study_session_scheduled_at: sessionScheduledAt.toISOString(),
       reminders: reminderEnabled ? reminderOffsetsInMinutes : [],
       reminder_enabled: reminderEnabled,
+      // Give the task ID if it exist (user comes from task)
+      task_id: taskId ? Number(taskId) : null,
     };
 
     try {

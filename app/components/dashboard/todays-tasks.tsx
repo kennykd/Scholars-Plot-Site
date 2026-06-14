@@ -1,13 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link"; // Added for routing
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button"; // Imported to match your button standard
 import { StarRating } from "@/app/components/common/star-rating";
 import type { Task } from "@/types";
 import { cn } from "@/lib/utils";
 import { format, isToday, isTomorrow, isPast } from "date-fns";
+import { Plus, ClipboardList } from "lucide-react"; // UI icons for actions and layout empty-state
 
 interface TodaysTasksProps {
   tasks: Task[];
@@ -40,11 +43,40 @@ export function TodaysTasks({ tasks }: TodaysTasksProps) {
         <CardTitle className="font-display text-base font-bold tracking-wide">
           TODAY&apos;S TASKS
         </CardTitle>
+        
+        {/* Subtle header action: Only renders if tasks actually exist */}
+        {sorted.length > 0 && (
+          <Button asChild size="sm" variant="outline" className="h-8 gap-1 font-mono text-xs border-white/10 hover:bg-white/5">
+            <Link href="/tasks/new">
+              <Plus size={14} /> New Task
+            </Link>
+          </Button>
+        )}
       </CardHeader>
       <CardContent className="space-y-3 flex-1 min-h-0 overflow-y-auto">
         {sorted.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No tasks yet.</p>
+          /* Custom centered layout container: Placed right over "No tasks yet" */
+          <div className="flex flex-col items-center justify-center py-10 px-4 text-center border border-dashed border-border/60 rounded-xl bg-background/20 my-auto">
+            <h3 className="font-display font-bold text-sm tracking-wide text-foreground mb-1">
+              NO TASKS YET
+            </h3>
+            <p className="text-xs text-muted-foreground max-w-xs mb-5 leading-relaxed font-mono">
+              Start by creating your first task to get organized and stay on track!
+            </p>
+
+            {/* Tactical Dark Orange Action Button */}
+            <Button 
+              asChild 
+              className="bg-accent hover:bg-accent/90 text-accent-foreground font-semibold px-5 shadow-lg gap-1.5"
+            >
+              <Link href="/tasks/new">
+                <Plus size={16} strokeWidth={2.5} />
+                New Task
+              </Link>
+            </Button>
+          </div>
         ) : (
+          /* Normal layout task mapping block */
           sorted.map((task) => {
             const done = completed.has(task.id) || task.status === "Completed";
             const deadlineDate = new Date(task.deadline);

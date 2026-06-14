@@ -7,6 +7,9 @@ import { UpcomingDeadlines } from "@/app/components/dashboard/upcoming-deadlines
 import { getSession } from "@/lib/firebase/auth";
 import { getTasks, serializeTask } from "@/lib/services/taskService";
 import { getStudySessionsForDashboard } from "@/lib/services/studySessionService";
+import { getAnalyticsByUserId } from "@/lib/services/analyticService";
+
+export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -14,8 +17,8 @@ export default async function DashboardPage() {
 
   const taskRows = await getTasks(session.id);
   const tasks = taskRows.map((row) => serializeTask(row));
-
   const studySessions = await getStudySessionsForDashboard(session.id);
+  const analyticsData = await getAnalyticsByUserId(session.id);
 
   return (
     <div className="flex flex-col gap-6 p-6 lg:h-screen lg:overflow-hidden">
@@ -27,11 +30,9 @@ export default async function DashboardPage() {
           SCHOLAR&apos;S PLOT — DASHBOARD
         </p>
       </div>
-
-      <QuickStatsBar />
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 lg:grid-rows-2 lg:flex-1 lg:min-h-0">
-        <div className="h-full min-h-0 lg:col-span-2">
+      <QuickStatsBar data={analyticsData} />
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="lg:col-span-2">
           <TodaysTasks tasks={tasks} />
         </div>
         <ActiveStudySession sessions={studySessions} />

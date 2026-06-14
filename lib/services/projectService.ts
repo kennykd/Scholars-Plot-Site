@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { getAnalyticsByUserId, updateAnalyticsByUserId } from '@/lib/services/analyticService';
 import type {
   AddProjectMemberInput,
   CreateProjectInput,
@@ -494,6 +495,29 @@ export async function updateProjectTaskById(taskId: number, userId: string, data
     },
     include: taskInclude,
   });
+
+  // If the task is completed, update the user's analytics
+  if (data.status === 'Completed') {
+    const assignedUserId = data.assignedTo ?? userId;
+    const currentAnalytics = await getAnalyticsByUserId(assignedUserId);
+    if (currentAnalytics) {
+      const now = new Date();
+      const deadline = updatedTask.task_deadline;
+      await updateAnalyticsByUserId(assignedUserId, {
+        total_tasks_completed: currentAnalytics.totalTasksCompleted + 1,
+        tasks_completed_early: now < deadline
+          ? currentAnalytics.completionStats.early + 1
+          : currentAnalytics.completionStats.early,
+        tasks_completed_on_time: now.getTime() === deadline.getTime()
+          ? currentAnalytics.completionStats.onTime + 1
+          : currentAnalytics.completionStats.onTime,
+        tasks_completed_late: now > deadline
+          ? currentAnalytics.completionStats.late + 1
+          : currentAnalytics.completionStats.late,
+        streak_activity: true,
+      });
+    }
+  }
 
   if (data.assignedTo !== undefined) {
     if (data.assignedTo) {

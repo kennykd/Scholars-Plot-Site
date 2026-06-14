@@ -6,6 +6,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithPopup,
   GoogleAuthProvider,
+  sendEmailVerification,
 } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -66,16 +67,22 @@ export default function RegisterPage() {
     }
     try {
       setLoading(true);
-      const result = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password,
-      );
-      const idToken = await result.user.getIdToken();
-      await createSession(idToken, displayName);
-      toast.success("Account created! Welcome 🎉");
-      router.push("/dashboard");
-      router.refresh();
+      const result = await createUserWithEmailAndPassword(auth, email, password);
+
+      const actionCodeSettings = {
+        // Make sure this matches your Next.js route structure exactly!
+        url: 'http://localhost:3000/register/verify', 
+        handleCodeInApp: true,
+      };
+
+      // Send standard email verification
+      await sendEmailVerification(result.user, actionCodeSettings);
+
+      // UNIFIED STORAGE KEY
+      window.localStorage.setItem("emailForVerification", email);
+
+      toast.success("Verification link sent! Please check your email.");
+      router.push("/register/verify");
     } catch (error: unknown) {
       const err = error as { code?: string; message?: string };
       let message = "Registration failed";

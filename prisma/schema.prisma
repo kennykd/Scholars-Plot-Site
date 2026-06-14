@@ -80,14 +80,14 @@ model User {
   ai_profile_updated_at DateTime?
 
   // Relations
-  analytics            Analytics?          @relation(fields: [analytics_id], references: [analytics_id])
+  analytics            Analytics?          @relation
   project_members      ProjectUser[]
   task_users           TaskUser[]
   study_session_user   StudySessionUser[]
   user_formula_weights UserFormulaWeights?
-  user_availability    UserAvailability[]  // Restored
-  overload_warnings    OverloadWarning[]   // Restored
-  chat_conversations   ChatConversation[]  // Restored
+  user_availability    UserAvailability[]  
+  overload_warnings    OverloadWarning[]  
+  chat_conversations   ChatConversation[]  
   attachments          Attachment[]
   study_session_attachments StudySessionAttachment[]
 
@@ -333,17 +333,22 @@ model ChatMessage {
 }
 
 model Analytics {
-  analytics_id            Int      @id @default(autoincrement())
-  tasks_completed_early   Int      @default(0)
-  tasks_completed_on_time Int      @default(0)
-  tasks_completed_late    Int      @default(0)
-  tasks_pending           Int      @default(0)
-  total_focus_minutes     Int      @default(0)
-  total_tasks_completed   Int      @default(0)
-  streak                  Int      @default(0)
-  updated_at              DateTime @default(now())
+  analytics_id            Int       @id @default(autoincrement())
+  user_id                 String    @unique
+  
+  tasks_completed_early   String
+  tasks_completed_on_time String
+  tasks_completed_late    String
+  tasks_pending           String
+  total_tasks_completed   String
+  total_focus_minutes     String
+  streak                  String
+  last_completion_date    DateTime?
 
-  user User?
+  created_at              DateTime  @default(now())
+  updated_at              DateTime  @updatedAt
+
+  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
   @@map("analytics")
 }

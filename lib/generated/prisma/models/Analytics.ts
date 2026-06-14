@@ -28,59 +28,54 @@ export type AggregateAnalytics = {
 
 export type AnalyticsAvgAggregateOutputType = {
   analytics_id: number | null
-  tasks_completed_early: number | null
-  tasks_completed_on_time: number | null
-  tasks_completed_late: number | null
-  tasks_pending: number | null
-  total_focus_minutes: number | null
-  total_tasks_completed: number | null
-  streak: number | null
 }
 
 export type AnalyticsSumAggregateOutputType = {
   analytics_id: number | null
-  tasks_completed_early: number | null
-  tasks_completed_on_time: number | null
-  tasks_completed_late: number | null
-  tasks_pending: number | null
-  total_focus_minutes: number | null
-  total_tasks_completed: number | null
-  streak: number | null
 }
 
 export type AnalyticsMinAggregateOutputType = {
   analytics_id: number | null
-  tasks_completed_early: number | null
-  tasks_completed_on_time: number | null
-  tasks_completed_late: number | null
-  tasks_pending: number | null
-  total_focus_minutes: number | null
-  total_tasks_completed: number | null
-  streak: number | null
+  user_id: string | null
+  tasks_completed_early: string | null
+  tasks_completed_on_time: string | null
+  tasks_completed_late: string | null
+  tasks_pending: string | null
+  total_tasks_completed: string | null
+  total_focus_minutes: string | null
+  streak: string | null
+  last_completion_date: Date | null
+  created_at: Date | null
   updated_at: Date | null
 }
 
 export type AnalyticsMaxAggregateOutputType = {
   analytics_id: number | null
-  tasks_completed_early: number | null
-  tasks_completed_on_time: number | null
-  tasks_completed_late: number | null
-  tasks_pending: number | null
-  total_focus_minutes: number | null
-  total_tasks_completed: number | null
-  streak: number | null
+  user_id: string | null
+  tasks_completed_early: string | null
+  tasks_completed_on_time: string | null
+  tasks_completed_late: string | null
+  tasks_pending: string | null
+  total_tasks_completed: string | null
+  total_focus_minutes: string | null
+  streak: string | null
+  last_completion_date: Date | null
+  created_at: Date | null
   updated_at: Date | null
 }
 
 export type AnalyticsCountAggregateOutputType = {
   analytics_id: number
+  user_id: number
   tasks_completed_early: number
   tasks_completed_on_time: number
   tasks_completed_late: number
   tasks_pending: number
-  total_focus_minutes: number
   total_tasks_completed: number
+  total_focus_minutes: number
   streak: number
+  last_completion_date: number
+  created_at: number
   updated_at: number
   _all: number
 }
@@ -88,59 +83,54 @@ export type AnalyticsCountAggregateOutputType = {
 
 export type AnalyticsAvgAggregateInputType = {
   analytics_id?: true
-  tasks_completed_early?: true
-  tasks_completed_on_time?: true
-  tasks_completed_late?: true
-  tasks_pending?: true
-  total_focus_minutes?: true
-  total_tasks_completed?: true
-  streak?: true
 }
 
 export type AnalyticsSumAggregateInputType = {
   analytics_id?: true
-  tasks_completed_early?: true
-  tasks_completed_on_time?: true
-  tasks_completed_late?: true
-  tasks_pending?: true
-  total_focus_minutes?: true
-  total_tasks_completed?: true
-  streak?: true
 }
 
 export type AnalyticsMinAggregateInputType = {
   analytics_id?: true
+  user_id?: true
   tasks_completed_early?: true
   tasks_completed_on_time?: true
   tasks_completed_late?: true
   tasks_pending?: true
-  total_focus_minutes?: true
   total_tasks_completed?: true
+  total_focus_minutes?: true
   streak?: true
+  last_completion_date?: true
+  created_at?: true
   updated_at?: true
 }
 
 export type AnalyticsMaxAggregateInputType = {
   analytics_id?: true
+  user_id?: true
   tasks_completed_early?: true
   tasks_completed_on_time?: true
   tasks_completed_late?: true
   tasks_pending?: true
-  total_focus_minutes?: true
   total_tasks_completed?: true
+  total_focus_minutes?: true
   streak?: true
+  last_completion_date?: true
+  created_at?: true
   updated_at?: true
 }
 
 export type AnalyticsCountAggregateInputType = {
   analytics_id?: true
+  user_id?: true
   tasks_completed_early?: true
   tasks_completed_on_time?: true
   tasks_completed_late?: true
   tasks_pending?: true
-  total_focus_minutes?: true
   total_tasks_completed?: true
+  total_focus_minutes?: true
   streak?: true
+  last_completion_date?: true
+  created_at?: true
   updated_at?: true
   _all?: true
 }
@@ -233,13 +223,16 @@ export type AnalyticsGroupByArgs<ExtArgs extends runtime.Types.Extensions.Intern
 
 export type AnalyticsGroupByOutputType = {
   analytics_id: number
-  tasks_completed_early: number
-  tasks_completed_on_time: number
-  tasks_completed_late: number
-  tasks_pending: number
-  total_focus_minutes: number
-  total_tasks_completed: number
-  streak: number
+  user_id: string
+  tasks_completed_early: string
+  tasks_completed_on_time: string
+  tasks_completed_late: string
+  tasks_pending: string
+  total_tasks_completed: string
+  total_focus_minutes: string
+  streak: string
+  last_completion_date: Date | null
+  created_at: Date
   updated_at: Date
   _count: AnalyticsCountAggregateOutputType | null
   _avg: AnalyticsAvgAggregateOutputType | null
@@ -268,55 +261,67 @@ export type AnalyticsWhereInput = {
   OR?: Prisma.AnalyticsWhereInput[]
   NOT?: Prisma.AnalyticsWhereInput | Prisma.AnalyticsWhereInput[]
   analytics_id?: Prisma.IntFilter<"Analytics"> | number
-  tasks_completed_early?: Prisma.IntFilter<"Analytics"> | number
-  tasks_completed_on_time?: Prisma.IntFilter<"Analytics"> | number
-  tasks_completed_late?: Prisma.IntFilter<"Analytics"> | number
-  tasks_pending?: Prisma.IntFilter<"Analytics"> | number
-  total_focus_minutes?: Prisma.IntFilter<"Analytics"> | number
-  total_tasks_completed?: Prisma.IntFilter<"Analytics"> | number
-  streak?: Prisma.IntFilter<"Analytics"> | number
+  user_id?: Prisma.StringFilter<"Analytics"> | string
+  tasks_completed_early?: Prisma.StringFilter<"Analytics"> | string
+  tasks_completed_on_time?: Prisma.StringFilter<"Analytics"> | string
+  tasks_completed_late?: Prisma.StringFilter<"Analytics"> | string
+  tasks_pending?: Prisma.StringFilter<"Analytics"> | string
+  total_tasks_completed?: Prisma.StringFilter<"Analytics"> | string
+  total_focus_minutes?: Prisma.StringFilter<"Analytics"> | string
+  streak?: Prisma.StringFilter<"Analytics"> | string
+  last_completion_date?: Prisma.DateTimeNullableFilter<"Analytics"> | Date | string | null
+  created_at?: Prisma.DateTimeFilter<"Analytics"> | Date | string
   updated_at?: Prisma.DateTimeFilter<"Analytics"> | Date | string
-  user?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
+  user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
 }
 
 export type AnalyticsOrderByWithRelationInput = {
   analytics_id?: Prisma.SortOrder
+  user_id?: Prisma.SortOrder
   tasks_completed_early?: Prisma.SortOrder
   tasks_completed_on_time?: Prisma.SortOrder
   tasks_completed_late?: Prisma.SortOrder
   tasks_pending?: Prisma.SortOrder
-  total_focus_minutes?: Prisma.SortOrder
   total_tasks_completed?: Prisma.SortOrder
+  total_focus_minutes?: Prisma.SortOrder
   streak?: Prisma.SortOrder
+  last_completion_date?: Prisma.SortOrderInput | Prisma.SortOrder
+  created_at?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
   user?: Prisma.UserOrderByWithRelationInput
 }
 
 export type AnalyticsWhereUniqueInput = Prisma.AtLeast<{
   analytics_id?: number
+  user_id?: string
   AND?: Prisma.AnalyticsWhereInput | Prisma.AnalyticsWhereInput[]
   OR?: Prisma.AnalyticsWhereInput[]
   NOT?: Prisma.AnalyticsWhereInput | Prisma.AnalyticsWhereInput[]
-  tasks_completed_early?: Prisma.IntFilter<"Analytics"> | number
-  tasks_completed_on_time?: Prisma.IntFilter<"Analytics"> | number
-  tasks_completed_late?: Prisma.IntFilter<"Analytics"> | number
-  tasks_pending?: Prisma.IntFilter<"Analytics"> | number
-  total_focus_minutes?: Prisma.IntFilter<"Analytics"> | number
-  total_tasks_completed?: Prisma.IntFilter<"Analytics"> | number
-  streak?: Prisma.IntFilter<"Analytics"> | number
+  tasks_completed_early?: Prisma.StringFilter<"Analytics"> | string
+  tasks_completed_on_time?: Prisma.StringFilter<"Analytics"> | string
+  tasks_completed_late?: Prisma.StringFilter<"Analytics"> | string
+  tasks_pending?: Prisma.StringFilter<"Analytics"> | string
+  total_tasks_completed?: Prisma.StringFilter<"Analytics"> | string
+  total_focus_minutes?: Prisma.StringFilter<"Analytics"> | string
+  streak?: Prisma.StringFilter<"Analytics"> | string
+  last_completion_date?: Prisma.DateTimeNullableFilter<"Analytics"> | Date | string | null
+  created_at?: Prisma.DateTimeFilter<"Analytics"> | Date | string
   updated_at?: Prisma.DateTimeFilter<"Analytics"> | Date | string
-  user?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
-}, "analytics_id">
+  user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
+}, "analytics_id" | "user_id">
 
 export type AnalyticsOrderByWithAggregationInput = {
   analytics_id?: Prisma.SortOrder
+  user_id?: Prisma.SortOrder
   tasks_completed_early?: Prisma.SortOrder
   tasks_completed_on_time?: Prisma.SortOrder
   tasks_completed_late?: Prisma.SortOrder
   tasks_pending?: Prisma.SortOrder
-  total_focus_minutes?: Prisma.SortOrder
   total_tasks_completed?: Prisma.SortOrder
+  total_focus_minutes?: Prisma.SortOrder
   streak?: Prisma.SortOrder
+  last_completion_date?: Prisma.SortOrderInput | Prisma.SortOrder
+  created_at?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
   _count?: Prisma.AnalyticsCountOrderByAggregateInput
   _avg?: Prisma.AnalyticsAvgOrderByAggregateInput
@@ -330,98 +335,117 @@ export type AnalyticsScalarWhereWithAggregatesInput = {
   OR?: Prisma.AnalyticsScalarWhereWithAggregatesInput[]
   NOT?: Prisma.AnalyticsScalarWhereWithAggregatesInput | Prisma.AnalyticsScalarWhereWithAggregatesInput[]
   analytics_id?: Prisma.IntWithAggregatesFilter<"Analytics"> | number
-  tasks_completed_early?: Prisma.IntWithAggregatesFilter<"Analytics"> | number
-  tasks_completed_on_time?: Prisma.IntWithAggregatesFilter<"Analytics"> | number
-  tasks_completed_late?: Prisma.IntWithAggregatesFilter<"Analytics"> | number
-  tasks_pending?: Prisma.IntWithAggregatesFilter<"Analytics"> | number
-  total_focus_minutes?: Prisma.IntWithAggregatesFilter<"Analytics"> | number
-  total_tasks_completed?: Prisma.IntWithAggregatesFilter<"Analytics"> | number
-  streak?: Prisma.IntWithAggregatesFilter<"Analytics"> | number
+  user_id?: Prisma.StringWithAggregatesFilter<"Analytics"> | string
+  tasks_completed_early?: Prisma.StringWithAggregatesFilter<"Analytics"> | string
+  tasks_completed_on_time?: Prisma.StringWithAggregatesFilter<"Analytics"> | string
+  tasks_completed_late?: Prisma.StringWithAggregatesFilter<"Analytics"> | string
+  tasks_pending?: Prisma.StringWithAggregatesFilter<"Analytics"> | string
+  total_tasks_completed?: Prisma.StringWithAggregatesFilter<"Analytics"> | string
+  total_focus_minutes?: Prisma.StringWithAggregatesFilter<"Analytics"> | string
+  streak?: Prisma.StringWithAggregatesFilter<"Analytics"> | string
+  last_completion_date?: Prisma.DateTimeNullableWithAggregatesFilter<"Analytics"> | Date | string | null
+  created_at?: Prisma.DateTimeWithAggregatesFilter<"Analytics"> | Date | string
   updated_at?: Prisma.DateTimeWithAggregatesFilter<"Analytics"> | Date | string
 }
 
 export type AnalyticsCreateInput = {
-  tasks_completed_early?: number
-  tasks_completed_on_time?: number
-  tasks_completed_late?: number
-  tasks_pending?: number
-  total_focus_minutes?: number
-  total_tasks_completed?: number
-  streak?: number
+  tasks_completed_early: string
+  tasks_completed_on_time: string
+  tasks_completed_late: string
+  tasks_pending: string
+  total_tasks_completed: string
+  total_focus_minutes: string
+  streak: string
+  last_completion_date?: Date | string | null
+  created_at?: Date | string
   updated_at?: Date | string
-  user?: Prisma.UserCreateNestedOneWithoutAnalyticsInput
+  user: Prisma.UserCreateNestedOneWithoutAnalyticsInput
 }
 
 export type AnalyticsUncheckedCreateInput = {
   analytics_id?: number
-  tasks_completed_early?: number
-  tasks_completed_on_time?: number
-  tasks_completed_late?: number
-  tasks_pending?: number
-  total_focus_minutes?: number
-  total_tasks_completed?: number
-  streak?: number
+  user_id: string
+  tasks_completed_early: string
+  tasks_completed_on_time: string
+  tasks_completed_late: string
+  tasks_pending: string
+  total_tasks_completed: string
+  total_focus_minutes: string
+  streak: string
+  last_completion_date?: Date | string | null
+  created_at?: Date | string
   updated_at?: Date | string
-  user?: Prisma.UserUncheckedCreateNestedOneWithoutAnalyticsInput
 }
 
 export type AnalyticsUpdateInput = {
-  tasks_completed_early?: Prisma.IntFieldUpdateOperationsInput | number
-  tasks_completed_on_time?: Prisma.IntFieldUpdateOperationsInput | number
-  tasks_completed_late?: Prisma.IntFieldUpdateOperationsInput | number
-  tasks_pending?: Prisma.IntFieldUpdateOperationsInput | number
-  total_focus_minutes?: Prisma.IntFieldUpdateOperationsInput | number
-  total_tasks_completed?: Prisma.IntFieldUpdateOperationsInput | number
-  streak?: Prisma.IntFieldUpdateOperationsInput | number
+  tasks_completed_early?: Prisma.StringFieldUpdateOperationsInput | string
+  tasks_completed_on_time?: Prisma.StringFieldUpdateOperationsInput | string
+  tasks_completed_late?: Prisma.StringFieldUpdateOperationsInput | string
+  tasks_pending?: Prisma.StringFieldUpdateOperationsInput | string
+  total_tasks_completed?: Prisma.StringFieldUpdateOperationsInput | string
+  total_focus_minutes?: Prisma.StringFieldUpdateOperationsInput | string
+  streak?: Prisma.StringFieldUpdateOperationsInput | string
+  last_completion_date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  user?: Prisma.UserUpdateOneWithoutAnalyticsNestedInput
+  user?: Prisma.UserUpdateOneRequiredWithoutAnalyticsNestedInput
 }
 
 export type AnalyticsUncheckedUpdateInput = {
   analytics_id?: Prisma.IntFieldUpdateOperationsInput | number
-  tasks_completed_early?: Prisma.IntFieldUpdateOperationsInput | number
-  tasks_completed_on_time?: Prisma.IntFieldUpdateOperationsInput | number
-  tasks_completed_late?: Prisma.IntFieldUpdateOperationsInput | number
-  tasks_pending?: Prisma.IntFieldUpdateOperationsInput | number
-  total_focus_minutes?: Prisma.IntFieldUpdateOperationsInput | number
-  total_tasks_completed?: Prisma.IntFieldUpdateOperationsInput | number
-  streak?: Prisma.IntFieldUpdateOperationsInput | number
+  user_id?: Prisma.StringFieldUpdateOperationsInput | string
+  tasks_completed_early?: Prisma.StringFieldUpdateOperationsInput | string
+  tasks_completed_on_time?: Prisma.StringFieldUpdateOperationsInput | string
+  tasks_completed_late?: Prisma.StringFieldUpdateOperationsInput | string
+  tasks_pending?: Prisma.StringFieldUpdateOperationsInput | string
+  total_tasks_completed?: Prisma.StringFieldUpdateOperationsInput | string
+  total_focus_minutes?: Prisma.StringFieldUpdateOperationsInput | string
+  streak?: Prisma.StringFieldUpdateOperationsInput | string
+  last_completion_date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  user?: Prisma.UserUncheckedUpdateOneWithoutAnalyticsNestedInput
 }
 
 export type AnalyticsCreateManyInput = {
   analytics_id?: number
-  tasks_completed_early?: number
-  tasks_completed_on_time?: number
-  tasks_completed_late?: number
-  tasks_pending?: number
-  total_focus_minutes?: number
-  total_tasks_completed?: number
-  streak?: number
+  user_id: string
+  tasks_completed_early: string
+  tasks_completed_on_time: string
+  tasks_completed_late: string
+  tasks_pending: string
+  total_tasks_completed: string
+  total_focus_minutes: string
+  streak: string
+  last_completion_date?: Date | string | null
+  created_at?: Date | string
   updated_at?: Date | string
 }
 
 export type AnalyticsUpdateManyMutationInput = {
-  tasks_completed_early?: Prisma.IntFieldUpdateOperationsInput | number
-  tasks_completed_on_time?: Prisma.IntFieldUpdateOperationsInput | number
-  tasks_completed_late?: Prisma.IntFieldUpdateOperationsInput | number
-  tasks_pending?: Prisma.IntFieldUpdateOperationsInput | number
-  total_focus_minutes?: Prisma.IntFieldUpdateOperationsInput | number
-  total_tasks_completed?: Prisma.IntFieldUpdateOperationsInput | number
-  streak?: Prisma.IntFieldUpdateOperationsInput | number
+  tasks_completed_early?: Prisma.StringFieldUpdateOperationsInput | string
+  tasks_completed_on_time?: Prisma.StringFieldUpdateOperationsInput | string
+  tasks_completed_late?: Prisma.StringFieldUpdateOperationsInput | string
+  tasks_pending?: Prisma.StringFieldUpdateOperationsInput | string
+  total_tasks_completed?: Prisma.StringFieldUpdateOperationsInput | string
+  total_focus_minutes?: Prisma.StringFieldUpdateOperationsInput | string
+  streak?: Prisma.StringFieldUpdateOperationsInput | string
+  last_completion_date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type AnalyticsUncheckedUpdateManyInput = {
   analytics_id?: Prisma.IntFieldUpdateOperationsInput | number
-  tasks_completed_early?: Prisma.IntFieldUpdateOperationsInput | number
-  tasks_completed_on_time?: Prisma.IntFieldUpdateOperationsInput | number
-  tasks_completed_late?: Prisma.IntFieldUpdateOperationsInput | number
-  tasks_pending?: Prisma.IntFieldUpdateOperationsInput | number
-  total_focus_minutes?: Prisma.IntFieldUpdateOperationsInput | number
-  total_tasks_completed?: Prisma.IntFieldUpdateOperationsInput | number
-  streak?: Prisma.IntFieldUpdateOperationsInput | number
+  user_id?: Prisma.StringFieldUpdateOperationsInput | string
+  tasks_completed_early?: Prisma.StringFieldUpdateOperationsInput | string
+  tasks_completed_on_time?: Prisma.StringFieldUpdateOperationsInput | string
+  tasks_completed_late?: Prisma.StringFieldUpdateOperationsInput | string
+  tasks_pending?: Prisma.StringFieldUpdateOperationsInput | string
+  total_tasks_completed?: Prisma.StringFieldUpdateOperationsInput | string
+  total_focus_minutes?: Prisma.StringFieldUpdateOperationsInput | string
+  streak?: Prisma.StringFieldUpdateOperationsInput | string
+  last_completion_date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -432,63 +456,64 @@ export type AnalyticsNullableScalarRelationFilter = {
 
 export type AnalyticsCountOrderByAggregateInput = {
   analytics_id?: Prisma.SortOrder
+  user_id?: Prisma.SortOrder
   tasks_completed_early?: Prisma.SortOrder
   tasks_completed_on_time?: Prisma.SortOrder
   tasks_completed_late?: Prisma.SortOrder
   tasks_pending?: Prisma.SortOrder
-  total_focus_minutes?: Prisma.SortOrder
   total_tasks_completed?: Prisma.SortOrder
+  total_focus_minutes?: Prisma.SortOrder
   streak?: Prisma.SortOrder
+  last_completion_date?: Prisma.SortOrder
+  created_at?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
 }
 
 export type AnalyticsAvgOrderByAggregateInput = {
   analytics_id?: Prisma.SortOrder
-  tasks_completed_early?: Prisma.SortOrder
-  tasks_completed_on_time?: Prisma.SortOrder
-  tasks_completed_late?: Prisma.SortOrder
-  tasks_pending?: Prisma.SortOrder
-  total_focus_minutes?: Prisma.SortOrder
-  total_tasks_completed?: Prisma.SortOrder
-  streak?: Prisma.SortOrder
 }
 
 export type AnalyticsMaxOrderByAggregateInput = {
   analytics_id?: Prisma.SortOrder
+  user_id?: Prisma.SortOrder
   tasks_completed_early?: Prisma.SortOrder
   tasks_completed_on_time?: Prisma.SortOrder
   tasks_completed_late?: Prisma.SortOrder
   tasks_pending?: Prisma.SortOrder
-  total_focus_minutes?: Prisma.SortOrder
   total_tasks_completed?: Prisma.SortOrder
+  total_focus_minutes?: Prisma.SortOrder
   streak?: Prisma.SortOrder
+  last_completion_date?: Prisma.SortOrder
+  created_at?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
 }
 
 export type AnalyticsMinOrderByAggregateInput = {
   analytics_id?: Prisma.SortOrder
+  user_id?: Prisma.SortOrder
   tasks_completed_early?: Prisma.SortOrder
   tasks_completed_on_time?: Prisma.SortOrder
   tasks_completed_late?: Prisma.SortOrder
   tasks_pending?: Prisma.SortOrder
-  total_focus_minutes?: Prisma.SortOrder
   total_tasks_completed?: Prisma.SortOrder
+  total_focus_minutes?: Prisma.SortOrder
   streak?: Prisma.SortOrder
+  last_completion_date?: Prisma.SortOrder
+  created_at?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
 }
 
 export type AnalyticsSumOrderByAggregateInput = {
   analytics_id?: Prisma.SortOrder
-  tasks_completed_early?: Prisma.SortOrder
-  tasks_completed_on_time?: Prisma.SortOrder
-  tasks_completed_late?: Prisma.SortOrder
-  tasks_pending?: Prisma.SortOrder
-  total_focus_minutes?: Prisma.SortOrder
-  total_tasks_completed?: Prisma.SortOrder
-  streak?: Prisma.SortOrder
 }
 
 export type AnalyticsCreateNestedOneWithoutUserInput = {
+  create?: Prisma.XOR<Prisma.AnalyticsCreateWithoutUserInput, Prisma.AnalyticsUncheckedCreateWithoutUserInput>
+  connectOrCreate?: Prisma.AnalyticsCreateOrConnectWithoutUserInput
+  connect?: Prisma.AnalyticsWhereUniqueInput
+}
+
+export type AnalyticsUncheckedCreateNestedOneWithoutUserInput = {
   create?: Prisma.XOR<Prisma.AnalyticsCreateWithoutUserInput, Prisma.AnalyticsUncheckedCreateWithoutUserInput>
   connectOrCreate?: Prisma.AnalyticsCreateOrConnectWithoutUserInput
   connect?: Prisma.AnalyticsWhereUniqueInput
@@ -504,26 +529,40 @@ export type AnalyticsUpdateOneWithoutUserNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.AnalyticsUpdateToOneWithWhereWithoutUserInput, Prisma.AnalyticsUpdateWithoutUserInput>, Prisma.AnalyticsUncheckedUpdateWithoutUserInput>
 }
 
+export type AnalyticsUncheckedUpdateOneWithoutUserNestedInput = {
+  create?: Prisma.XOR<Prisma.AnalyticsCreateWithoutUserInput, Prisma.AnalyticsUncheckedCreateWithoutUserInput>
+  connectOrCreate?: Prisma.AnalyticsCreateOrConnectWithoutUserInput
+  upsert?: Prisma.AnalyticsUpsertWithoutUserInput
+  disconnect?: Prisma.AnalyticsWhereInput | boolean
+  delete?: Prisma.AnalyticsWhereInput | boolean
+  connect?: Prisma.AnalyticsWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.AnalyticsUpdateToOneWithWhereWithoutUserInput, Prisma.AnalyticsUpdateWithoutUserInput>, Prisma.AnalyticsUncheckedUpdateWithoutUserInput>
+}
+
 export type AnalyticsCreateWithoutUserInput = {
-  tasks_completed_early?: number
-  tasks_completed_on_time?: number
-  tasks_completed_late?: number
-  tasks_pending?: number
-  total_focus_minutes?: number
-  total_tasks_completed?: number
-  streak?: number
+  tasks_completed_early: string
+  tasks_completed_on_time: string
+  tasks_completed_late: string
+  tasks_pending: string
+  total_tasks_completed: string
+  total_focus_minutes: string
+  streak: string
+  last_completion_date?: Date | string | null
+  created_at?: Date | string
   updated_at?: Date | string
 }
 
 export type AnalyticsUncheckedCreateWithoutUserInput = {
   analytics_id?: number
-  tasks_completed_early?: number
-  tasks_completed_on_time?: number
-  tasks_completed_late?: number
-  tasks_pending?: number
-  total_focus_minutes?: number
-  total_tasks_completed?: number
-  streak?: number
+  tasks_completed_early: string
+  tasks_completed_on_time: string
+  tasks_completed_late: string
+  tasks_pending: string
+  total_tasks_completed: string
+  total_focus_minutes: string
+  streak: string
+  last_completion_date?: Date | string | null
+  created_at?: Date | string
   updated_at?: Date | string
 }
 
@@ -544,25 +583,29 @@ export type AnalyticsUpdateToOneWithWhereWithoutUserInput = {
 }
 
 export type AnalyticsUpdateWithoutUserInput = {
-  tasks_completed_early?: Prisma.IntFieldUpdateOperationsInput | number
-  tasks_completed_on_time?: Prisma.IntFieldUpdateOperationsInput | number
-  tasks_completed_late?: Prisma.IntFieldUpdateOperationsInput | number
-  tasks_pending?: Prisma.IntFieldUpdateOperationsInput | number
-  total_focus_minutes?: Prisma.IntFieldUpdateOperationsInput | number
-  total_tasks_completed?: Prisma.IntFieldUpdateOperationsInput | number
-  streak?: Prisma.IntFieldUpdateOperationsInput | number
+  tasks_completed_early?: Prisma.StringFieldUpdateOperationsInput | string
+  tasks_completed_on_time?: Prisma.StringFieldUpdateOperationsInput | string
+  tasks_completed_late?: Prisma.StringFieldUpdateOperationsInput | string
+  tasks_pending?: Prisma.StringFieldUpdateOperationsInput | string
+  total_tasks_completed?: Prisma.StringFieldUpdateOperationsInput | string
+  total_focus_minutes?: Prisma.StringFieldUpdateOperationsInput | string
+  streak?: Prisma.StringFieldUpdateOperationsInput | string
+  last_completion_date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type AnalyticsUncheckedUpdateWithoutUserInput = {
   analytics_id?: Prisma.IntFieldUpdateOperationsInput | number
-  tasks_completed_early?: Prisma.IntFieldUpdateOperationsInput | number
-  tasks_completed_on_time?: Prisma.IntFieldUpdateOperationsInput | number
-  tasks_completed_late?: Prisma.IntFieldUpdateOperationsInput | number
-  tasks_pending?: Prisma.IntFieldUpdateOperationsInput | number
-  total_focus_minutes?: Prisma.IntFieldUpdateOperationsInput | number
-  total_tasks_completed?: Prisma.IntFieldUpdateOperationsInput | number
-  streak?: Prisma.IntFieldUpdateOperationsInput | number
+  tasks_completed_early?: Prisma.StringFieldUpdateOperationsInput | string
+  tasks_completed_on_time?: Prisma.StringFieldUpdateOperationsInput | string
+  tasks_completed_late?: Prisma.StringFieldUpdateOperationsInput | string
+  tasks_pending?: Prisma.StringFieldUpdateOperationsInput | string
+  total_tasks_completed?: Prisma.StringFieldUpdateOperationsInput | string
+  total_focus_minutes?: Prisma.StringFieldUpdateOperationsInput | string
+  streak?: Prisma.StringFieldUpdateOperationsInput | string
+  last_completion_date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -570,74 +613,95 @@ export type AnalyticsUncheckedUpdateWithoutUserInput = {
 
 export type AnalyticsSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   analytics_id?: boolean
+  user_id?: boolean
   tasks_completed_early?: boolean
   tasks_completed_on_time?: boolean
   tasks_completed_late?: boolean
   tasks_pending?: boolean
-  total_focus_minutes?: boolean
   total_tasks_completed?: boolean
+  total_focus_minutes?: boolean
   streak?: boolean
+  last_completion_date?: boolean
+  created_at?: boolean
   updated_at?: boolean
-  user?: boolean | Prisma.Analytics$userArgs<ExtArgs>
+  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["analytics"]>
 
 export type AnalyticsSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   analytics_id?: boolean
+  user_id?: boolean
   tasks_completed_early?: boolean
   tasks_completed_on_time?: boolean
   tasks_completed_late?: boolean
   tasks_pending?: boolean
-  total_focus_minutes?: boolean
   total_tasks_completed?: boolean
+  total_focus_minutes?: boolean
   streak?: boolean
+  last_completion_date?: boolean
+  created_at?: boolean
   updated_at?: boolean
+  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["analytics"]>
 
 export type AnalyticsSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   analytics_id?: boolean
+  user_id?: boolean
   tasks_completed_early?: boolean
   tasks_completed_on_time?: boolean
   tasks_completed_late?: boolean
   tasks_pending?: boolean
-  total_focus_minutes?: boolean
   total_tasks_completed?: boolean
+  total_focus_minutes?: boolean
   streak?: boolean
+  last_completion_date?: boolean
+  created_at?: boolean
   updated_at?: boolean
+  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["analytics"]>
 
 export type AnalyticsSelectScalar = {
   analytics_id?: boolean
+  user_id?: boolean
   tasks_completed_early?: boolean
   tasks_completed_on_time?: boolean
   tasks_completed_late?: boolean
   tasks_pending?: boolean
-  total_focus_minutes?: boolean
   total_tasks_completed?: boolean
+  total_focus_minutes?: boolean
   streak?: boolean
+  last_completion_date?: boolean
+  created_at?: boolean
   updated_at?: boolean
 }
 
-export type AnalyticsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"analytics_id" | "tasks_completed_early" | "tasks_completed_on_time" | "tasks_completed_late" | "tasks_pending" | "total_focus_minutes" | "total_tasks_completed" | "streak" | "updated_at", ExtArgs["result"]["analytics"]>
+export type AnalyticsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"analytics_id" | "user_id" | "tasks_completed_early" | "tasks_completed_on_time" | "tasks_completed_late" | "tasks_pending" | "total_tasks_completed" | "total_focus_minutes" | "streak" | "last_completion_date" | "created_at" | "updated_at", ExtArgs["result"]["analytics"]>
 export type AnalyticsInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  user?: boolean | Prisma.Analytics$userArgs<ExtArgs>
+  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }
-export type AnalyticsIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
-export type AnalyticsIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
+export type AnalyticsIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
+}
+export type AnalyticsIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
+}
 
 export type $AnalyticsPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Analytics"
   objects: {
-    user: Prisma.$UserPayload<ExtArgs> | null
+    user: Prisma.$UserPayload<ExtArgs>
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     analytics_id: number
-    tasks_completed_early: number
-    tasks_completed_on_time: number
-    tasks_completed_late: number
-    tasks_pending: number
-    total_focus_minutes: number
-    total_tasks_completed: number
-    streak: number
+    user_id: string
+    tasks_completed_early: string
+    tasks_completed_on_time: string
+    tasks_completed_late: string
+    tasks_pending: string
+    total_tasks_completed: string
+    total_focus_minutes: string
+    streak: string
+    last_completion_date: Date | null
+    created_at: Date
     updated_at: Date
   }, ExtArgs["result"]["analytics"]>
   composites: {}
@@ -1033,7 +1097,7 @@ readonly fields: AnalyticsFieldRefs;
  */
 export interface Prisma__AnalyticsClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
-  user<T extends Prisma.Analytics$userArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Analytics$userArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  user<T extends Prisma.UserDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UserDefaultArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1064,13 +1128,16 @@ export interface Prisma__AnalyticsClient<T, Null = never, ExtArgs extends runtim
  */
 export interface AnalyticsFieldRefs {
   readonly analytics_id: Prisma.FieldRef<"Analytics", 'Int'>
-  readonly tasks_completed_early: Prisma.FieldRef<"Analytics", 'Int'>
-  readonly tasks_completed_on_time: Prisma.FieldRef<"Analytics", 'Int'>
-  readonly tasks_completed_late: Prisma.FieldRef<"Analytics", 'Int'>
-  readonly tasks_pending: Prisma.FieldRef<"Analytics", 'Int'>
-  readonly total_focus_minutes: Prisma.FieldRef<"Analytics", 'Int'>
-  readonly total_tasks_completed: Prisma.FieldRef<"Analytics", 'Int'>
-  readonly streak: Prisma.FieldRef<"Analytics", 'Int'>
+  readonly user_id: Prisma.FieldRef<"Analytics", 'String'>
+  readonly tasks_completed_early: Prisma.FieldRef<"Analytics", 'String'>
+  readonly tasks_completed_on_time: Prisma.FieldRef<"Analytics", 'String'>
+  readonly tasks_completed_late: Prisma.FieldRef<"Analytics", 'String'>
+  readonly tasks_pending: Prisma.FieldRef<"Analytics", 'String'>
+  readonly total_tasks_completed: Prisma.FieldRef<"Analytics", 'String'>
+  readonly total_focus_minutes: Prisma.FieldRef<"Analytics", 'String'>
+  readonly streak: Prisma.FieldRef<"Analytics", 'String'>
+  readonly last_completion_date: Prisma.FieldRef<"Analytics", 'DateTime'>
+  readonly created_at: Prisma.FieldRef<"Analytics", 'DateTime'>
   readonly updated_at: Prisma.FieldRef<"Analytics", 'DateTime'>
 }
     
@@ -1290,7 +1357,7 @@ export type AnalyticsCreateArgs<ExtArgs extends runtime.Types.Extensions.Interna
   /**
    * The data needed to create a Analytics.
    */
-  data?: Prisma.XOR<Prisma.AnalyticsCreateInput, Prisma.AnalyticsUncheckedCreateInput>
+  data: Prisma.XOR<Prisma.AnalyticsCreateInput, Prisma.AnalyticsUncheckedCreateInput>
 }
 
 /**
@@ -1321,6 +1388,10 @@ export type AnalyticsCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Exten
    */
   data: Prisma.AnalyticsCreateManyInput | Prisma.AnalyticsCreateManyInput[]
   skipDuplicates?: boolean
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.AnalyticsIncludeCreateManyAndReturn<ExtArgs> | null
 }
 
 /**
@@ -1391,6 +1462,10 @@ export type AnalyticsUpdateManyAndReturnArgs<ExtArgs extends runtime.Types.Exten
    * Limit how many Analytics to update.
    */
   limit?: number
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.AnalyticsIncludeUpdateManyAndReturn<ExtArgs> | null
 }
 
 /**
@@ -1457,25 +1532,6 @@ export type AnalyticsDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Int
    * Limit how many Analytics to delete.
    */
   limit?: number
-}
-
-/**
- * Analytics.user
- */
-export type Analytics$userArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the User
-   */
-  select?: Prisma.UserSelect<ExtArgs> | null
-  /**
-   * Omit specific fields from the User
-   */
-  omit?: Prisma.UserOmit<ExtArgs> | null
-  /**
-   * Choose, which related nodes to fetch as well
-   */
-  include?: Prisma.UserInclude<ExtArgs> | null
-  where?: Prisma.UserWhereInput
 }
 
 /**
