@@ -24,7 +24,6 @@ import {
   CalendarIcon,
   Paperclip,
   Plus,
-  Sparkles,
   Trash2,
   X,
 } from "lucide-react";
@@ -52,6 +51,27 @@ type StudyTrack = {
   notes: string;
   descriptionAsChecklist: boolean;
   attachments: File[];
+};
+
+type StudyTrackDraftPreview = {
+  tracks: {
+    title: string;
+    start_date: string;
+    repeat: "none" | "weekly" | "biweekly";
+    time: string;
+    focus_minutes: number;
+    break_minutes: number;
+    total_pomodoros: number;
+    notes: string;
+    description_as_checklist: boolean;
+  }[];
+  warnings?: string[];
+  reasoning?: string;
+  skippedAttachments?: {
+    fileName: string;
+    fileType: string;
+    reason: string;
+  }[];
 };
 
 function createEmptyTrack(title = ""): StudyTrack {
@@ -108,6 +128,8 @@ export default function StudyNewPage() {
   const [tracks, setTracks] = useState<StudyTrack[]>([createEmptyTrack()]);
   const [savingBatch, setSavingBatch] = useState(false);
   const [plannerError, setPlannerError] = useState<string | null>(null);
+  const [studyDraftLoading, setStudyDraftLoading] = useState(false);
+  const [studyDraft, setStudyDraft] = useState<StudyTrackDraftPreview | null>(null);
 
   useEffect(() => {
     if (!taskId || !Number.isInteger(taskId) || taskId <= 0) {
@@ -380,6 +402,55 @@ export default function StudyNewPage() {
           : track,
       ),
     );
+  };
+
+  const requestStudyTrackDraft = async () => {
+    if (!taskId || !taskContext) return;
+
+    setStudyDraftLoading(true);
+    setPlannerError(null);
+    try {
+      const response = await fetch("/api/ai/study-track-draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskId }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.message ?? "Could not generate study plan");
+      }
+
+      setStudyDraft(data.draft);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Could not generate study plan";
+      setPlannerError(message);
+      toast.error(message);
+    } finally {
+      setStudyDraftLoading(false);
+    }
+  };
+
+  const applyStudyTrackDraft = () => {
+    if (!studyDraft?.tracks?.length) return;
+
+    setTracks(
+      studyDraft.tracks.map((track) => ({
+        id: crypto.randomUUID(),
+        title: track.title,
+        startDate: track.start_date,
+        repeat: track.repeat,
+        time: track.time,
+        focusMinutes: track.focus_minutes,
+        breakMinutes: track.break_minutes,
+        totalPomodoro: track.total_pomodoros,
+        notes: track.notes,
+        descriptionAsChecklist: track.description_as_checklist,
+        attachments: [],
+      })),
+    );
+    setPlannerError(null);
+    toast.success("AI study plan applied");
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -959,7 +1030,82 @@ export default function StudyNewPage() {
               ) : null}
             </div>
 
-            <AiSuggestionsButton description="Suggest a study plan from this task's deadline and topics." />
+            <AiSuggestionsButton
+              description="Suggest a study plan from this task's deadline and topics."
+              loading={studyDraftLoading}
+              onClick={requestStudyTrackDraft}
+            />
+
+            {studyDraft && (
+              <div className="space-y-3 rounded-lg border border-accent/30 bg-accent/5 p-4">
+                <div>
+                  <p className="font-mono text-xs tracking-wider text-muted-foreground">
+                    AI STUDY PLAN
+                  </p>
+                  {studyDraft.reasoning ? (
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {studyDraft.reasoning}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="space-y-2">
+                  {studyDraft.tracks.map((track, index) => (
+                    <div
+                      key={`${track.title}-${index}`}
+                      className="rounded-md border border-border/60 bg-background/60 p-3"
+                    >
+                      <p className="text-sm font-semibold">{track.title}</p>
+                      <p className="font-mono text-xs text-muted-foreground">
+                        {track.start_date} at {track.time} · {track.focus_minutes}m x{" "}
+                        {track.total_pomodoros}
+                      </p>
+                      {track.notes ? (
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          {track.notes}
+                        </p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+                {studyDraft.warnings?.length ? (
+                  <div className="space-y-1 rounded-md border border-border/60 bg-background/60 p-3">
+                    {studyDraft.warnings.map((warning) => (
+                      <p key={warning} className="text-xs text-muted-foreground">
+                        {warning}
+                      </p>
+                    ))}
+                  </div>
+                ) : null}
+                {studyDraft.skippedAttachments?.length ? (
+                  <div className="space-y-1 rounded-md border border-border/60 bg-background/60 p-3">
+                    <p className="font-mono text-[10px] tracking-wider text-muted-foreground">
+                      SKIPPED FILES
+                    </p>
+                    {studyDraft.skippedAttachments.map((attachment) => (
+                      <p
+                        key={`${attachment.fileName}-${attachment.reason}`}
+                        className="text-xs text-muted-foreground"
+                      >
+                        {attachment.fileName}: {attachment.reason}
+                      </p>
+                    ))}
+                  </div>
+                ) : null}
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" size="sm" onClick={applyStudyTrackDraft}>
+                    Apply study plan
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setStudyDraft(null)}
+                  >
+                    Dismiss
+                  </Button>
+                </div>
+              </div>
+            )}
 
             <div className="flex gap-3 pt-2">
               <Button

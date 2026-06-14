@@ -69,7 +69,7 @@ export interface CreateStudySessionPayload extends Omit<StudySession, 'id' | 'cr
   total_pomodoros?: number;
   total_minutes?: number;
   study_session_scheduled_at: Date | string;
-  checklist_json?: any;
+  checklist_json?: unknown;
   reminder_enabled?: boolean;
   reminders?: number[];
   task_id?: number | null;
@@ -88,7 +88,7 @@ export interface UpdateStudySessionPayload {
   focus_minutes?: number;
   break_minutes?: number;
   total_minutes?: number;
-  checklist_json?: any;
+  checklist_json?: unknown;
 }
 
 export interface AnalyticsData {
@@ -151,7 +151,7 @@ export interface Notification {
   type: "reminder" | "timer-complete" | "deadline-approaching";
 }
 
-export type ProjectRole = "owner" | "moderator" | "member";
+export type ProjectRole = "owner" | "moderator" | "collaborator" | "member";
 
 export interface ProjectMember {
   /** Unique identifier for the member */

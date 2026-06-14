@@ -288,4 +288,72 @@ describe("StudyNewPage", () => {
     );
     expect(global.fetch).toHaveBeenCalledTimes(1);
   });
+
+  it("previews and applies AI generated study tracks", async () => {
+    mockSearchParams = new URLSearchParams("taskId=42");
+    global.fetch = jest.fn(async (url) => {
+      if (url === "/api/task/42") {
+        return {
+          ok: true,
+          json: async () => ({
+            task: {
+              id: 42,
+              title: "Physics Final",
+              description: "Mechanics and medical physics",
+              deadline: "2099-03-31T23:59:00.000Z",
+              priority: 4,
+              status: "Pending",
+              createdAt: "2099-03-01T00:00:00.000Z",
+              completedAt: null,
+            },
+          }),
+        };
+      }
+
+      if (url === "/api/ai/study-track-draft") {
+        return {
+          ok: true,
+          json: async () => ({
+            draft: {
+              tracks: [
+                {
+                  title: "AI Mechanics Review",
+                  start_date: "2099-03-22",
+                  repeat: "weekly",
+                  time: "16:00",
+                  focus_minutes: 30,
+                  break_minutes: 5,
+                  total_pomodoros: 2,
+                  notes: "Review force diagrams and formula sheets.",
+                  description_as_checklist: true,
+                },
+              ],
+              warnings: [],
+              reasoning: "The draft spaces mechanics review before the deadline.",
+              skippedAttachments: [],
+            },
+          }),
+        };
+      }
+
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+
+    render(<StudyNewPage />);
+
+    expect(await screen.findByText("Physics Final")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /ai suggestions/i }));
+
+    expect(await screen.findByText(/ai mechanics review/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /apply study plan/i }));
+
+    expect(screen.getByLabelText(/session topic/i)).toHaveValue(
+      "AI Mechanics Review",
+    );
+    expect(screen.getByLabelText(/preferred time/i)).toHaveValue("16:00");
+    expect(screen.getByLabelText(/start date/i)).toHaveValue("2099-03-22");
+    expect(
+      screen.getByPlaceholderText(/optional notes for this session/i),
+    ).toHaveValue("Review force diagrams and formula sheets.");
+  });
 });

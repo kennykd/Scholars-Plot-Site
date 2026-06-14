@@ -5,7 +5,6 @@
 
 import type {
   ProjectMember,
-  ProjectTask,
   ProjectRole,
   ProjectTaskStatus,
 } from "@/types";
@@ -87,7 +86,7 @@ export function serializeProject(apiProject: ApiProject): StoredProject {
     attachments: [],
     reminder: "none" as const,
     priority: priorityFromNumber(task.task_priority),
-    status: (task.task_status.toLowerCase() as ProjectTaskStatus) || "not-done",
+    status: statusFromTaskStatus(task.task_status),
     assignedTo: task.task_users?.[0]?.user_id || undefined,
     createdAt: task.task_created_at,
   }));
@@ -97,7 +96,7 @@ export function serializeProject(apiProject: ApiProject): StoredProject {
     name: apiProject.project_name,
     description: apiProject.project_description || undefined,
     deadline: apiProject.project_deadline || undefined,
-    project_status: (apiProject.project_status as any) || "active",
+    project_status: projectStatusFromApi(apiProject.project_status),
     priority: apiProject.project_priority || 3,
     ownerId: apiProject.project_user.find((pu) => pu.project_user_role === "owner")
       ?.user_id,
@@ -118,7 +117,7 @@ export function serializeProjectTask(task: ApiProjectTask): StoredProjectTask {
     attachments: [],
     reminder: "none" as const,
     priority: priorityFromNumber(task.task_priority),
-    status: (task.task_status.toLowerCase() as ProjectTaskStatus) || "not-done",
+    status: statusFromTaskStatus(task.task_status),
     assignedTo: task.task_users?.[0]?.user_id || undefined,
     createdAt: task.task_created_at,
   };
@@ -147,6 +146,23 @@ function priorityToNumber(priority: string): number {
     default:
       return 3;
   }
+}
+
+function statusFromTaskStatus(status: string): ProjectTaskStatus {
+  if (status === "Completed") return "done";
+  if (status === "In_Progress" || status === "In Progress") return "pending";
+  return "not-done";
+}
+
+function statusToTaskStatus(status: ProjectTaskStatus) {
+  if (status === "done") return "Completed";
+  if (status === "pending") return "In_Progress";
+  return "Pending";
+}
+
+function projectStatusFromApi(status: string): StoredProject["project_status"] {
+  if (status === "completed" || status === "archived") return status;
+  return "active";
 }
 
 // ─── API Methods ────────────────────────────────────────────────────────────
@@ -297,11 +313,11 @@ export async function addProjectMemberApi(
 export async function createProjectTaskApi(
   projectId: string,
   title: string,
-  priority: string,
+  priority: number,
   description?: string,
   assignedTo?: string,
-  attachment?: string,
-  reminder?: string
+  attachmentIds?: number[],
+  reminder?: string,
 ): Promise<StoredProjectTask> {
   const projectNumId = projectId.replace("project-", "");
   const res = await fetch("/api/project/task", {
@@ -312,9 +328,9 @@ export async function createProjectTaskApi(
       title,
       description,
       priority,
-      status: "not-done",
+      status: "Pending",
       assignedTo,
-      ...(attachment && { attachments: [attachment] }),
+      ...(attachmentIds?.length ? { attachmentIds } : {}),
       reminder,
     }),
   });
@@ -352,8 +368,8 @@ export async function updateProjectTaskApi(
     body: JSON.stringify({
       ...(title && { title }),
       ...(description !== undefined && { description }),
-      ...(priority && { priority }),
-      ...(status && { status }),
+      ...(priority && { priority: priorityToNumber(priority) }),
+      ...(status && { status: statusToTaskStatus(status) }),
       ...(assignedTo !== undefined && { assignedTo }),
     }),
   });

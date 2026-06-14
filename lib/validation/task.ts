@@ -24,6 +24,9 @@ export const createTaskSchema = z.object({
     .min(0.5).max(5)
     .optional(),
   reminder: reminderOptionSchema.optional(),
+  attachmentIds: z.array(z.coerce.number().int().positive())
+    .max(20)
+    .optional(),
 });
 
 export const updateTaskSchema = z.object({

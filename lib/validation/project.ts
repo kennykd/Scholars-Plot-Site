@@ -23,7 +23,7 @@ export const createProjectSchema = z.object({
     .min(1, 'Member name is required'),
     handle: z.string()
     .optional(),
-    role: z.enum(['owner', 'moderator', 'member']),
+    role: z.enum(['owner', 'moderator', 'collaborator', 'member']),
   }))
   .optional(),
 });
@@ -51,7 +51,7 @@ export const updateProjectSchema = z.object({
     .min(1, 'Member name is required'),
     handle: z.string()
     .optional(),
-    role: z.enum(['owner', 'moderator', 'member']),
+    role: z.enum(['owner', 'moderator', 'collaborator', 'member']),
   }))
   .optional(),
 });
@@ -70,6 +70,9 @@ export const createProjectTaskSchema = z.object({
   assignedTo: z.string()
   .optional(),
   attachments: z.array(z.string())
+  .optional(),
+  attachmentIds: z.array(z.coerce.number().int().positive())
+  .max(20)
   .optional(),
   reminder: z.enum(['daily', 'every-3-days', 'weekly', 'none'])
   .optional(),
@@ -102,11 +105,11 @@ export const addProjectMemberSchema = z.object({
   .min(1, 'Member name is required'),
   handle: z.string()
   .optional(),
-  role: z.enum(['owner', 'moderator', 'member']),
+  role: z.enum(['owner', 'moderator', 'collaborator', 'member']),
 });
 
 export const updateProjectMemberSchema = z.object({
-  role: z.enum(['owner', 'moderator', 'member']),
+  role: z.enum(['owner', 'moderator', 'collaborator', 'member']),
 });
 
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;

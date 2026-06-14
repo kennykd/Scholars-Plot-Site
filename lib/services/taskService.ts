@@ -3,6 +3,7 @@ import type { Task as PrismaTask } from '@/lib/generated/prisma/client';
 import type { CreateTaskInput, ReminderOption, UpdateTaskInput } from '@/lib/validation/task';
 import type { Attachment, Task, TaskStatus } from '@/types';
 import { TaskAttachment } from '@/lib/ai/taskAnalyzer';
+import { getFileUrl } from '@/lib/bucket';
 import { incrementTasksSinceLast, shouldRunAdapter } from "@/lib/services/weightService";
 
 type ReminderInterval = { interval_type: 'days' | 'weeks' | 'months'; interval_value: number };
@@ -108,23 +109,18 @@ export async function getTasks(userId: string) {
 export async function getTaskAttachments(
   task_id: number
 ): Promise<TaskAttachment[]> {
-  const sessionUsers = await prisma.studySessionUser.findMany({
-    where: {
-      task_id,
-      attachment_id: { not: null },
-    },
-    include: {
-      attachment: true,
-    },
+  const attachments = await prisma.attachment.findMany({
+    where: { task_id },
+    orderBy: { attachment_uploaded_at: 'asc' },
   });
 
-  return sessionUsers
-    .filter((su) => su.attachment !== null)
-    .map((su) => ({
-      file_path: su.attachment!.file_path,
-      file_type: su.attachment!.file_type,
-      file_name: su.attachment!.file_name,
-    }));
+  return Promise.all(
+    attachments.map(async (attachment) => ({
+      file_path: await getFileUrl(attachment.file_path),
+      file_type: attachment.file_type,
+      file_name: attachment.file_name,
+    })),
+  );
 }
 
 export async function getTaskById(taskId: number, userId: string) {
@@ -142,27 +138,53 @@ export async function getStudySessionsForTask(taskId: number, userId: string) {
 
 export async function createTask(userId: string, data: CreateTaskInput) {
   const reminderInterval = reminderOptionToInterval(data.reminder);
-  return prisma.task.create({
-    data: {
-      task_name: data.title,
-      task_description: data.description,
-      task_deadline: data.deadline,
-      task_priority: data.priority ?? 3,
-      task_status: data.status,
-      project_id: null,
-      task_users: { create: { user_id: userId } },
-      ...(reminderInterval
-        ? {
-            task_reminders: {
-              create: {
-                interval_type: reminderInterval.interval_type,
-                interval_value: reminderInterval.interval_value,
-                remind_at: new Date(Date.now() + intervalToMs(reminderInterval)),
+  return prisma.$transaction(async (tx) => {
+    const task = await tx.task.create({
+      data: {
+        task_name: data.title,
+        task_description: data.description,
+        task_deadline: data.deadline,
+        task_priority: data.priority ?? 3,
+        task_status: data.status,
+        project_id: null,
+        task_users: { create: { user_id: userId } },
+        ...(reminderInterval
+          ? {
+              task_reminders: {
+                create: {
+                  interval_type: reminderInterval.interval_type,
+                  interval_value: reminderInterval.interval_value,
+                  remind_at: new Date(Date.now() + intervalToMs(reminderInterval)),
+                },
               },
-            },
-          }
-        : {}),
-    },
+            }
+          : {}),
+      },
+    });
+
+    if (data.attachmentIds?.length) {
+      const attachmentIds = [...new Set(data.attachmentIds)];
+      const attachments = await tx.attachment.findMany({
+        where: { attachment_id: { in: attachmentIds } },
+        select: { attachment_id: true, user_id: true, task_id: true },
+      });
+
+      if (
+        attachments.length !== attachmentIds.length ||
+        attachments.some(
+          (attachment) => attachment.user_id !== userId || attachment.task_id !== null,
+        )
+      ) {
+        throw new TaskServiceError(400, 'Some draft attachments are unavailable');
+      }
+
+      await tx.attachment.updateMany({
+        where: { attachment_id: { in: attachmentIds } },
+        data: { task_id: task.task_id },
+      });
+    }
+
+    return task;
   });
 }
 

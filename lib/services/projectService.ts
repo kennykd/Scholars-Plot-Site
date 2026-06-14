@@ -8,7 +8,7 @@ import type {
   UpdateProjectTaskInput,
 } from '@/lib/validation/project';
 
-type ProjectUserRole = 'owner' | 'moderator' | 'member';
+type ProjectUserRole = 'owner' | 'moderator' | 'collaborator' | 'member';
 
 const projectManagerRoles: ProjectUserRole[] = ['owner', 'moderator'];
 
@@ -121,7 +121,7 @@ async function requireProjectOwnerRole(projectId: number, userId: string) {
   return memberRole.project_user_role as ProjectUserRole;
 }
 
-async function requireProjectTaskAccess(taskId: number, userId: string) {
+export async function requireProjectTaskAccess(taskId: number, userId: string) {
   const task = await prisma.task.findUnique({
     where: { task_id: taskId },
     include: {
@@ -164,6 +164,20 @@ async function requireProjectTaskAccess(taskId: number, userId: string) {
     isManager,
     isAssigned,
   };
+}
+
+export async function requireProjectTaskAttachmentAccess(
+  taskId: number,
+  userId: string,
+  mode: 'view' | 'manage' = 'view',
+) {
+  const access = await requireProjectTaskAccess(taskId, userId);
+
+  if (mode === 'manage' && !access.isManager && !access.isAssigned) {
+    throw new ProjectServiceError(403, 'Members can only manage tasks assigned to them');
+  }
+
+  return access.task;
 }
 
 export async function getProjects(userId: string) {
@@ -399,26 +413,52 @@ export async function createProjectTask(userId: string, data: CreateProjectTaskI
     await requireUsersExist([data.assignedTo], 'Assigned user');
   }
 
-  const task = await prisma.task.create({
-    data: {
-      project_id: data.projectId,
-      task_name: data.title,
-      task_description: data.description,
-      task_priority: data.priority,
-      task_status: data.status,
-      task_deadline: new Date(Date.now() + 24 * 60 * 60 * 1000),
-    },
-    include: taskInclude,
-  });
-
-  if (data.assignedTo) {
-    await prisma.taskUser.create({
+  const task = await prisma.$transaction(async (tx) => {
+    const createdTask = await tx.task.create({
       data: {
-        task_id: task.task_id,
-        user_id: data.assignedTo,
+        project_id: data.projectId,
+        task_name: data.title,
+        task_description: data.description,
+        task_priority: data.priority,
+        task_status: data.status,
+        task_deadline: new Date(Date.now() + 24 * 60 * 60 * 1000),
       },
+      include: taskInclude,
     });
-  }
+
+    if (data.assignedTo) {
+      await tx.taskUser.create({
+        data: {
+          task_id: createdTask.task_id,
+          user_id: data.assignedTo,
+        },
+      });
+    }
+
+    if (data.attachmentIds?.length) {
+      const attachmentIds = [...new Set(data.attachmentIds)];
+      const attachments = await tx.attachment.findMany({
+        where: { attachment_id: { in: attachmentIds } },
+        select: { attachment_id: true, user_id: true, task_id: true },
+      });
+
+      if (
+        attachments.length !== attachmentIds.length ||
+        attachments.some(
+          (attachment) => attachment.user_id !== userId || attachment.task_id !== null,
+        )
+      ) {
+        throw new ProjectServiceError(400, 'Some draft attachments are unavailable');
+      }
+
+      await tx.attachment.updateMany({
+        where: { attachment_id: { in: attachmentIds } },
+        data: { task_id: createdTask.task_id },
+      });
+    }
+
+    return createdTask;
+  });
 
   return prisma.task.findUnique({
     where: { task_id: task.task_id },
