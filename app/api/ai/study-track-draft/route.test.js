@@ -112,7 +112,9 @@ describe("POST /api/ai/study-track-draft", () => {
         {
           title: "Mechanics review",
           start_date: "2099-03-22",
-          repeat: "none",
+          repeat_enabled: false,
+          repeat_every: 1,
+          repeat_unit: "weeks",
           time: "16:00",
           focus_minutes: 25,
           break_minutes: 5,
@@ -145,6 +147,7 @@ describe("POST /api/ai/study-track-draft", () => {
             url: "https://signed.example/rubric.pdf",
           }),
         ],
+        now: expect.any(Date),
       }),
     );
     expect(body.draft.tracks[0]).toEqual(

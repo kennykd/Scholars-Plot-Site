@@ -130,7 +130,9 @@ describe("aiDraftService", () => {
           {
             title: "Mechanics review",
             start_date: "2099-03-21",
-            repeat: "none",
+            repeat_enabled: true,
+            repeat_every: 3,
+            repeat_unit: "days",
             time: "15:30",
             focus_minutes: 30,
             break_minutes: 5,
@@ -158,8 +160,9 @@ describe("aiDraftService", () => {
         total_pomodoros: 2,
         total_minutes: 60,
       },
-      availability: [{ day_of_week: 1, start_time: "15:00", end_time: "17:00" }],
+      availability: [],
       behaviorProfile: null,
+      now: new Date("2099-03-20T08:00:00.000Z"),
       attachments: [
         {
           fileName: "diagram.png",
@@ -183,13 +186,22 @@ describe("aiDraftService", () => {
     expect(prompt).toContain("split work into specific topics");
     expect(prompt).toContain("respect study preferences and availability");
     expect(prompt).toContain("directly useful during a study session");
+    expect(prompt).toContain("Current server time: 2099-03-20T08:00:00.000Z");
+    expect(prompt).toContain("Current local date: 2099-03-20");
+    expect(prompt).toContain("Allowed scheduling window: 2099-03-20 through 2099-04-01");
+    expect(prompt).toContain("day_of_week uses 0=Sunday");
+    expect(prompt).toContain("repeat_enabled");
+    expect(prompt).toContain("repeat_every");
+    expect(prompt).toContain("repeat_unit");
     expect(prompt).toContain("<untrusted_user_content>");
     expect(prompt).toContain("</untrusted_user_content>");
     expect(result.tracks).toEqual([
       expect.objectContaining({
         title: "Mechanics review",
         start_date: "2099-03-21",
-        repeat: "none",
+        repeat_enabled: true,
+        repeat_every: 3,
+        repeat_unit: "days",
         time: "15:30",
         focus_minutes: 30,
         break_minutes: 5,
@@ -198,6 +210,114 @@ describe("aiDraftService", () => {
         description_as_checklist: true,
       }),
     ]);
+  });
+
+  it("drops AI study tracks outside today-through-deadline and returns a safe fallback", async () => {
+    (geminiFlash.generateContent as jest.Mock).mockResolvedValue({
+      text: JSON.stringify({
+        tracks: [
+          {
+            title: "Wrong month review",
+            start_date: "2099-01-15",
+            repeat_enabled: true,
+            repeat_every: 1,
+            repeat_unit: "weeks",
+            time: "15:30",
+            focus_minutes: 30,
+            break_minutes: 5,
+            total_pomodoros: 2,
+            notes: "This date is before today.",
+            description_as_checklist: false,
+          },
+        ],
+        warnings: [],
+        reasoning: "Bad model date.",
+      }),
+    });
+
+    const result = await generateStudyTrackDraft({
+      task: {
+        id: 42,
+        title: "Physics Final",
+        description: "Mechanics",
+        deadline: new Date("2099-06-30T16:59:00.000Z"),
+        priority: 4,
+      },
+      preferences: {
+        focus_minutes: 25,
+        break_minutes: 5,
+        total_pomodoros: 2,
+        total_minutes: 60,
+      },
+      availability: [],
+      behaviorProfile: null,
+      now: new Date("2099-06-10T08:00:00.000Z"),
+    });
+
+    expect(result.tracks[0]).toEqual(
+      expect.objectContaining({
+        start_date: "2099-06-10",
+        repeat_enabled: false,
+      }),
+    );
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("outside the allowed scheduling window"),
+      ]),
+    );
+  });
+
+  it("uses availability when replacing invalid AI study tracks", async () => {
+    (geminiFlash.generateContent as jest.Mock).mockResolvedValue({
+      text: JSON.stringify({
+        tracks: [
+          {
+            title: "Outside availability",
+            start_date: "2099-06-11",
+            repeat_enabled: false,
+            repeat_every: 1,
+            repeat_unit: "weeks",
+            time: "09:00",
+            focus_minutes: 30,
+            break_minutes: 5,
+            total_pomodoros: 2,
+            notes: "This time is outside the available slot.",
+            description_as_checklist: false,
+          },
+        ],
+        warnings: [],
+        reasoning: "Bad availability.",
+      }),
+    });
+
+    const result = await generateStudyTrackDraft({
+      task: {
+        id: 42,
+        title: "Physics Final",
+        description: "Mechanics",
+        deadline: new Date("2099-06-30T16:59:00.000Z"),
+        priority: 4,
+      },
+      preferences: {
+        focus_minutes: 25,
+        break_minutes: 5,
+        total_pomodoros: 2,
+        total_minutes: 60,
+      },
+      availability: [{ day_of_week: 1, start_time: "15:00", end_time: "17:00" }],
+      behaviorProfile: null,
+      now: new Date("2099-06-10T08:00:00.000Z"),
+    });
+
+    expect(result.tracks[0]).toEqual(
+      expect.objectContaining({
+        start_date: "2099-06-15",
+        time: "15:00",
+      }),
+    );
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([expect.stringContaining("availability")]),
+    );
   });
 
   it("blocks obvious prompt-injection input before calling Gemini", async () => {
@@ -290,7 +410,9 @@ describe("aiDraftService", () => {
           {
             title: "Blocked track",
             start_date: "2099-03-21",
-            repeat: "none",
+            repeat_enabled: false,
+            repeat_every: 1,
+            repeat_unit: "weeks",
             time: "15:30",
             focus_minutes: 30,
             break_minutes: 5,

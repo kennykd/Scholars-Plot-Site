@@ -29,7 +29,9 @@ const basePlan = {
   client_plan_id: "plan-1",
   title: "Mechanical Physics",
   start_date: "2099-03-23",
-  repeat: "weekly" as const,
+  repeat_enabled: true,
+  repeat_every: 1,
+  repeat_unit: "weeks" as const,
   time: "15:00",
   focus_minutes: 25,
   break_minutes: 5,
@@ -74,7 +76,7 @@ describe("createStudySessionsForTask", () => {
     );
 
     const result = await createStudySessionsForTask("user-1", 42, [
-      { ...basePlan, start_date: "2099-03-22", repeat: "none" },
+      { ...basePlan, start_date: "2099-03-22", repeat_enabled: false },
     ]);
 
     expect(createMock).toHaveBeenCalledTimes(1);
@@ -103,14 +105,14 @@ describe("createStudySessionsForTask", () => {
     );
 
     const result = await createStudySessionsForTask("user-1", 42, [
-      { ...basePlan, start_date: "2099-03-20", repeat: "none", time: "15:00" },
+      { ...basePlan, start_date: "2099-03-20", repeat_enabled: false, time: "15:00" },
     ]);
 
     expect(createMock).toHaveBeenCalledTimes(1);
     expect(result.createdByPlan["plan-1"]).toEqual([31]);
   });
 
-  it("creates weekly sessions from the start date through the task deadline", async () => {
+  it("creates custom weekly sessions from the start date through the task deadline", async () => {
     let id = 10;
     const createMock = jest.fn(async ({ data }) => ({
       study_session_id: ++id,
@@ -142,8 +144,38 @@ describe("createStudySessionsForTask", () => {
     expect(result.createdByPlan["plan-1"]).toEqual([11, 12]);
   });
 
-  it("creates biweekly sessions from the start date through the task deadline", async () => {
+  it("creates sessions every 3 days through the task deadline", async () => {
     let id = 40;
+    (requireTaskAccess as jest.Mock).mockResolvedValue({
+      task_id: 42,
+      task_deadline: new Date("2099-04-02T23:59:00.000Z"),
+    });
+    const createMock = jest.fn(async ({ data }) => ({
+      study_session_id: ++id,
+      study_session_name: data.study_session_name,
+    }));
+    (prisma.$transaction as jest.Mock).mockImplementation((callback) =>
+      callback({ studySession: { create: createMock } }),
+    );
+
+    const result = await createStudySessionsForTask("user-1", 42, [
+      { ...basePlan, repeat_enabled: true, repeat_every: 3, repeat_unit: "days" },
+    ]);
+
+    expect(createMock).toHaveBeenCalledTimes(4);
+    expect(createMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          study_session_scheduled_at: new Date(2099, 2, 26, 15, 0, 0, 0),
+        }),
+      }),
+    );
+    expect(result.createdByPlan["plan-1"]).toEqual([41, 42, 43, 44]);
+  });
+
+  it("creates sessions every 2 weeks through the task deadline", async () => {
+    let id = 60;
     (requireTaskAccess as jest.Mock).mockResolvedValue({
       task_id: 42,
       task_deadline: new Date("2099-04-30T23:59:00.000Z"),
@@ -157,7 +189,7 @@ describe("createStudySessionsForTask", () => {
     );
 
     const result = await createStudySessionsForTask("user-1", 42, [
-      { ...basePlan, repeat: "biweekly" },
+      { ...basePlan, repeat_enabled: true, repeat_every: 2, repeat_unit: "weeks" },
     ]);
 
     expect(createMock).toHaveBeenCalledTimes(3);
@@ -169,7 +201,40 @@ describe("createStudySessionsForTask", () => {
         }),
       }),
     );
-    expect(result.createdByPlan["plan-1"]).toEqual([41, 42, 43]);
+    expect(result.createdByPlan["plan-1"]).toEqual([61, 62, 63]);
+  });
+
+  it("keeps legacy biweekly repeat payloads working", async () => {
+    let id = 70;
+    (requireTaskAccess as jest.Mock).mockResolvedValue({
+      task_id: 42,
+      task_deadline: new Date("2099-04-30T23:59:00.000Z"),
+    });
+    const createMock = jest.fn(async ({ data }) => ({
+      study_session_id: ++id,
+      study_session_name: data.study_session_name,
+    }));
+    (prisma.$transaction as jest.Mock).mockImplementation((callback) =>
+      callback({ studySession: { create: createMock } }),
+    );
+
+    const legacyPlan = {
+      client_plan_id: "plan-1",
+      title: "Mechanical Physics",
+      start_date: "2099-03-23",
+      repeat: "biweekly" as const,
+      time: "15:00",
+      focus_minutes: 25,
+      break_minutes: 5,
+      total_pomodoros: 2,
+      notes: "Practice force diagrams",
+      description_as_checklist: false,
+    } as unknown as Parameters<typeof createStudySessionsForTask>[2][number];
+
+    const result = await createStudySessionsForTask("user-1", 42, [legacyPlan]);
+
+    expect(createMock).toHaveBeenCalledTimes(3);
+    expect(result.createdByPlan["plan-1"]).toEqual([71, 72, 73]);
   });
 
   it("rejects plans that cannot generate a future session before the deadline", async () => {
@@ -180,7 +245,7 @@ describe("createStudySessionsForTask", () => {
 
     await expect(
       createStudySessionsForTask("user-1", 42, [
-        { ...basePlan, start_date: "2099-03-20", repeat: "none", time: "15:00" },
+        { ...basePlan, start_date: "2099-03-20", repeat_enabled: false, time: "15:00" },
       ]),
     ).rejects.toThrow("No sessions fit before this task deadline");
   });
@@ -223,7 +288,7 @@ describe("createStudySessionsForTask", () => {
     );
 
     const result = await createStudySessionsForTask("user-1", 42, [
-      { ...basePlan, repeat: "weekly" },
+      { ...basePlan, repeat_enabled: true, repeat_every: 1, repeat_unit: "weeks" },
     ]);
 
     expect(createMock).toHaveBeenCalledTimes(50);

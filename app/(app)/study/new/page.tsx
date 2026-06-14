@@ -44,7 +44,9 @@ type StudyTrack = {
   id: string;
   title: string;
   startDate: string;
-  repeat: "none" | "weekly" | "biweekly";
+  repeatEnabled: boolean;
+  repeatEvery: number;
+  repeatUnit: "days" | "weeks";
   time: string;
   focusMinutes: number;
   breakMinutes: number;
@@ -58,7 +60,9 @@ type StudyTrackDraftPreview = {
   tracks: {
     title: string;
     start_date: string;
-    repeat: "none" | "weekly" | "biweekly";
+    repeat_enabled: boolean;
+    repeat_every: number;
+    repeat_unit: "days" | "weeks";
     time: string;
     focus_minutes: number;
     break_minutes: number;
@@ -80,7 +84,9 @@ function createEmptyTrack(title = ""): StudyTrack {
     id: crypto.randomUUID(),
     title,
     startDate: "",
-    repeat: "none",
+    repeatEnabled: false,
+    repeatEvery: 1,
+    repeatUnit: "weeks",
     time: "15:00",
     focusMinutes: 25,
     breakMinutes: 5,
@@ -287,18 +293,30 @@ export default function StudyNewPage() {
           task_id: taskId,
           reminder_enabled: reminderEnabled,
           reminders: reminderEnabled ? reminderOffsetsInMinutes : [],
-          plans: tracks.map((track) => ({
-            client_plan_id: track.id,
-            title: track.title.trim(),
-            start_date: track.startDate,
-            repeat: track.repeat,
-            time: track.time,
-            focus_minutes: Math.max(1, Number(track.focusMinutes) || 25),
-            break_minutes: Math.max(0, Number(track.breakMinutes) || 0),
-            total_pomodoros: Math.max(1, Number(track.totalPomodoro) || 1),
-            notes: track.notes.trim() || undefined,
-            description_as_checklist: track.descriptionAsChecklist,
-          })),
+          plans: tracks.map((track) => {
+            const repeatEvery = Math.max(
+              1,
+              Math.min(
+                track.repeatUnit === "days" ? 30 : 12,
+                Math.round(Number(track.repeatEvery) || 1),
+              ),
+            );
+
+            return {
+              client_plan_id: track.id,
+              title: track.title.trim(),
+              start_date: track.startDate,
+              repeat_enabled: track.repeatEnabled,
+              repeat_every: repeatEvery,
+              repeat_unit: track.repeatUnit,
+              time: track.time,
+              focus_minutes: Math.max(1, Number(track.focusMinutes) || 25),
+              break_minutes: Math.max(0, Number(track.breakMinutes) || 0),
+              total_pomodoros: Math.max(1, Number(track.totalPomodoro) || 1),
+              notes: track.notes.trim() || undefined,
+              description_as_checklist: track.descriptionAsChecklist,
+            };
+          }),
         }),
       });
 
@@ -440,7 +458,9 @@ export default function StudyNewPage() {
         id: crypto.randomUUID(),
         title: track.title,
         startDate: track.start_date,
-        repeat: track.repeat,
+        repeatEnabled: track.repeat_enabled,
+        repeatEvery: track.repeat_every,
+        repeatUnit: track.repeat_unit,
         time: track.time,
         focusMinutes: track.focus_minutes,
         breakMinutes: track.break_minutes,
@@ -729,7 +749,7 @@ export default function StudyNewPage() {
                             taskDeadlineDateValue &&
                             updateTrack(track.id, {
                               startDate: taskDeadlineDateValue,
-                              repeat: "none",
+                              repeatEnabled: false,
                             })
                           }
                           className="shrink-0"
@@ -739,27 +759,86 @@ export default function StudyNewPage() {
                       </div>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <Label className="font-mono text-xs tracking-wider">
-                        REPEAT
+                    <div className="space-y-2">
+                      
+                      <div className="flex items-center gap-2">
+                        <Label className="font-mono text-xs tracking-wider">
+                        REPEAT PER
                       </Label>
-                      <Select
-                        value={track.repeat}
-                        onValueChange={(value) =>
-                          updateTrack(track.id, {
-                            repeat: value as StudyTrack["repeat"],
-                          })
-                        }
-                      >
-                        <SelectTrigger className="font-mono text-sm">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">None</SelectItem>
-                          <SelectItem value="weekly">Every week</SelectItem>
-                          <SelectItem value="biweekly">Every 2 weeks</SelectItem>
-                        </SelectContent>
-                      </Select>
+                        <Checkbox
+                          id={`track-repeat-enabled-${track.id}`}
+                          checked={track.repeatEnabled}
+                          onCheckedChange={(checked) =>
+                            updateTrack(track.id, {
+                              repeatEnabled: checked === true,
+                            })
+                          }
+                        />
+                  
+                      </div>
+                      <div className="grid grid-cols-[minmax(0,1fr)_110px] gap-2">
+                        <div className="space-y-1.5">
+                      
+                          <Input
+                            id={`track-repeat-every-${track.id}`}
+                            type="number"
+                            min={1}
+                            max={track.repeatUnit === "days" ? 30 : 12}
+                            value={track.repeatEvery}
+                            disabled={!track.repeatEnabled}
+                            onChange={(event) =>
+                              updateTrack(track.id, {
+                                repeatEvery: Number(event.target.value),
+                              })
+                            }
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <div
+                            id={`track-repeat-unit-${track.id}`}
+                            role="group"
+                            aria-label="Repeat unit"
+                            className="grid grid-cols-2 gap-1"
+                          >
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={track.repeatUnit === "days" ? "default" : "outline"}
+                              disabled={!track.repeatEnabled}
+                              aria-pressed={track.repeatUnit === "days"}
+                              onClick={() =>
+                                updateTrack(track.id, {
+                                  repeatUnit: "days",
+                                  repeatEvery: Math.min(
+                                    Math.max(1, Number(track.repeatEvery) || 1),
+                                    30,
+                                  ),
+                                })
+                              }
+                            >
+                              Days
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={track.repeatUnit === "weeks" ? "default" : "outline"}
+                              disabled={!track.repeatEnabled}
+                              aria-pressed={track.repeatUnit === "weeks"}
+                              onClick={() =>
+                                updateTrack(track.id, {
+                                  repeatUnit: "weeks",
+                                  repeatEvery: Math.min(
+                                    Math.max(1, Number(track.repeatEvery) || 1),
+                                    12,
+                                  ),
+                                })
+                              }
+                            >
+                              Weeks
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
 

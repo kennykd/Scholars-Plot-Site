@@ -34,6 +34,15 @@ describe("StudyNewPage", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    if (!HTMLElement.prototype.hasPointerCapture) {
+      HTMLElement.prototype.hasPointerCapture = () => false;
+    }
+    if (!HTMLElement.prototype.setPointerCapture) {
+      HTMLElement.prototype.setPointerCapture = () => {};
+    }
+    if (!HTMLElement.prototype.releasePointerCapture) {
+      HTMLElement.prototype.releasePointerCapture = () => {};
+    }
     mockSearchParams = new URLSearchParams();
     localStorage.clear();
     useRouter.mockReturnValue({ push: mockPush });
@@ -202,7 +211,7 @@ describe("StudyNewPage", () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByText(/generated sessions/i)).not.toBeInTheDocument();
     expect(screen.getByText("Study Sessions")).toBeInTheDocument();
-    expect(screen.getByText(/REPEAT/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/REPEAT/i).length).toBeGreaterThan(0);
     expect(screen.queryByRole("button", { name: "Mon" })).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText(/session topic/i), {
@@ -242,7 +251,9 @@ describe("StudyNewPage", () => {
       expect.objectContaining({
         title: "Mechanical Physics",
         start_date: "2099-03-31",
-        repeat: "none",
+        repeat_enabled: false,
+        repeat_every: 1,
+        repeat_unit: "weeks",
         time: "15:00",
       }),
     );
@@ -258,6 +269,79 @@ describe("StudyNewPage", () => {
       );
     });
     expect(mockPush).toHaveBeenCalledWith("/tasks/42");
+  });
+
+  it("sends a custom repeat interval for task-linked study plans", async () => {
+    mockSearchParams = new URLSearchParams("taskId=42");
+    global.fetch = jest.fn(async (url, init) => {
+      if (url === "/api/task/42") {
+        return {
+          ok: true,
+          json: async () => ({
+            task: {
+              id: 42,
+              title: "Physics Final",
+              description: "Mechanics and medical physics",
+              deadline: "2099-04-30T23:59:00.000Z",
+              priority: 4,
+              status: "Pending",
+              createdAt: "2099-03-01T00:00:00.000Z",
+              completedAt: null,
+            },
+          }),
+        };
+      }
+
+      if (url === "/api/study/batch") {
+        return {
+          ok: true,
+          json: async () => ({
+            studySessions: [{ study_session_id: 11 }],
+            createdByPlan: { [JSON.parse(init.body).plans[0].client_plan_id]: [11] },
+          }),
+        };
+      }
+
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+
+    render(<StudyNewPage />);
+
+    await screen.findByText("Physics Final");
+    fireEvent.change(screen.getByLabelText(/session topic/i), {
+      target: { value: "Mechanics drills" },
+    });
+    fireEvent.change(screen.getByLabelText(/preferred time/i), {
+      target: { value: "15:00" },
+    });
+    fireEvent.change(screen.getByLabelText(/start date/i), {
+      target: { value: "2099-03-23" },
+    });
+    fireEvent.click(screen.getByLabelText(/repeat this track/i));
+    fireEvent.change(screen.getByLabelText(/repeat every/i), {
+      target: { value: "3" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Days" }));
+
+    fireEvent.click(screen.getByRole("button", { name: /create sessions/i }));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        "/api/study/batch",
+        expect.objectContaining({ method: "POST" }),
+      );
+    });
+    const batchCall = global.fetch.mock.calls.find(
+      ([url]) => url === "/api/study/batch",
+    );
+    const payload = JSON.parse(batchCall[1].body);
+    expect(payload.plans[0]).toEqual(
+      expect.objectContaining({
+        repeat_enabled: true,
+        repeat_every: 3,
+        repeat_unit: "days",
+      }),
+    );
   });
 
   it("does not save a task-linked planner without a start date", async () => {
@@ -322,7 +406,9 @@ describe("StudyNewPage", () => {
                 {
                   title: "AI Mechanics Review",
                   start_date: "2099-03-22",
-                  repeat: "weekly",
+                  repeat_enabled: true,
+                  repeat_every: 2,
+                  repeat_unit: "weeks",
                   time: "16:00",
                   focus_minutes: 30,
                   break_minutes: 5,
@@ -358,6 +444,9 @@ describe("StudyNewPage", () => {
     );
     expect(screen.getByLabelText(/preferred time/i)).toHaveValue("16:00");
     expect(screen.getByLabelText(/start date/i)).toHaveValue("2099-03-22");
+    expect(screen.getByLabelText(/repeat this track/i)).toBeChecked();
+    expect(screen.getByLabelText(/repeat every/i)).toHaveValue(2);
+    expect(screen.getByText("Weeks")).toBeInTheDocument();
     expect(
       screen.getByPlaceholderText(/optional notes for this session/i),
     ).toHaveValue("Review force diagrams and formula sheets.");

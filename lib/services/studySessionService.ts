@@ -106,6 +106,24 @@ function parseLocalDateString(value: string) {
   return date;
 }
 
+function getRepeatDays(plan: CreateStudyBatchInput["plans"][number]) {
+  if (plan.repeat_enabled === true) {
+    const repeatEvery = Math.round(Number(plan.repeat_every) || 1);
+
+    if (plan.repeat_unit === "days") {
+      return Math.max(1, Math.min(30, repeatEvery));
+    }
+
+    return Math.max(1, Math.min(12, repeatEvery)) * 7;
+  }
+
+  if (plan.repeat_enabled === false) return 0;
+
+  if (plan.repeat === "weekly") return 7;
+  if (plan.repeat === "biweekly") return 14;
+  return 0;
+}
+
 function generateSessionsFromPlans(
   plans: CreateStudyBatchInput["plans"],
   deadline: Date,
@@ -135,8 +153,7 @@ function generateSessionsFromPlans(
     const startDate = parseLocalDateString(plan.start_date);
     if (!startDate) continue;
 
-    const repeatDays =
-      plan.repeat === "weekly" ? 7 : plan.repeat === "biweekly" ? 14 : 0;
+    const repeatDays = getRepeatDays(plan);
     const cursor = new Date(startDate);
 
     while (cursor <= deadline) {

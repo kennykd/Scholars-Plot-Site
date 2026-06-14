@@ -67,6 +67,7 @@ export async function POST(request: Request) {
         fileType: attachment.fileType,
         url: attachment.url,
       })),
+      now: new Date(),
     });
 
     return NextResponse.json({ draft });

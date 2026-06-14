@@ -52,7 +52,9 @@ const validPlan = {
   client_plan_id: "plan-1",
   title: "Mechanical Physics",
   start_date: "2099-03-23",
-  repeat: "weekly",
+  repeat_enabled: true,
+  repeat_every: 1,
+  repeat_unit: "weeks",
   time: "15:00",
   focus_minutes: 25,
   break_minutes: 5,
@@ -152,7 +154,9 @@ describe("POST /api/study/batch", () => {
         expect.objectContaining({
           title: "Mechanical Physics",
           start_date: "2099-03-23",
-          repeat: "weekly",
+          repeat_enabled: true,
+          repeat_every: 1,
+          repeat_unit: "weeks",
         }),
       ],
       { reminderEnabled: false, reminders: [] },
@@ -188,7 +192,7 @@ describe("POST /api/study/batch", () => {
     expect(createStudySessionsForTask).toHaveBeenCalledWith(
       "user-1",
       42,
-      [expect.objectContaining({ repeat: "weekly" })],
+      [expect.objectContaining({ repeat_enabled: true, repeat_every: 1, repeat_unit: "weeks" })],
       { reminderEnabled: true, reminders: [15, 5, 0] },
     );
   });
