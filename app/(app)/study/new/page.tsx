@@ -24,6 +24,7 @@ import {
   CalendarIcon,
   Paperclip,
   Plus,
+  Sparkles,
   Trash2,
   X,
 } from "lucide-react";

@@ -10,7 +10,7 @@ import {
   isTomorrow,
   parseISO,
 } from "date-fns";
-import { ChevronRight, Timer } from "lucide-react";
+import { Bell, ChevronRight, Timer } from "lucide-react";
 import type { StudySession } from "@/types";
 import { useAuth } from "@/lib/firebase/auth-context";
 import {
