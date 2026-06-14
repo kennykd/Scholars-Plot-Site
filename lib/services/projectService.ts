@@ -1,5 +1,10 @@
 import prisma from '@/lib/prisma';
 import { getAnalyticsByUserId, updateAnalyticsByUserId } from '@/lib/services/analyticService';
+import {
+  getTaskStatusAnalyticsUpdate,
+  isCompletionStatusTransition,
+} from '@/lib/services/taskStatusAnalytics';
+import type { TaskStatus } from '@/types';
 import type {
   AddProjectMemberInput,
   CreateProjectInput,
@@ -469,6 +474,13 @@ export async function createProjectTask(userId: string, data: CreateProjectTaskI
 
 export async function updateProjectTaskById(taskId: number, userId: string, data: UpdateProjectTaskInput) {
   const access = await requireProjectTaskAccess(taskId, userId);
+  const previousStatus = access.task.task_status as TaskStatus;
+  const nextStatus = data.status as TaskStatus | undefined;
+  const statusChanging = nextStatus !== undefined && nextStatus !== previousStatus;
+  const existingAssignedUserId = access.task.task_users[0]?.user_id ?? null;
+  const nextAssignedUserId = data.assignedTo !== undefined
+    ? data.assignedTo || null
+    : existingAssignedUserId;
 
   if (!access.isManager) {
     if (!access.isAssigned) {
@@ -480,50 +492,48 @@ export async function updateProjectTaskById(taskId: number, userId: string, data
     }
   }
 
+  if (data.assignedTo) {
+    await requireUsersExist([data.assignedTo], 'Assigned user');
+  }
+
+  const analyticsUserId = previousStatus === 'Completed' && nextStatus !== 'Completed'
+    ? existingAssignedUserId ?? userId
+    : nextAssignedUserId ?? userId;
+  const currentAnalytics = isCompletionStatusTransition(previousStatus, nextStatus)
+    ? await getAnalyticsByUserId(analyticsUserId)
+    : null;
+  const completionDate = statusChanging && nextStatus === 'Completed' ? new Date() : null;
+
   const updatedTask = await prisma.task.update({
     where: { task_id: taskId },
     data: {
       ...(data.title ? { task_name: data.title } : {}),
       ...(data.description !== undefined ? { task_description: data.description } : {}),
       ...(data.priority ? { task_priority: data.priority } : {}),
-      ...(data.status
-        ? {
-          task_status: data.status,
-          task_completed_at: data.status === 'Completed' ? new Date() : null,
-        }
+      ...(nextStatus !== undefined ? { task_status: nextStatus } : {}),
+      ...(statusChanging
+        ? { task_completed_at: nextStatus === 'Completed' ? completionDate : null }
         : {}),
     },
     include: taskInclude,
   });
 
-  // If the task is completed, update the user's analytics
-  if (data.status === 'Completed') {
-    const assignedUserId = data.assignedTo ?? userId;
-    const currentAnalytics = await getAnalyticsByUserId(assignedUserId);
-    if (currentAnalytics) {
-      const now = new Date();
-      const deadline = updatedTask.task_deadline;
-      await updateAnalyticsByUserId(assignedUserId, {
-        total_tasks_completed: currentAnalytics.totalTasksCompleted + 1,
-        tasks_completed_early: now < deadline
-          ? currentAnalytics.completionStats.early + 1
-          : currentAnalytics.completionStats.early,
-        tasks_completed_on_time: now.getTime() === deadline.getTime()
-          ? currentAnalytics.completionStats.onTime + 1
-          : currentAnalytics.completionStats.onTime,
-        tasks_completed_late: now > deadline
-          ? currentAnalytics.completionStats.late + 1
-          : currentAnalytics.completionStats.late,
-        streak_activity: true,
-      });
+  if (currentAnalytics && nextStatus) {
+    const analyticsUpdate = getTaskStatusAnalyticsUpdate({
+      currentAnalytics,
+      previousStatus,
+      nextStatus,
+      deadline: access.task.task_deadline,
+      completionDate: completionDate ?? new Date(),
+      previousCompletedAt: access.task.task_completed_at,
+    });
+
+    if (analyticsUpdate) {
+      await updateAnalyticsByUserId(analyticsUserId, analyticsUpdate);
     }
   }
 
   if (data.assignedTo !== undefined) {
-    if (data.assignedTo) {
-      await requireUsersExist([data.assignedTo], 'Assigned user');
-    }
-
     await prisma.taskUser.deleteMany({
       where: {
         task_id: taskId,

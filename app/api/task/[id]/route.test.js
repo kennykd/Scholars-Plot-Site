@@ -11,6 +11,15 @@ jest.mock("@/lib/firebase/auth", () => ({
   getSession: jest.fn(),
 }));
 
+jest.mock("@/lib/services/userService", () => ({
+  ensureUserRecordForSession: jest.fn(),
+}));
+
+jest.mock("@/lib/services/prismaErrors", () => ({
+  foreignKeyRepairMessage: jest.fn(() => "Repair your account"),
+  isPrismaForeignKeyError: jest.fn((error) => error?.code === "P2003"),
+}));
+
 jest.mock("@/lib/services/aiService", () => ({
   runWeightAdapter: jest.fn(() => Promise.resolve()),
 }));
@@ -37,6 +46,7 @@ jest.mock("@/lib/services/taskService", () => {
 import { PATCH } from "./route";
 import { getSession } from "@/lib/firebase/auth";
 import { runWeightAdapter } from "@/lib/services/aiService";
+import { ensureUserRecordForSession } from "@/lib/services/userService";
 import {
   updateTaskById,
   recordTaskCompletion,
@@ -54,6 +64,7 @@ describe("PATCH /api/task/[id]", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     getSession.mockResolvedValue({ id: "user-1" });
+    ensureUserRecordForSession.mockResolvedValue({ id: "user-1" });
     runWeightAdapter.mockReturnValue(Promise.resolve());
   });
 
@@ -73,6 +84,31 @@ describe("PATCH /api/task/[id]", () => {
     expect(recordTaskCompletion).not.toHaveBeenCalled();
     expect(runWeightAdapter).not.toHaveBeenCalled();
     expect(body.task).toEqual({ task_id: 42 });
+  });
+
+  it("ensures the Firebase session user exists before updating a task", async () => {
+    updateTaskById.mockResolvedValue({
+      task: { task_id: 42 },
+      becameCompleted: false,
+    });
+
+    const response = await PATCH(request({ status: "In_Progress" }), context());
+
+    expect(response.status).toBe(200);
+    expect(ensureUserRecordForSession).toHaveBeenCalledWith({ id: "user-1" });
+    expect(
+      ensureUserRecordForSession.mock.invocationCallOrder[0],
+    ).toBeLessThan(updateTaskById.mock.invocationCallOrder[0]);
+  });
+
+  it("returns the account repair message for Prisma foreign key failures", async () => {
+    updateTaskById.mockRejectedValue({ code: "P2003" });
+
+    const response = await PATCH(request({ status: "Completed" }), context());
+    const body = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(body.message).toBe("Repair your account");
   });
 
   it("preserves a non-completed status on update (regression: no force-complete)", async () => {

@@ -1,8 +1,10 @@
 import prisma from "@/lib/prisma";
+import { getAnalyticsByUserId, updateAnalyticsByUserId } from "@/lib/services/analyticService";
 import {
   addProjectMember,
   createProject,
   ProjectServiceError,
+  updateProjectTaskById,
 } from "@/lib/services/projectService";
 
 jest.mock("@/lib/prisma", () => ({
@@ -19,7 +21,20 @@ jest.mock("@/lib/prisma", () => ({
     user: {
       findMany: jest.fn(),
     },
+    task: {
+      findUnique: jest.fn(),
+      update: jest.fn(),
+    },
+    taskUser: {
+      deleteMany: jest.fn(),
+      create: jest.fn(),
+    },
   },
+}));
+
+jest.mock("@/lib/services/analyticService", () => ({
+  getAnalyticsByUserId: jest.fn(),
+  updateAnalyticsByUserId: jest.fn(),
 }));
 
 const projectInput = {
@@ -107,5 +122,72 @@ describe("projectService user validation", () => {
       message: "Project member does not exist: missing-member",
     });
     expect(prisma.projectUser.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("projectService task status analytics", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date("2026-06-10T12:00:00.000Z"));
+    (getAnalyticsByUserId as jest.Mock).mockResolvedValue({
+      completionStats: {
+        early: 1,
+        onTime: 0,
+        late: 0,
+        pending: 3,
+      },
+      timeByTask: [],
+      productivityByDay: [],
+      streak: 0,
+      totalFocusMinutes: 0,
+      totalTasksCompleted: 4,
+    });
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it("credits the assigned user when a project task is completed by a manager", async () => {
+    const existingTask = {
+      task_id: 42,
+      project_id: 12,
+      task_name: "Draft section",
+      task_description: null,
+      task_deadline: new Date("2026-06-20T12:00:00.000Z"),
+      task_priority: 3,
+      task_status: "Pending",
+      task_completed_at: null,
+      task_created_at: new Date("2026-06-01T12:00:00.000Z"),
+      estimated_minutes: null,
+      confidence_score: null,
+      grade_weight_percent: null,
+      ai_priority_score: null,
+      ai_analyzed_at: null,
+      project: {
+        project_user: [{ project_user_role: "owner" }],
+      },
+      task_users: [{ user_id: "assignee-1" }],
+    };
+    (prisma.task.findUnique as jest.Mock).mockResolvedValue(existingTask);
+    (prisma.task.update as jest.Mock).mockResolvedValue({
+      ...existingTask,
+      task_status: "Completed",
+      task_completed_at: new Date("2026-06-10T12:00:00.000Z"),
+    });
+
+    await updateProjectTaskById(42, "owner-1", { status: "Completed" });
+
+    expect(getAnalyticsByUserId).toHaveBeenCalledWith("assignee-1");
+    expect(getAnalyticsByUserId).not.toHaveBeenCalledWith("owner-1");
+    expect(updateAnalyticsByUserId).toHaveBeenCalledWith("assignee-1", {
+      tasks_pending: 2,
+      total_tasks_completed: 5,
+      tasks_completed_early: 2,
+      tasks_completed_on_time: 0,
+      tasks_completed_late: 0,
+      streak_activity: true,
+    });
   });
 });

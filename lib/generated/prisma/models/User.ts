@@ -550,6 +550,11 @@ export type UserScalarRelationFilter = {
   isNot?: Prisma.UserWhereInput
 }
 
+export type UserNullableScalarRelationFilter = {
+  is?: Prisma.UserWhereInput | null
+  isNot?: Prisma.UserWhereInput | null
+}
+
 export type StringFieldUpdateOperationsInput = {
   set?: string
 }
@@ -1154,6 +1159,7 @@ export type UserUncheckedUpdateWithoutTask_usersInput = {
 
 export type UserCreateWithoutAttachmentsInput = {
   user_id: string
+  analytics_id?: number | null
   user_name: string
   user_email: string
   avatar_url?: string | null
@@ -1186,6 +1192,7 @@ export type UserUncheckedCreateWithoutAttachmentsInput = {
   user_created_at?: Date | string
   ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   ai_profile_updated_at?: Date | string | null
+  analytics?: Prisma.AnalyticsUncheckedCreateNestedOneWithoutUserInput
   project_members?: Prisma.ProjectUserUncheckedCreateNestedManyWithoutUserInput
   task_users?: Prisma.TaskUserUncheckedCreateNestedManyWithoutUserInput
   study_session_user?: Prisma.StudySessionUserUncheckedCreateNestedManyWithoutUserInput
@@ -1214,6 +1221,7 @@ export type UserUpdateToOneWithWhereWithoutAttachmentsInput = {
 
 export type UserUpdateWithoutAttachmentsInput = {
   user_id?: Prisma.StringFieldUpdateOperationsInput | string
+  analytics_id?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   user_name?: Prisma.StringFieldUpdateOperationsInput | string
   user_email?: Prisma.StringFieldUpdateOperationsInput | string
   avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1246,6 +1254,7 @@ export type UserUncheckedUpdateWithoutAttachmentsInput = {
   user_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   ai_profile_updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  analytics?: Prisma.AnalyticsUncheckedUpdateOneWithoutUserNestedInput
   project_members?: Prisma.ProjectUserUncheckedUpdateManyWithoutUserNestedInput
   task_users?: Prisma.TaskUserUncheckedUpdateManyWithoutUserNestedInput
   study_session_user?: Prisma.StudySessionUserUncheckedUpdateManyWithoutUserNestedInput
@@ -1258,6 +1267,7 @@ export type UserUncheckedUpdateWithoutAttachmentsInput = {
 
 export type UserCreateWithoutStudy_session_attachmentsInput = {
   user_id: string
+  analytics_id?: number | null
   user_name: string
   user_email: string
   avatar_url?: string | null
@@ -1290,6 +1300,7 @@ export type UserUncheckedCreateWithoutStudy_session_attachmentsInput = {
   user_created_at?: Date | string
   ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   ai_profile_updated_at?: Date | string | null
+  analytics?: Prisma.AnalyticsUncheckedCreateNestedOneWithoutUserInput
   project_members?: Prisma.ProjectUserUncheckedCreateNestedManyWithoutUserInput
   task_users?: Prisma.TaskUserUncheckedCreateNestedManyWithoutUserInput
   study_session_user?: Prisma.StudySessionUserUncheckedCreateNestedManyWithoutUserInput
@@ -1318,6 +1329,7 @@ export type UserUpdateToOneWithWhereWithoutStudy_session_attachmentsInput = {
 
 export type UserUpdateWithoutStudy_session_attachmentsInput = {
   user_id?: Prisma.StringFieldUpdateOperationsInput | string
+  analytics_id?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   user_name?: Prisma.StringFieldUpdateOperationsInput | string
   user_email?: Prisma.StringFieldUpdateOperationsInput | string
   avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1350,6 +1362,7 @@ export type UserUncheckedUpdateWithoutStudy_session_attachmentsInput = {
   user_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   ai_profile_updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  analytics?: Prisma.AnalyticsUncheckedUpdateOneWithoutUserNestedInput
   project_members?: Prisma.ProjectUserUncheckedUpdateManyWithoutUserNestedInput
   task_users?: Prisma.TaskUserUncheckedUpdateManyWithoutUserNestedInput
   study_session_user?: Prisma.StudySessionUserUncheckedUpdateManyWithoutUserNestedInput

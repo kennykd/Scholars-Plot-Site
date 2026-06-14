@@ -6,6 +6,10 @@ import { TaskAttachment } from '@/lib/ai/taskAnalyzer';
 import { getFileUrl } from '@/lib/bucket';
 import { incrementTasksSinceLast, shouldRunAdapter } from "@/lib/services/weightService";
 import { getAnalyticsByUserId, updateAnalyticsByUserId } from "@/lib/services/analyticService";
+import {
+  getTaskStatusAnalyticsUpdate,
+  isCompletionStatusTransition,
+} from "@/lib/services/taskStatusAnalytics";
 
 type ReminderInterval = { interval_type: 'days' | 'weeks' | 'months'; interval_value: number };
 
@@ -204,7 +208,13 @@ export async function updateTaskById(
   data: UpdateTaskInput,
 ) {
   const existing = await requireTaskAccess(taskId, userId);
-  const statusChanging = data.status !== undefined && data.status !== existing.task_status;
+  const previousStatus = existing.task_status as TaskStatus;
+  const nextStatus = data.status as TaskStatus | undefined;
+  const statusChanging = nextStatus !== undefined && nextStatus !== previousStatus;
+  const completionDate = statusChanging && nextStatus === 'Completed' ? new Date() : null;
+  const currentAnalytics = isCompletionStatusTransition(previousStatus, nextStatus)
+    ? await getAnalyticsByUserId(userId)
+    : null;
 
   const updated = await prisma.task.update({
     where: { task_id: taskId },
@@ -213,57 +223,40 @@ export async function updateTaskById(
       ...(data.description !== undefined ? { task_description: data.description } : {}),
       ...(data.deadline !== undefined ? { task_deadline: data.deadline } : {}),
       ...(data.priority !== undefined ? { task_priority: data.priority } : {}),
-      ...(data.status !== undefined ? { task_status: data.status } : {}),
+      ...(nextStatus !== undefined ? { task_status: nextStatus } : {}),
       ...(statusChanging
-        ? { task_completed_at: data.status === 'Completed' ? new Date() : null }
+        ? { task_completed_at: nextStatus === 'Completed' ? completionDate : null }
         : {}),
     },
   });
 
-  if (statusChanging) {
-    const currentAnalytics = await getAnalyticsByUserId(userId);
+  if (currentAnalytics && nextStatus) {
+    const analyticsUpdate = getTaskStatusAnalyticsUpdate({
+      currentAnalytics,
+      previousStatus,
+      nextStatus,
+      deadline: existing.task_deadline,
+      completionDate: completionDate ?? new Date(),
+      previousCompletedAt: existing.task_completed_at,
+    });
 
-    if (currentAnalytics) {
-      let pendingDelta = 0;
-      let completedDelta = 0;
-      let earlyDelta = 0;
-      let onTimeDelta = 0;
-      let lateDelta = 0;
-
-      if (data.status === "Completed") {
-        pendingDelta = -1;
-        completedDelta = 1;
-
-        const now = new Date();
-        const deadline = new Date(existing.task_deadline);
-        if (now < deadline) earlyDelta = 1;
-        else if (now > deadline) lateDelta = 1;
-        else onTimeDelta = 1;
-      }
-      else if (existing.task_status === "Completed") {
-        pendingDelta = 1;
-        completedDelta = -1;
-
-        const completedAt = existing.task_completed_at ? new Date(existing.task_completed_at) : new Date();
-        const deadline = new Date(existing.task_deadline);
-        if (completedAt < deadline) earlyDelta = -1;
-        else if (completedAt > deadline) lateDelta = -1;
-        else onTimeDelta = -1;
-      }
-
-      await updateAnalyticsByUserId(userId, {
-        tasks_pending: Math.max(0, currentAnalytics.completionStats.pending + pendingDelta),
-        total_tasks_completed: Math.max(0, currentAnalytics.totalTasksCompleted + completedDelta),
-        tasks_completed_early: Math.max(0, currentAnalytics.completionStats.early + earlyDelta),
-        tasks_completed_on_time: Math.max(0, currentAnalytics.completionStats.onTime + onTimeDelta),
-        tasks_completed_late: Math.max(0, currentAnalytics.completionStats.late + lateDelta),
-      });
+    if (analyticsUpdate) {
+      await updateAnalyticsByUserId(userId, analyticsUpdate);
     }
   }
 
   await replaceTaskReminder(taskId, data.reminder);
-  return updated;
+  return {
+    task: updated,
+    becameCompleted: previousStatus !== "Completed" && nextStatus === "Completed",
+  };
 }
+
+export async function recordTaskCompletion(user_id: string) {
+  await incrementTasksSinceLast(user_id);
+  return shouldRunAdapter(user_id);
+}
+
 
 export async function deleteTaskById(taskId: number, userId: string) {
   const taskToDelete = await requireTaskAccess(taskId, userId);

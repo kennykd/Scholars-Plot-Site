@@ -11,6 +11,8 @@ import {
 } from '@/lib/services/taskService';
 import { getSession } from '@/lib/firebase/auth';
 import { runWeightAdapter } from "@/lib/services/aiService";
+import { ensureUserRecordForSession } from '@/lib/services/userService';
+import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services/prismaErrors';
 
 /**
  * @swagger
@@ -197,6 +199,8 @@ export async function PATCH(request: Request, context: RouteContext) {
       return NextResponse.json({ message: 'No fields provided for update' }, { status: 400 });
     }
 
+    await ensureUserRecordForSession(session);
+
     const { task: updated, becameCompleted } = await updateTaskById(
       parsedId.data,
       session.id,
@@ -221,6 +225,12 @@ export async function PATCH(request: Request, context: RouteContext) {
       return NextResponse.json({ message: error.message }, { status: error.status });
     }
 
+    if (isPrismaForeignKeyError(error)) {
+      console.error('[api/task/:id] Foreign key error while updating task:', error);
+      return NextResponse.json({ message: foreignKeyRepairMessage() }, { status: 409 });
+    }
+
+    console.error('[api/task/:id] Error updating task:', error);
     return NextResponse.json({ message: 'Error updating task', error }, { status: 500 });
   }
 }
