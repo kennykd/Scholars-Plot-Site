@@ -20,8 +20,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [emailError, setEmailError] = useState("");
-  const [passwordError, setPasswordError] = useState("");
 
   const createSession = async (idToken: string) => {
     const res = await fetch("/api/auth/firebase", {
@@ -47,7 +45,7 @@ export default function LoginPage() {
 
       await createSession(idToken);
 
-      toast.success("Login success 🎉");
+      toast.success("Login success!");
 
       router.push("/dashboard");
       router.refresh();
@@ -75,14 +73,14 @@ export default function LoginPage() {
       const idToken = await result.user.getIdToken();
       await createSession(idToken);
 
-      toast.success("Login success");
+      toast.success("Login success!");
 
       router.push("/dashboard");
       router.refresh();
     } catch (error: unknown) {
       console.error(error);
 
-      let message = "Login failed";
+      let message = "Login failed!";
 
       const err = error as { code?: string; message?: string };
       if (err.code === "auth/user-not-found") {

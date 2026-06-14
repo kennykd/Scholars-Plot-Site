@@ -29,7 +29,7 @@ const combineDateTime = (date: Date, time: string) => {
   return next;
 };
 
-export default function StudyEditPage({ params }: { params: { id: string } }) {
+export default function StudyEditPage() {
   const router = useRouter();
   const routeParams = useParams<{ id: string }>();
   const sessionId = Array.isArray(routeParams.id)
@@ -84,9 +84,9 @@ export default function StudyEditPage({ params }: { params: { id: string } }) {
         const nextNotes =
           checklistItems.length > 0
             ? checklistItems
-                .map((item: { text?: string }) => item.text ?? "")
-                .filter(Boolean)
-                .join("\n")
+              .map((item: { text?: string }) => item.text ?? "")
+              .filter(Boolean)
+              .join("\n")
             : (apiStudy.study_session_description ?? "");
 
         // Extract attachment names from study_session_user if available
@@ -172,14 +172,14 @@ export default function StudyEditPage({ params }: { params: { id: string } }) {
       // First it checks if the user wants the description to be written as a checklist, if not then the checklist will be null
       checklist_json: descriptionAsChecklist
         ? notes
-            .split("\n")
-            .map((line) => line.trim())
-            .filter(Boolean)
-            .map((text) => ({
-              id: crypto.randomUUID(),
-              text,
-              completed: false,
-            }))
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .map((text) => ({
+            id: crypto.randomUUID(),
+            text,
+            completed: false,
+          }))
         : null,
       study_session_scheduled_at: combineDateTime(
         scheduledDate,

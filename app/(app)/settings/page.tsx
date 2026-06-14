@@ -8,15 +8,21 @@ import PushNotificationsToggle from "@/app/components/settings/push-notification
 
 export default async function SettingsPage() {
   const user = await getSession();
+
   if (!user) {
     redirect("/login");
   }
 
-  const displayName = user?.name ?? user?.email.split("@")[0] ?? "User";
-  const avatarSrc = user?.image?.trim() || undefined;
-  const initials = (displayName ?? "U")
+  const displayName =
+    user.name ??
+    user.email?.split("@")[0] ??
+    "User";
+
+  const avatarSrc = user.image?.trim() || undefined;
+
+  const initials = displayName
     .split(" ")
-    .map((w: string) => w[0])
+    .map((word: string) => word[0])
     .join("")
     .toUpperCase()
     .slice(0, 2);
@@ -36,19 +42,23 @@ export default async function SettingsPage() {
         <CardHeader className="pb-2">
           <CardTitle className="font-display text-lg">Profile</CardTitle>
         </CardHeader>
+
         <CardContent className="flex items-center gap-4 pt-4">
           <Avatar className="h-14 w-14">
-            <AvatarImage src={avatarSrc} alt={displayName ?? ""} />
-            <AvatarFallback className="bg-accent text-accent-foreground text-lg font-bold">
+            <AvatarImage src={avatarSrc} alt={displayName} />
+            <AvatarFallback
+              className="bg-accent text-accent-foreground text-lg font-bold"
+            >
               {initials}
             </AvatarFallback>
           </Avatar>
+
           <div>
             <p className="font-display text-lg font-bold text-foreground">
               {displayName}
             </p>
             <p className="font-mono text-xs text-muted-foreground">
-              {user?.email ?? ""}
+              {user.email ?? ""}
             </p>
           </div>
         </CardContent>
@@ -58,6 +68,7 @@ export default async function SettingsPage() {
         <CardHeader className="pb-2">
           <CardTitle className="font-display text-lg">Appearance</CardTitle>
         </CardHeader>
+
         <CardContent className="pt-4">
           <ThemeToggle />
         </CardContent>
@@ -65,8 +76,11 @@ export default async function SettingsPage() {
 
       <Card className="bg-card border-0 shadow-sm">
         <CardHeader className="pb-2">
-          <CardTitle className="font-display text-lg">Notifications</CardTitle>
+          <CardTitle className="font-display text-lg">
+            Notifications
+          </CardTitle>
         </CardHeader>
+
         <CardContent className="pt-4">
           <PushNotificationsToggle />
         </CardContent>
