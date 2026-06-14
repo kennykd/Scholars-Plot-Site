@@ -19,7 +19,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import "./fullcalendar-overrides.css";
+import "@/app/(app)/calendar/fullcalendar-overrides.css";
 
 interface CalendarViewProps {
   tasks: Task[];
@@ -252,7 +252,7 @@ export function CalendarView({ tasks, sessions }: CalendarViewProps) {
                       className={cn(
                         "text-sm font-medium truncate",
                         task.status === "Completed" &&
-                          "line-through text-muted-foreground",
+                        "line-through text-muted-foreground",
                       )}
                     >
                       {task.title}
