@@ -268,6 +268,8 @@ export type UserWhereInput = {
   user_availability?: Prisma.UserAvailabilityListRelationFilter
   overload_warnings?: Prisma.OverloadWarningListRelationFilter
   chat_conversations?: Prisma.ChatConversationListRelationFilter
+  attachments?: Prisma.AttachmentListRelationFilter
+  study_session_attachments?: Prisma.StudySessionAttachmentListRelationFilter
 }
 
 export type UserOrderByWithRelationInput = {
@@ -290,6 +292,8 @@ export type UserOrderByWithRelationInput = {
   user_availability?: Prisma.UserAvailabilityOrderByRelationAggregateInput
   overload_warnings?: Prisma.OverloadWarningOrderByRelationAggregateInput
   chat_conversations?: Prisma.ChatConversationOrderByRelationAggregateInput
+  attachments?: Prisma.AttachmentOrderByRelationAggregateInput
+  study_session_attachments?: Prisma.StudySessionAttachmentOrderByRelationAggregateInput
 }
 
 export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -315,6 +319,8 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   user_availability?: Prisma.UserAvailabilityListRelationFilter
   overload_warnings?: Prisma.OverloadWarningListRelationFilter
   chat_conversations?: Prisma.ChatConversationListRelationFilter
+  attachments?: Prisma.AttachmentListRelationFilter
+  study_session_attachments?: Prisma.StudySessionAttachmentListRelationFilter
 }, "user_id" | "analytics_id" | "user_email">
 
 export type UserOrderByWithAggregationInput = {
@@ -372,6 +378,8 @@ export type UserCreateInput = {
   user_availability?: Prisma.UserAvailabilityCreateNestedManyWithoutUserInput
   overload_warnings?: Prisma.OverloadWarningCreateNestedManyWithoutUserInput
   chat_conversations?: Prisma.ChatConversationCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateInput = {
@@ -393,6 +401,8 @@ export type UserUncheckedCreateInput = {
   user_availability?: Prisma.UserAvailabilityUncheckedCreateNestedManyWithoutUserInput
   overload_warnings?: Prisma.OverloadWarningUncheckedCreateNestedManyWithoutUserInput
   chat_conversations?: Prisma.ChatConversationUncheckedCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserUpdateInput = {
@@ -414,6 +424,8 @@ export type UserUpdateInput = {
   user_availability?: Prisma.UserAvailabilityUpdateManyWithoutUserNestedInput
   overload_warnings?: Prisma.OverloadWarningUpdateManyWithoutUserNestedInput
   chat_conversations?: Prisma.ChatConversationUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateInput = {
@@ -435,6 +447,8 @@ export type UserUncheckedUpdateInput = {
   user_availability?: Prisma.UserAvailabilityUncheckedUpdateManyWithoutUserNestedInput
   overload_warnings?: Prisma.OverloadWarningUncheckedUpdateManyWithoutUserNestedInput
   chat_conversations?: Prisma.ChatConversationUncheckedUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateManyInput = {
@@ -620,6 +634,36 @@ export type UserUpdateOneRequiredWithoutTask_usersNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutTask_usersInput, Prisma.UserUpdateWithoutTask_usersInput>, Prisma.UserUncheckedUpdateWithoutTask_usersInput>
 }
 
+export type UserCreateNestedOneWithoutAttachmentsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutAttachmentsInput, Prisma.UserUncheckedCreateWithoutAttachmentsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAttachmentsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneWithoutAttachmentsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutAttachmentsInput, Prisma.UserUncheckedCreateWithoutAttachmentsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAttachmentsInput
+  upsert?: Prisma.UserUpsertWithoutAttachmentsInput
+  disconnect?: Prisma.UserWhereInput | boolean
+  delete?: Prisma.UserWhereInput | boolean
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutAttachmentsInput, Prisma.UserUpdateWithoutAttachmentsInput>, Prisma.UserUncheckedUpdateWithoutAttachmentsInput>
+}
+
+export type UserCreateNestedOneWithoutStudy_session_attachmentsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutStudy_session_attachmentsInput, Prisma.UserUncheckedCreateWithoutStudy_session_attachmentsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutStudy_session_attachmentsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutStudy_session_attachmentsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutStudy_session_attachmentsInput, Prisma.UserUncheckedCreateWithoutStudy_session_attachmentsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutStudy_session_attachmentsInput
+  upsert?: Prisma.UserUpsertWithoutStudy_session_attachmentsInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutStudy_session_attachmentsInput, Prisma.UserUpdateWithoutStudy_session_attachmentsInput>, Prisma.UserUncheckedUpdateWithoutStudy_session_attachmentsInput>
+}
+
 export type UserCreateNestedOneWithoutStudy_session_userInput = {
   create?: Prisma.XOR<Prisma.UserCreateWithoutStudy_session_userInput, Prisma.UserUncheckedCreateWithoutStudy_session_userInput>
   connectOrCreate?: Prisma.UserCreateOrConnectWithoutStudy_session_userInput
@@ -712,6 +756,8 @@ export type UserCreateWithoutUser_formula_weightsInput = {
   user_availability?: Prisma.UserAvailabilityCreateNestedManyWithoutUserInput
   overload_warnings?: Prisma.OverloadWarningCreateNestedManyWithoutUserInput
   chat_conversations?: Prisma.ChatConversationCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutUser_formula_weightsInput = {
@@ -732,6 +778,8 @@ export type UserUncheckedCreateWithoutUser_formula_weightsInput = {
   user_availability?: Prisma.UserAvailabilityUncheckedCreateNestedManyWithoutUserInput
   overload_warnings?: Prisma.OverloadWarningUncheckedCreateNestedManyWithoutUserInput
   chat_conversations?: Prisma.ChatConversationUncheckedCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutUser_formula_weightsInput = {
@@ -768,6 +816,8 @@ export type UserUpdateWithoutUser_formula_weightsInput = {
   user_availability?: Prisma.UserAvailabilityUpdateManyWithoutUserNestedInput
   overload_warnings?: Prisma.OverloadWarningUpdateManyWithoutUserNestedInput
   chat_conversations?: Prisma.ChatConversationUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutUser_formula_weightsInput = {
@@ -788,6 +838,8 @@ export type UserUncheckedUpdateWithoutUser_formula_weightsInput = {
   user_availability?: Prisma.UserAvailabilityUncheckedUpdateManyWithoutUserNestedInput
   overload_warnings?: Prisma.OverloadWarningUncheckedUpdateManyWithoutUserNestedInput
   chat_conversations?: Prisma.ChatConversationUncheckedUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutUser_availabilityInput = {
@@ -808,6 +860,8 @@ export type UserCreateWithoutUser_availabilityInput = {
   user_formula_weights?: Prisma.UserFormulaWeightsCreateNestedOneWithoutUserInput
   overload_warnings?: Prisma.OverloadWarningCreateNestedManyWithoutUserInput
   chat_conversations?: Prisma.ChatConversationCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutUser_availabilityInput = {
@@ -828,6 +882,8 @@ export type UserUncheckedCreateWithoutUser_availabilityInput = {
   user_formula_weights?: Prisma.UserFormulaWeightsUncheckedCreateNestedOneWithoutUserInput
   overload_warnings?: Prisma.OverloadWarningUncheckedCreateNestedManyWithoutUserInput
   chat_conversations?: Prisma.ChatConversationUncheckedCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutUser_availabilityInput = {
@@ -864,6 +920,8 @@ export type UserUpdateWithoutUser_availabilityInput = {
   user_formula_weights?: Prisma.UserFormulaWeightsUpdateOneWithoutUserNestedInput
   overload_warnings?: Prisma.OverloadWarningUpdateManyWithoutUserNestedInput
   chat_conversations?: Prisma.ChatConversationUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutUser_availabilityInput = {
@@ -884,6 +942,8 @@ export type UserUncheckedUpdateWithoutUser_availabilityInput = {
   user_formula_weights?: Prisma.UserFormulaWeightsUncheckedUpdateOneWithoutUserNestedInput
   overload_warnings?: Prisma.OverloadWarningUncheckedUpdateManyWithoutUserNestedInput
   chat_conversations?: Prisma.ChatConversationUncheckedUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutProject_membersInput = {
@@ -904,6 +964,8 @@ export type UserCreateWithoutProject_membersInput = {
   user_availability?: Prisma.UserAvailabilityCreateNestedManyWithoutUserInput
   overload_warnings?: Prisma.OverloadWarningCreateNestedManyWithoutUserInput
   chat_conversations?: Prisma.ChatConversationCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutProject_membersInput = {
@@ -924,6 +986,8 @@ export type UserUncheckedCreateWithoutProject_membersInput = {
   user_availability?: Prisma.UserAvailabilityUncheckedCreateNestedManyWithoutUserInput
   overload_warnings?: Prisma.OverloadWarningUncheckedCreateNestedManyWithoutUserInput
   chat_conversations?: Prisma.ChatConversationUncheckedCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutProject_membersInput = {
@@ -960,6 +1024,8 @@ export type UserUpdateWithoutProject_membersInput = {
   user_availability?: Prisma.UserAvailabilityUpdateManyWithoutUserNestedInput
   overload_warnings?: Prisma.OverloadWarningUpdateManyWithoutUserNestedInput
   chat_conversations?: Prisma.ChatConversationUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutProject_membersInput = {
@@ -980,6 +1046,8 @@ export type UserUncheckedUpdateWithoutProject_membersInput = {
   user_availability?: Prisma.UserAvailabilityUncheckedUpdateManyWithoutUserNestedInput
   overload_warnings?: Prisma.OverloadWarningUncheckedUpdateManyWithoutUserNestedInput
   chat_conversations?: Prisma.ChatConversationUncheckedUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutTask_usersInput = {
@@ -1000,6 +1068,8 @@ export type UserCreateWithoutTask_usersInput = {
   user_availability?: Prisma.UserAvailabilityCreateNestedManyWithoutUserInput
   overload_warnings?: Prisma.OverloadWarningCreateNestedManyWithoutUserInput
   chat_conversations?: Prisma.ChatConversationCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutTask_usersInput = {
@@ -1020,6 +1090,8 @@ export type UserUncheckedCreateWithoutTask_usersInput = {
   user_availability?: Prisma.UserAvailabilityUncheckedCreateNestedManyWithoutUserInput
   overload_warnings?: Prisma.OverloadWarningUncheckedCreateNestedManyWithoutUserInput
   chat_conversations?: Prisma.ChatConversationUncheckedCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutTask_usersInput = {
@@ -1056,6 +1128,8 @@ export type UserUpdateWithoutTask_usersInput = {
   user_availability?: Prisma.UserAvailabilityUpdateManyWithoutUserNestedInput
   overload_warnings?: Prisma.OverloadWarningUpdateManyWithoutUserNestedInput
   chat_conversations?: Prisma.ChatConversationUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutTask_usersInput = {
@@ -1076,6 +1150,216 @@ export type UserUncheckedUpdateWithoutTask_usersInput = {
   user_availability?: Prisma.UserAvailabilityUncheckedUpdateManyWithoutUserNestedInput
   overload_warnings?: Prisma.OverloadWarningUncheckedUpdateManyWithoutUserNestedInput
   chat_conversations?: Prisma.ChatConversationUncheckedUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedUpdateManyWithoutUserNestedInput
+}
+
+export type UserCreateWithoutAttachmentsInput = {
+  user_id: string
+  user_name: string
+  user_email: string
+  avatar_url?: string | null
+  user_role?: $Enums.UserRole
+  push_subscription?: string | null
+  user_last_login: Date | string
+  user_created_at?: Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Date | string | null
+  analytics?: Prisma.AnalyticsCreateNestedOneWithoutUserInput
+  project_members?: Prisma.ProjectUserCreateNestedManyWithoutUserInput
+  task_users?: Prisma.TaskUserCreateNestedManyWithoutUserInput
+  study_session_user?: Prisma.StudySessionUserCreateNestedManyWithoutUserInput
+  user_formula_weights?: Prisma.UserFormulaWeightsCreateNestedOneWithoutUserInput
+  user_availability?: Prisma.UserAvailabilityCreateNestedManyWithoutUserInput
+  overload_warnings?: Prisma.OverloadWarningCreateNestedManyWithoutUserInput
+  chat_conversations?: Prisma.ChatConversationCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutAttachmentsInput = {
+  user_id: string
+  analytics_id?: number | null
+  user_name: string
+  user_email: string
+  avatar_url?: string | null
+  user_role?: $Enums.UserRole
+  push_subscription?: string | null
+  user_last_login: Date | string
+  user_created_at?: Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Date | string | null
+  project_members?: Prisma.ProjectUserUncheckedCreateNestedManyWithoutUserInput
+  task_users?: Prisma.TaskUserUncheckedCreateNestedManyWithoutUserInput
+  study_session_user?: Prisma.StudySessionUserUncheckedCreateNestedManyWithoutUserInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUncheckedCreateNestedOneWithoutUserInput
+  user_availability?: Prisma.UserAvailabilityUncheckedCreateNestedManyWithoutUserInput
+  overload_warnings?: Prisma.OverloadWarningUncheckedCreateNestedManyWithoutUserInput
+  chat_conversations?: Prisma.ChatConversationUncheckedCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutAttachmentsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutAttachmentsInput, Prisma.UserUncheckedCreateWithoutAttachmentsInput>
+}
+
+export type UserUpsertWithoutAttachmentsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutAttachmentsInput, Prisma.UserUncheckedUpdateWithoutAttachmentsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutAttachmentsInput, Prisma.UserUncheckedCreateWithoutAttachmentsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutAttachmentsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutAttachmentsInput, Prisma.UserUncheckedUpdateWithoutAttachmentsInput>
+}
+
+export type UserUpdateWithoutAttachmentsInput = {
+  user_id?: Prisma.StringFieldUpdateOperationsInput | string
+  user_name?: Prisma.StringFieldUpdateOperationsInput | string
+  user_email?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  user_role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole
+  push_subscription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  user_last_login?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  user_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  analytics?: Prisma.AnalyticsUpdateOneWithoutUserNestedInput
+  project_members?: Prisma.ProjectUserUpdateManyWithoutUserNestedInput
+  task_users?: Prisma.TaskUserUpdateManyWithoutUserNestedInput
+  study_session_user?: Prisma.StudySessionUserUpdateManyWithoutUserNestedInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUpdateOneWithoutUserNestedInput
+  user_availability?: Prisma.UserAvailabilityUpdateManyWithoutUserNestedInput
+  overload_warnings?: Prisma.OverloadWarningUpdateManyWithoutUserNestedInput
+  chat_conversations?: Prisma.ChatConversationUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutAttachmentsInput = {
+  user_id?: Prisma.StringFieldUpdateOperationsInput | string
+  analytics_id?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  user_name?: Prisma.StringFieldUpdateOperationsInput | string
+  user_email?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  user_role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole
+  push_subscription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  user_last_login?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  user_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  project_members?: Prisma.ProjectUserUncheckedUpdateManyWithoutUserNestedInput
+  task_users?: Prisma.TaskUserUncheckedUpdateManyWithoutUserNestedInput
+  study_session_user?: Prisma.StudySessionUserUncheckedUpdateManyWithoutUserNestedInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUncheckedUpdateOneWithoutUserNestedInput
+  user_availability?: Prisma.UserAvailabilityUncheckedUpdateManyWithoutUserNestedInput
+  overload_warnings?: Prisma.OverloadWarningUncheckedUpdateManyWithoutUserNestedInput
+  chat_conversations?: Prisma.ChatConversationUncheckedUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedUpdateManyWithoutUserNestedInput
+}
+
+export type UserCreateWithoutStudy_session_attachmentsInput = {
+  user_id: string
+  user_name: string
+  user_email: string
+  avatar_url?: string | null
+  user_role?: $Enums.UserRole
+  push_subscription?: string | null
+  user_last_login: Date | string
+  user_created_at?: Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Date | string | null
+  analytics?: Prisma.AnalyticsCreateNestedOneWithoutUserInput
+  project_members?: Prisma.ProjectUserCreateNestedManyWithoutUserInput
+  task_users?: Prisma.TaskUserCreateNestedManyWithoutUserInput
+  study_session_user?: Prisma.StudySessionUserCreateNestedManyWithoutUserInput
+  user_formula_weights?: Prisma.UserFormulaWeightsCreateNestedOneWithoutUserInput
+  user_availability?: Prisma.UserAvailabilityCreateNestedManyWithoutUserInput
+  overload_warnings?: Prisma.OverloadWarningCreateNestedManyWithoutUserInput
+  chat_conversations?: Prisma.ChatConversationCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutStudy_session_attachmentsInput = {
+  user_id: string
+  analytics_id?: number | null
+  user_name: string
+  user_email: string
+  avatar_url?: string | null
+  user_role?: $Enums.UserRole
+  push_subscription?: string | null
+  user_last_login: Date | string
+  user_created_at?: Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Date | string | null
+  project_members?: Prisma.ProjectUserUncheckedCreateNestedManyWithoutUserInput
+  task_users?: Prisma.TaskUserUncheckedCreateNestedManyWithoutUserInput
+  study_session_user?: Prisma.StudySessionUserUncheckedCreateNestedManyWithoutUserInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUncheckedCreateNestedOneWithoutUserInput
+  user_availability?: Prisma.UserAvailabilityUncheckedCreateNestedManyWithoutUserInput
+  overload_warnings?: Prisma.OverloadWarningUncheckedCreateNestedManyWithoutUserInput
+  chat_conversations?: Prisma.ChatConversationUncheckedCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutStudy_session_attachmentsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutStudy_session_attachmentsInput, Prisma.UserUncheckedCreateWithoutStudy_session_attachmentsInput>
+}
+
+export type UserUpsertWithoutStudy_session_attachmentsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutStudy_session_attachmentsInput, Prisma.UserUncheckedUpdateWithoutStudy_session_attachmentsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutStudy_session_attachmentsInput, Prisma.UserUncheckedCreateWithoutStudy_session_attachmentsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutStudy_session_attachmentsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutStudy_session_attachmentsInput, Prisma.UserUncheckedUpdateWithoutStudy_session_attachmentsInput>
+}
+
+export type UserUpdateWithoutStudy_session_attachmentsInput = {
+  user_id?: Prisma.StringFieldUpdateOperationsInput | string
+  user_name?: Prisma.StringFieldUpdateOperationsInput | string
+  user_email?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  user_role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole
+  push_subscription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  user_last_login?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  user_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  analytics?: Prisma.AnalyticsUpdateOneWithoutUserNestedInput
+  project_members?: Prisma.ProjectUserUpdateManyWithoutUserNestedInput
+  task_users?: Prisma.TaskUserUpdateManyWithoutUserNestedInput
+  study_session_user?: Prisma.StudySessionUserUpdateManyWithoutUserNestedInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUpdateOneWithoutUserNestedInput
+  user_availability?: Prisma.UserAvailabilityUpdateManyWithoutUserNestedInput
+  overload_warnings?: Prisma.OverloadWarningUpdateManyWithoutUserNestedInput
+  chat_conversations?: Prisma.ChatConversationUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutStudy_session_attachmentsInput = {
+  user_id?: Prisma.StringFieldUpdateOperationsInput | string
+  analytics_id?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  user_name?: Prisma.StringFieldUpdateOperationsInput | string
+  user_email?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  user_role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole
+  push_subscription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  user_last_login?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  user_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  project_members?: Prisma.ProjectUserUncheckedUpdateManyWithoutUserNestedInput
+  task_users?: Prisma.TaskUserUncheckedUpdateManyWithoutUserNestedInput
+  study_session_user?: Prisma.StudySessionUserUncheckedUpdateManyWithoutUserNestedInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUncheckedUpdateOneWithoutUserNestedInput
+  user_availability?: Prisma.UserAvailabilityUncheckedUpdateManyWithoutUserNestedInput
+  overload_warnings?: Prisma.OverloadWarningUncheckedUpdateManyWithoutUserNestedInput
+  chat_conversations?: Prisma.ChatConversationUncheckedUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutStudy_session_userInput = {
@@ -1096,6 +1380,8 @@ export type UserCreateWithoutStudy_session_userInput = {
   user_availability?: Prisma.UserAvailabilityCreateNestedManyWithoutUserInput
   overload_warnings?: Prisma.OverloadWarningCreateNestedManyWithoutUserInput
   chat_conversations?: Prisma.ChatConversationCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutStudy_session_userInput = {
@@ -1116,6 +1402,8 @@ export type UserUncheckedCreateWithoutStudy_session_userInput = {
   user_availability?: Prisma.UserAvailabilityUncheckedCreateNestedManyWithoutUserInput
   overload_warnings?: Prisma.OverloadWarningUncheckedCreateNestedManyWithoutUserInput
   chat_conversations?: Prisma.ChatConversationUncheckedCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutStudy_session_userInput = {
@@ -1152,6 +1440,8 @@ export type UserUpdateWithoutStudy_session_userInput = {
   user_availability?: Prisma.UserAvailabilityUpdateManyWithoutUserNestedInput
   overload_warnings?: Prisma.OverloadWarningUpdateManyWithoutUserNestedInput
   chat_conversations?: Prisma.ChatConversationUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutStudy_session_userInput = {
@@ -1172,6 +1462,8 @@ export type UserUncheckedUpdateWithoutStudy_session_userInput = {
   user_availability?: Prisma.UserAvailabilityUncheckedUpdateManyWithoutUserNestedInput
   overload_warnings?: Prisma.OverloadWarningUncheckedUpdateManyWithoutUserNestedInput
   chat_conversations?: Prisma.ChatConversationUncheckedUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutOverload_warningsInput = {
@@ -1192,6 +1484,8 @@ export type UserCreateWithoutOverload_warningsInput = {
   user_formula_weights?: Prisma.UserFormulaWeightsCreateNestedOneWithoutUserInput
   user_availability?: Prisma.UserAvailabilityCreateNestedManyWithoutUserInput
   chat_conversations?: Prisma.ChatConversationCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutOverload_warningsInput = {
@@ -1212,6 +1506,8 @@ export type UserUncheckedCreateWithoutOverload_warningsInput = {
   user_formula_weights?: Prisma.UserFormulaWeightsUncheckedCreateNestedOneWithoutUserInput
   user_availability?: Prisma.UserAvailabilityUncheckedCreateNestedManyWithoutUserInput
   chat_conversations?: Prisma.ChatConversationUncheckedCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutOverload_warningsInput = {
@@ -1248,6 +1544,8 @@ export type UserUpdateWithoutOverload_warningsInput = {
   user_formula_weights?: Prisma.UserFormulaWeightsUpdateOneWithoutUserNestedInput
   user_availability?: Prisma.UserAvailabilityUpdateManyWithoutUserNestedInput
   chat_conversations?: Prisma.ChatConversationUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutOverload_warningsInput = {
@@ -1268,6 +1566,8 @@ export type UserUncheckedUpdateWithoutOverload_warningsInput = {
   user_formula_weights?: Prisma.UserFormulaWeightsUncheckedUpdateOneWithoutUserNestedInput
   user_availability?: Prisma.UserAvailabilityUncheckedUpdateManyWithoutUserNestedInput
   chat_conversations?: Prisma.ChatConversationUncheckedUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutChat_conversationsInput = {
@@ -1288,6 +1588,8 @@ export type UserCreateWithoutChat_conversationsInput = {
   user_formula_weights?: Prisma.UserFormulaWeightsCreateNestedOneWithoutUserInput
   user_availability?: Prisma.UserAvailabilityCreateNestedManyWithoutUserInput
   overload_warnings?: Prisma.OverloadWarningCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutChat_conversationsInput = {
@@ -1308,6 +1610,8 @@ export type UserUncheckedCreateWithoutChat_conversationsInput = {
   user_formula_weights?: Prisma.UserFormulaWeightsUncheckedCreateNestedOneWithoutUserInput
   user_availability?: Prisma.UserAvailabilityUncheckedCreateNestedManyWithoutUserInput
   overload_warnings?: Prisma.OverloadWarningUncheckedCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutChat_conversationsInput = {
@@ -1344,6 +1648,8 @@ export type UserUpdateWithoutChat_conversationsInput = {
   user_formula_weights?: Prisma.UserFormulaWeightsUpdateOneWithoutUserNestedInput
   user_availability?: Prisma.UserAvailabilityUpdateManyWithoutUserNestedInput
   overload_warnings?: Prisma.OverloadWarningUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutChat_conversationsInput = {
@@ -1364,6 +1670,8 @@ export type UserUncheckedUpdateWithoutChat_conversationsInput = {
   user_formula_weights?: Prisma.UserFormulaWeightsUncheckedUpdateOneWithoutUserNestedInput
   user_availability?: Prisma.UserAvailabilityUncheckedUpdateManyWithoutUserNestedInput
   overload_warnings?: Prisma.OverloadWarningUncheckedUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutAnalyticsInput = {
@@ -1384,6 +1692,8 @@ export type UserCreateWithoutAnalyticsInput = {
   user_availability?: Prisma.UserAvailabilityCreateNestedManyWithoutUserInput
   overload_warnings?: Prisma.OverloadWarningCreateNestedManyWithoutUserInput
   chat_conversations?: Prisma.ChatConversationCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutAnalyticsInput = {
@@ -1404,6 +1714,8 @@ export type UserUncheckedCreateWithoutAnalyticsInput = {
   user_availability?: Prisma.UserAvailabilityUncheckedCreateNestedManyWithoutUserInput
   overload_warnings?: Prisma.OverloadWarningUncheckedCreateNestedManyWithoutUserInput
   chat_conversations?: Prisma.ChatConversationUncheckedCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutAnalyticsInput = {
@@ -1440,6 +1752,8 @@ export type UserUpdateWithoutAnalyticsInput = {
   user_availability?: Prisma.UserAvailabilityUpdateManyWithoutUserNestedInput
   overload_warnings?: Prisma.OverloadWarningUpdateManyWithoutUserNestedInput
   chat_conversations?: Prisma.ChatConversationUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutAnalyticsInput = {
@@ -1460,6 +1774,8 @@ export type UserUncheckedUpdateWithoutAnalyticsInput = {
   user_availability?: Prisma.UserAvailabilityUncheckedUpdateManyWithoutUserNestedInput
   overload_warnings?: Prisma.OverloadWarningUncheckedUpdateManyWithoutUserNestedInput
   chat_conversations?: Prisma.ChatConversationUncheckedUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedUpdateManyWithoutUserNestedInput
 }
 
 
@@ -1474,6 +1790,8 @@ export type UserCountOutputType = {
   user_availability: number
   overload_warnings: number
   chat_conversations: number
+  attachments: number
+  study_session_attachments: number
 }
 
 export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1483,6 +1801,8 @@ export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.I
   user_availability?: boolean | UserCountOutputTypeCountUser_availabilityArgs
   overload_warnings?: boolean | UserCountOutputTypeCountOverload_warningsArgs
   chat_conversations?: boolean | UserCountOutputTypeCountChat_conversationsArgs
+  attachments?: boolean | UserCountOutputTypeCountAttachmentsArgs
+  study_session_attachments?: boolean | UserCountOutputTypeCountStudy_session_attachmentsArgs
 }
 
 /**
@@ -1537,6 +1857,20 @@ export type UserCountOutputTypeCountChat_conversationsArgs<ExtArgs extends runti
   where?: Prisma.ChatConversationWhereInput
 }
 
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountAttachmentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.AttachmentWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountStudy_session_attachmentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.StudySessionAttachmentWhereInput
+}
+
 
 export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   user_id?: boolean
@@ -1558,6 +1892,8 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   user_availability?: boolean | Prisma.User$user_availabilityArgs<ExtArgs>
   overload_warnings?: boolean | Prisma.User$overload_warningsArgs<ExtArgs>
   chat_conversations?: boolean | Prisma.User$chat_conversationsArgs<ExtArgs>
+  attachments?: boolean | Prisma.User$attachmentsArgs<ExtArgs>
+  study_session_attachments?: boolean | Prisma.User$study_session_attachmentsArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["user"]>
 
@@ -1615,6 +1951,8 @@ export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   user_availability?: boolean | Prisma.User$user_availabilityArgs<ExtArgs>
   overload_warnings?: boolean | Prisma.User$overload_warningsArgs<ExtArgs>
   chat_conversations?: boolean | Prisma.User$chat_conversationsArgs<ExtArgs>
+  attachments?: boolean | Prisma.User$attachmentsArgs<ExtArgs>
+  study_session_attachments?: boolean | Prisma.User$study_session_attachmentsArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type UserIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1635,6 +1973,8 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     user_availability: Prisma.$UserAvailabilityPayload<ExtArgs>[]
     overload_warnings: Prisma.$OverloadWarningPayload<ExtArgs>[]
     chat_conversations: Prisma.$ChatConversationPayload<ExtArgs>[]
+    attachments: Prisma.$AttachmentPayload<ExtArgs>[]
+    study_session_attachments: Prisma.$StudySessionAttachmentPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     user_id: string
@@ -2050,6 +2390,8 @@ export interface Prisma__UserClient<T, Null = never, ExtArgs extends runtime.Typ
   user_availability<T extends Prisma.User$user_availabilityArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$user_availabilityArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$UserAvailabilityPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   overload_warnings<T extends Prisma.User$overload_warningsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$overload_warningsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$OverloadWarningPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   chat_conversations<T extends Prisma.User$chat_conversationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$chat_conversationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ChatConversationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  attachments<T extends Prisma.User$attachmentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$attachmentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AttachmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  study_session_attachments<T extends Prisma.User$study_session_attachmentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$study_session_attachmentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$StudySessionAttachmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2665,6 +3007,54 @@ export type User$chat_conversationsArgs<ExtArgs extends runtime.Types.Extensions
   take?: number
   skip?: number
   distinct?: Prisma.ChatConversationScalarFieldEnum | Prisma.ChatConversationScalarFieldEnum[]
+}
+
+/**
+ * User.attachments
+ */
+export type User$attachmentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Attachment
+   */
+  select?: Prisma.AttachmentSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Attachment
+   */
+  omit?: Prisma.AttachmentOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.AttachmentInclude<ExtArgs> | null
+  where?: Prisma.AttachmentWhereInput
+  orderBy?: Prisma.AttachmentOrderByWithRelationInput | Prisma.AttachmentOrderByWithRelationInput[]
+  cursor?: Prisma.AttachmentWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.AttachmentScalarFieldEnum | Prisma.AttachmentScalarFieldEnum[]
+}
+
+/**
+ * User.study_session_attachments
+ */
+export type User$study_session_attachmentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the StudySessionAttachment
+   */
+  select?: Prisma.StudySessionAttachmentSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the StudySessionAttachment
+   */
+  omit?: Prisma.StudySessionAttachmentOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.StudySessionAttachmentInclude<ExtArgs> | null
+  where?: Prisma.StudySessionAttachmentWhereInput
+  orderBy?: Prisma.StudySessionAttachmentOrderByWithRelationInput | Prisma.StudySessionAttachmentOrderByWithRelationInput[]
+  cursor?: Prisma.StudySessionAttachmentWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.StudySessionAttachmentScalarFieldEnum | Prisma.StudySessionAttachmentScalarFieldEnum[]
 }
 
 /**

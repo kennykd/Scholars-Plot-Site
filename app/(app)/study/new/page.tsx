@@ -16,14 +16,14 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
+import { cn, openNativePicker } from "@/lib/utils";
+import { AiSuggestionsButton } from "@/app/components/common/ai-suggestions-button";
 import { toast } from "sonner";
 import {
   ArrowLeft,
   CalendarIcon,
   Paperclip,
   Plus,
-  Sparkles,
   Trash2,
   X,
 } from "lucide-react";
@@ -623,6 +623,8 @@ export default function StudyNewPage() {
                         onChange={(event) =>
                           updateTrack(track.id, { time: event.target.value })
                         }
+                        onClick={openNativePicker}
+                        onFocus={openNativePicker}
                       />
                     </div>
                   </div>
@@ -956,6 +958,8 @@ export default function StudyNewPage() {
               ) : null}
             </div>
 
+            <AiSuggestionsButton description="Suggest a study plan from this task's deadline and topics." />
+
             <div className="flex gap-3 pt-2">
               <Button
                 type="button"
@@ -1047,6 +1051,8 @@ export default function StudyNewPage() {
                   type="time"
                   value={scheduledTime}
                   onChange={(e) => setScheduledTime(e.target.value)}
+                  onClick={openNativePicker}
+                  onFocus={openNativePicker}
                 />
               </div>
             </div>
@@ -1301,25 +1307,7 @@ export default function StudyNewPage() {
               ) : null}
             </div>
 
-            <div className="flex items-center justify-between rounded-lg border border-accent/20 bg-accent/5 px-4 py-3">
-              <div>
-                <p className="text-sm font-medium text-foreground">
-                  AI Suggestions
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Get session ideas based on your title and attachments.
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                className="gap-1.5 font-mono text-xs border-accent/40 text-accent hover:bg-accent/10 hover:text-accent"
-                onClick={() => toast.info("AI suggestions coming soon!")}
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                AI Suggestions
-              </Button>
-            </div>
+            <AiSuggestionsButton description="Get session ideas based on your title and attachments." />
 
             <div className="flex gap-3 pt-2">
               <Button

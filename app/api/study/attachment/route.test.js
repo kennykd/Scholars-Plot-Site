@@ -11,6 +11,10 @@ jest.mock("@/lib/firebase/auth", () => ({
   getSession: jest.fn(),
 }));
 
+jest.mock("@/lib/services/userService", () => ({
+  ensureUserRecordForSession: jest.fn(),
+}));
+
 jest.mock("@/lib/services/attachmentService", () => ({
   addStudyAttachmentForUser: jest.fn(),
   AttachmentServiceError: class AttachmentServiceError extends Error {
@@ -33,6 +37,7 @@ jest.mock("@/lib/services/studySessionService", () => ({
 
 import { POST } from "./route";
 import { getSession } from "@/lib/firebase/auth";
+import { ensureUserRecordForSession } from "@/lib/services/userService";
 import { addStudyAttachmentForUser } from "@/lib/services/attachmentService";
 import { linkAttachmentToStudySessions } from "@/lib/services/studySessionService";
 
@@ -45,6 +50,12 @@ function formRequest(formData) {
 describe("POST /api/study/attachment", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    ensureUserRecordForSession.mockResolvedValue({
+      id: "user-1",
+      email: "student@example.com",
+      name: "Student",
+      image: null,
+    });
   });
 
   it("returns 401 when unauthenticated", async () => {
@@ -57,7 +68,12 @@ describe("POST /api/study/attachment", () => {
   });
 
   it("uploads and links a study attachment to requested study sessions", async () => {
-    getSession.mockResolvedValue({ id: "user-1" });
+    getSession.mockResolvedValue({
+      id: "user-1",
+      email: "student@example.com",
+      name: "Student",
+      image: null,
+    });
     addStudyAttachmentForUser.mockResolvedValue({
       id: 9,
       fileName: "mechanics.pdf",
@@ -75,6 +91,15 @@ describe("POST /api/study/attachment", () => {
     const body = await response.json();
 
     expect(response.status).toBe(201);
+    expect(ensureUserRecordForSession).toHaveBeenCalledWith({
+      id: "user-1",
+      email: "student@example.com",
+      name: "Student",
+      image: null,
+    });
+    expect(
+      ensureUserRecordForSession.mock.invocationCallOrder[0],
+    ).toBeLessThan(addStudyAttachmentForUser.mock.invocationCallOrder[0]);
     expect(addStudyAttachmentForUser).toHaveBeenCalledWith(
       "user-1",
       expect.objectContaining({

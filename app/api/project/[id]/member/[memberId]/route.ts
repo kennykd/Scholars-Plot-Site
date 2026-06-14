@@ -7,6 +7,8 @@ import {
   ProjectServiceError,
   updateProjectMemberById,
 } from '@/lib/services/projectService';
+import { ensureUserRecordForSession } from '@/lib/services/userService';
+import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services/prismaErrors';
 
 /**
  * @swagger
@@ -171,6 +173,8 @@ export async function DELETE(_: Request, context: RouteContext) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
+    await ensureUserRecordForSession(session);
+
     const { id, memberId } = await context.params;
     const parsedProjectId = z.coerce.number().int().positive().safeParse(id);
 
@@ -186,7 +190,13 @@ export async function DELETE(_: Request, context: RouteContext) {
       return NextResponse.json({ message: error.message }, { status: error.status });
     }
 
-    return NextResponse.json({ message: 'Error removing member', error }, { status: 500 });
+    if (isPrismaForeignKeyError(error)) {
+      console.error('[api/project/:id/member/:memberId] Foreign key error while removing member:', error);
+      return NextResponse.json({ message: foreignKeyRepairMessage() }, { status: 409 });
+    }
+
+    console.error('[api/project/:id/member/:memberId] Error removing member:', error);
+    return NextResponse.json({ message: 'Error removing member' }, { status: 500 });
   }
 }
 
@@ -197,6 +207,8 @@ export async function PATCH(request: Request, context: RouteContext) {
     if (!session) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
+
+    await ensureUserRecordForSession(session);
 
     const { id, memberId } = await context.params;
     const parsedProjectId = z.coerce.number().int().positive().safeParse(id);
@@ -233,6 +245,12 @@ export async function PATCH(request: Request, context: RouteContext) {
       return NextResponse.json({ message: error.message }, { status: error.status });
     }
 
-    return NextResponse.json({ message: 'Error updating member', error }, { status: 500 });
+    if (isPrismaForeignKeyError(error)) {
+      console.error('[api/project/:id/member/:memberId] Foreign key error while updating member:', error);
+      return NextResponse.json({ message: foreignKeyRepairMessage() }, { status: 409 });
+    }
+
+    console.error('[api/project/:id/member/:memberId] Error updating member:', error);
+    return NextResponse.json({ message: 'Error updating member' }, { status: 500 });
   }
 }

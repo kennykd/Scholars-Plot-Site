@@ -18,7 +18,7 @@ export default async function DashboardPage() {
   const studySessions = await getStudySessionsForDashboard(session.id);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="flex flex-col gap-6 p-6 lg:h-screen lg:overflow-hidden">
       <div>
         <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">
           COMMAND CENTER
@@ -30,13 +30,13 @@ export default async function DashboardPage() {
 
       <QuickStatsBar />
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 lg:grid-rows-2 lg:flex-1 lg:min-h-0">
+        <div className="h-full min-h-0 lg:col-span-2">
           <TodaysTasks tasks={tasks} />
         </div>
         <ActiveStudySession sessions={studySessions} />
         <WeeklyScheduleMini tasks={tasks} />
-        <div className="md:col-span-2 lg:col-span-2">
+        <div className="h-full min-h-0 md:col-span-2 lg:col-span-2">
           <UpcomingDeadlines tasks={tasks} />
         </div>
       </div>

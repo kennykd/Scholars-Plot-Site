@@ -35,7 +35,7 @@ describe("LoginPage", () => {
 
     // Check for inputs
     expect(screen.getByPlaceholderText("Email address")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("Password")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/password/i)).toBeInTheDocument();
 
     // Check for buttons
     expect(
@@ -72,7 +72,7 @@ describe("LoginPage", () => {
       screen.getByPlaceholderText("Email address"),
       "test@example.com",
     );
-    await user.type(screen.getByPlaceholderText("Password"), "password123");
+    await user.type(screen.getByPlaceholderText(/password/i), "password123");
 
     // Submit
     await user.click(screen.getByRole("button", { name: /sign in/i }));
@@ -106,7 +106,7 @@ describe("LoginPage", () => {
       screen.getByPlaceholderText("Email address"),
       "test@example.com",
     );
-    await user.type(screen.getByPlaceholderText("Password"), "wrongpassword");
+    await user.type(screen.getByPlaceholderText(/password/i), "wrongpassword");
     await user.click(screen.getByRole("button", { name: /sign in/i }));
 
     await waitFor(() => {
@@ -127,7 +127,7 @@ describe("LoginPage", () => {
       screen.getByPlaceholderText("Email address"),
       "test@example.com",
     );
-    await user.type(screen.getByPlaceholderText("Password"), "password123");
+    await user.type(screen.getByPlaceholderText(/password/i), "password123");
     await user.click(screen.getByRole("button", { name: /sign in/i }));
 
     await waitFor(() => {

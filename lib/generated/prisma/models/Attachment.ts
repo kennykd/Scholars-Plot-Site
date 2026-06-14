@@ -39,6 +39,7 @@ export type AttachmentSumAggregateOutputType = {
 export type AttachmentMinAggregateOutputType = {
   attachment_id: number | null
   task_id: number | null
+  user_id: string | null
   file_name: string | null
   file_path: string | null
   file_type: string | null
@@ -48,6 +49,7 @@ export type AttachmentMinAggregateOutputType = {
 export type AttachmentMaxAggregateOutputType = {
   attachment_id: number | null
   task_id: number | null
+  user_id: string | null
   file_name: string | null
   file_path: string | null
   file_type: string | null
@@ -57,6 +59,7 @@ export type AttachmentMaxAggregateOutputType = {
 export type AttachmentCountAggregateOutputType = {
   attachment_id: number
   task_id: number
+  user_id: number
   file_name: number
   file_path: number
   file_type: number
@@ -78,6 +81,7 @@ export type AttachmentSumAggregateInputType = {
 export type AttachmentMinAggregateInputType = {
   attachment_id?: true
   task_id?: true
+  user_id?: true
   file_name?: true
   file_path?: true
   file_type?: true
@@ -87,6 +91,7 @@ export type AttachmentMinAggregateInputType = {
 export type AttachmentMaxAggregateInputType = {
   attachment_id?: true
   task_id?: true
+  user_id?: true
   file_name?: true
   file_path?: true
   file_type?: true
@@ -96,6 +101,7 @@ export type AttachmentMaxAggregateInputType = {
 export type AttachmentCountAggregateInputType = {
   attachment_id?: true
   task_id?: true
+  user_id?: true
   file_name?: true
   file_path?: true
   file_type?: true
@@ -192,6 +198,7 @@ export type AttachmentGroupByArgs<ExtArgs extends runtime.Types.Extensions.Inter
 export type AttachmentGroupByOutputType = {
   attachment_id: number
   task_id: number | null
+  user_id: string | null
   file_name: string
   file_path: string
   file_type: string
@@ -224,23 +231,29 @@ export type AttachmentWhereInput = {
   NOT?: Prisma.AttachmentWhereInput | Prisma.AttachmentWhereInput[]
   attachment_id?: Prisma.IntFilter<"Attachment"> | number
   task_id?: Prisma.IntNullableFilter<"Attachment"> | number | null
+  user_id?: Prisma.StringNullableFilter<"Attachment"> | string | null
   file_name?: Prisma.StringFilter<"Attachment"> | string
   file_path?: Prisma.StringFilter<"Attachment"> | string
   file_type?: Prisma.StringFilter<"Attachment"> | string
   attachment_uploaded_at?: Prisma.DateTimeFilter<"Attachment"> | Date | string
   task?: Prisma.XOR<Prisma.TaskNullableScalarRelationFilter, Prisma.TaskWhereInput> | null
+  user?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
   study_session_user?: Prisma.StudySessionUserListRelationFilter
+  study_session_attachments?: Prisma.StudySessionAttachmentListRelationFilter
 }
 
 export type AttachmentOrderByWithRelationInput = {
   attachment_id?: Prisma.SortOrder
   task_id?: Prisma.SortOrderInput | Prisma.SortOrder
+  user_id?: Prisma.SortOrderInput | Prisma.SortOrder
   file_name?: Prisma.SortOrder
   file_path?: Prisma.SortOrder
   file_type?: Prisma.SortOrder
   attachment_uploaded_at?: Prisma.SortOrder
   task?: Prisma.TaskOrderByWithRelationInput
+  user?: Prisma.UserOrderByWithRelationInput
   study_session_user?: Prisma.StudySessionUserOrderByRelationAggregateInput
+  study_session_attachments?: Prisma.StudySessionAttachmentOrderByRelationAggregateInput
 }
 
 export type AttachmentWhereUniqueInput = Prisma.AtLeast<{
@@ -249,17 +262,21 @@ export type AttachmentWhereUniqueInput = Prisma.AtLeast<{
   OR?: Prisma.AttachmentWhereInput[]
   NOT?: Prisma.AttachmentWhereInput | Prisma.AttachmentWhereInput[]
   task_id?: Prisma.IntNullableFilter<"Attachment"> | number | null
+  user_id?: Prisma.StringNullableFilter<"Attachment"> | string | null
   file_name?: Prisma.StringFilter<"Attachment"> | string
   file_path?: Prisma.StringFilter<"Attachment"> | string
   file_type?: Prisma.StringFilter<"Attachment"> | string
   attachment_uploaded_at?: Prisma.DateTimeFilter<"Attachment"> | Date | string
   task?: Prisma.XOR<Prisma.TaskNullableScalarRelationFilter, Prisma.TaskWhereInput> | null
+  user?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
   study_session_user?: Prisma.StudySessionUserListRelationFilter
+  study_session_attachments?: Prisma.StudySessionAttachmentListRelationFilter
 }, "attachment_id">
 
 export type AttachmentOrderByWithAggregationInput = {
   attachment_id?: Prisma.SortOrder
   task_id?: Prisma.SortOrderInput | Prisma.SortOrder
+  user_id?: Prisma.SortOrderInput | Prisma.SortOrder
   file_name?: Prisma.SortOrder
   file_path?: Prisma.SortOrder
   file_type?: Prisma.SortOrder
@@ -277,6 +294,7 @@ export type AttachmentScalarWhereWithAggregatesInput = {
   NOT?: Prisma.AttachmentScalarWhereWithAggregatesInput | Prisma.AttachmentScalarWhereWithAggregatesInput[]
   attachment_id?: Prisma.IntWithAggregatesFilter<"Attachment"> | number
   task_id?: Prisma.IntNullableWithAggregatesFilter<"Attachment"> | number | null
+  user_id?: Prisma.StringNullableWithAggregatesFilter<"Attachment"> | string | null
   file_name?: Prisma.StringWithAggregatesFilter<"Attachment"> | string
   file_path?: Prisma.StringWithAggregatesFilter<"Attachment"> | string
   file_type?: Prisma.StringWithAggregatesFilter<"Attachment"> | string
@@ -289,17 +307,21 @@ export type AttachmentCreateInput = {
   file_type: string
   attachment_uploaded_at?: Date | string
   task?: Prisma.TaskCreateNestedOneWithoutAttachmentsInput
+  user?: Prisma.UserCreateNestedOneWithoutAttachmentsInput
   study_session_user?: Prisma.StudySessionUserCreateNestedManyWithoutAttachmentInput
+  study_session_attachments?: Prisma.StudySessionAttachmentCreateNestedManyWithoutAttachmentInput
 }
 
 export type AttachmentUncheckedCreateInput = {
   attachment_id?: number
   task_id?: number | null
+  user_id?: string | null
   file_name: string
   file_path: string
   file_type: string
   attachment_uploaded_at?: Date | string
   study_session_user?: Prisma.StudySessionUserUncheckedCreateNestedManyWithoutAttachmentInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedCreateNestedManyWithoutAttachmentInput
 }
 
 export type AttachmentUpdateInput = {
@@ -308,22 +330,27 @@ export type AttachmentUpdateInput = {
   file_type?: Prisma.StringFieldUpdateOperationsInput | string
   attachment_uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   task?: Prisma.TaskUpdateOneWithoutAttachmentsNestedInput
+  user?: Prisma.UserUpdateOneWithoutAttachmentsNestedInput
   study_session_user?: Prisma.StudySessionUserUpdateManyWithoutAttachmentNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUpdateManyWithoutAttachmentNestedInput
 }
 
 export type AttachmentUncheckedUpdateInput = {
   attachment_id?: Prisma.IntFieldUpdateOperationsInput | number
   task_id?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  user_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   file_name?: Prisma.StringFieldUpdateOperationsInput | string
   file_path?: Prisma.StringFieldUpdateOperationsInput | string
   file_type?: Prisma.StringFieldUpdateOperationsInput | string
   attachment_uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   study_session_user?: Prisma.StudySessionUserUncheckedUpdateManyWithoutAttachmentNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedUpdateManyWithoutAttachmentNestedInput
 }
 
 export type AttachmentCreateManyInput = {
   attachment_id?: number
   task_id?: number | null
+  user_id?: string | null
   file_name: string
   file_path: string
   file_type: string
@@ -340,6 +367,7 @@ export type AttachmentUpdateManyMutationInput = {
 export type AttachmentUncheckedUpdateManyInput = {
   attachment_id?: Prisma.IntFieldUpdateOperationsInput | number
   task_id?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  user_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   file_name?: Prisma.StringFieldUpdateOperationsInput | string
   file_path?: Prisma.StringFieldUpdateOperationsInput | string
   file_type?: Prisma.StringFieldUpdateOperationsInput | string
@@ -359,6 +387,7 @@ export type AttachmentOrderByRelationAggregateInput = {
 export type AttachmentCountOrderByAggregateInput = {
   attachment_id?: Prisma.SortOrder
   task_id?: Prisma.SortOrder
+  user_id?: Prisma.SortOrder
   file_name?: Prisma.SortOrder
   file_path?: Prisma.SortOrder
   file_type?: Prisma.SortOrder
@@ -373,6 +402,7 @@ export type AttachmentAvgOrderByAggregateInput = {
 export type AttachmentMaxOrderByAggregateInput = {
   attachment_id?: Prisma.SortOrder
   task_id?: Prisma.SortOrder
+  user_id?: Prisma.SortOrder
   file_name?: Prisma.SortOrder
   file_path?: Prisma.SortOrder
   file_type?: Prisma.SortOrder
@@ -382,6 +412,7 @@ export type AttachmentMaxOrderByAggregateInput = {
 export type AttachmentMinOrderByAggregateInput = {
   attachment_id?: Prisma.SortOrder
   task_id?: Prisma.SortOrder
+  user_id?: Prisma.SortOrder
   file_name?: Prisma.SortOrder
   file_path?: Prisma.SortOrder
   file_type?: Prisma.SortOrder
@@ -393,9 +424,56 @@ export type AttachmentSumOrderByAggregateInput = {
   task_id?: Prisma.SortOrder
 }
 
+export type AttachmentScalarRelationFilter = {
+  is?: Prisma.AttachmentWhereInput
+  isNot?: Prisma.AttachmentWhereInput
+}
+
 export type AttachmentNullableScalarRelationFilter = {
   is?: Prisma.AttachmentWhereInput | null
   isNot?: Prisma.AttachmentWhereInput | null
+}
+
+export type AttachmentCreateNestedManyWithoutUserInput = {
+  create?: Prisma.XOR<Prisma.AttachmentCreateWithoutUserInput, Prisma.AttachmentUncheckedCreateWithoutUserInput> | Prisma.AttachmentCreateWithoutUserInput[] | Prisma.AttachmentUncheckedCreateWithoutUserInput[]
+  connectOrCreate?: Prisma.AttachmentCreateOrConnectWithoutUserInput | Prisma.AttachmentCreateOrConnectWithoutUserInput[]
+  createMany?: Prisma.AttachmentCreateManyUserInputEnvelope
+  connect?: Prisma.AttachmentWhereUniqueInput | Prisma.AttachmentWhereUniqueInput[]
+}
+
+export type AttachmentUncheckedCreateNestedManyWithoutUserInput = {
+  create?: Prisma.XOR<Prisma.AttachmentCreateWithoutUserInput, Prisma.AttachmentUncheckedCreateWithoutUserInput> | Prisma.AttachmentCreateWithoutUserInput[] | Prisma.AttachmentUncheckedCreateWithoutUserInput[]
+  connectOrCreate?: Prisma.AttachmentCreateOrConnectWithoutUserInput | Prisma.AttachmentCreateOrConnectWithoutUserInput[]
+  createMany?: Prisma.AttachmentCreateManyUserInputEnvelope
+  connect?: Prisma.AttachmentWhereUniqueInput | Prisma.AttachmentWhereUniqueInput[]
+}
+
+export type AttachmentUpdateManyWithoutUserNestedInput = {
+  create?: Prisma.XOR<Prisma.AttachmentCreateWithoutUserInput, Prisma.AttachmentUncheckedCreateWithoutUserInput> | Prisma.AttachmentCreateWithoutUserInput[] | Prisma.AttachmentUncheckedCreateWithoutUserInput[]
+  connectOrCreate?: Prisma.AttachmentCreateOrConnectWithoutUserInput | Prisma.AttachmentCreateOrConnectWithoutUserInput[]
+  upsert?: Prisma.AttachmentUpsertWithWhereUniqueWithoutUserInput | Prisma.AttachmentUpsertWithWhereUniqueWithoutUserInput[]
+  createMany?: Prisma.AttachmentCreateManyUserInputEnvelope
+  set?: Prisma.AttachmentWhereUniqueInput | Prisma.AttachmentWhereUniqueInput[]
+  disconnect?: Prisma.AttachmentWhereUniqueInput | Prisma.AttachmentWhereUniqueInput[]
+  delete?: Prisma.AttachmentWhereUniqueInput | Prisma.AttachmentWhereUniqueInput[]
+  connect?: Prisma.AttachmentWhereUniqueInput | Prisma.AttachmentWhereUniqueInput[]
+  update?: Prisma.AttachmentUpdateWithWhereUniqueWithoutUserInput | Prisma.AttachmentUpdateWithWhereUniqueWithoutUserInput[]
+  updateMany?: Prisma.AttachmentUpdateManyWithWhereWithoutUserInput | Prisma.AttachmentUpdateManyWithWhereWithoutUserInput[]
+  deleteMany?: Prisma.AttachmentScalarWhereInput | Prisma.AttachmentScalarWhereInput[]
+}
+
+export type AttachmentUncheckedUpdateManyWithoutUserNestedInput = {
+  create?: Prisma.XOR<Prisma.AttachmentCreateWithoutUserInput, Prisma.AttachmentUncheckedCreateWithoutUserInput> | Prisma.AttachmentCreateWithoutUserInput[] | Prisma.AttachmentUncheckedCreateWithoutUserInput[]
+  connectOrCreate?: Prisma.AttachmentCreateOrConnectWithoutUserInput | Prisma.AttachmentCreateOrConnectWithoutUserInput[]
+  upsert?: Prisma.AttachmentUpsertWithWhereUniqueWithoutUserInput | Prisma.AttachmentUpsertWithWhereUniqueWithoutUserInput[]
+  createMany?: Prisma.AttachmentCreateManyUserInputEnvelope
+  set?: Prisma.AttachmentWhereUniqueInput | Prisma.AttachmentWhereUniqueInput[]
+  disconnect?: Prisma.AttachmentWhereUniqueInput | Prisma.AttachmentWhereUniqueInput[]
+  delete?: Prisma.AttachmentWhereUniqueInput | Prisma.AttachmentWhereUniqueInput[]
+  connect?: Prisma.AttachmentWhereUniqueInput | Prisma.AttachmentWhereUniqueInput[]
+  update?: Prisma.AttachmentUpdateWithWhereUniqueWithoutUserInput | Prisma.AttachmentUpdateWithWhereUniqueWithoutUserInput[]
+  updateMany?: Prisma.AttachmentUpdateManyWithWhereWithoutUserInput | Prisma.AttachmentUpdateManyWithWhereWithoutUserInput[]
+  deleteMany?: Prisma.AttachmentScalarWhereInput | Prisma.AttachmentScalarWhereInput[]
 }
 
 export type AttachmentCreateNestedManyWithoutTaskInput = {
@@ -440,6 +518,20 @@ export type AttachmentUncheckedUpdateManyWithoutTaskNestedInput = {
   deleteMany?: Prisma.AttachmentScalarWhereInput | Prisma.AttachmentScalarWhereInput[]
 }
 
+export type AttachmentCreateNestedOneWithoutStudy_session_attachmentsInput = {
+  create?: Prisma.XOR<Prisma.AttachmentCreateWithoutStudy_session_attachmentsInput, Prisma.AttachmentUncheckedCreateWithoutStudy_session_attachmentsInput>
+  connectOrCreate?: Prisma.AttachmentCreateOrConnectWithoutStudy_session_attachmentsInput
+  connect?: Prisma.AttachmentWhereUniqueInput
+}
+
+export type AttachmentUpdateOneRequiredWithoutStudy_session_attachmentsNestedInput = {
+  create?: Prisma.XOR<Prisma.AttachmentCreateWithoutStudy_session_attachmentsInput, Prisma.AttachmentUncheckedCreateWithoutStudy_session_attachmentsInput>
+  connectOrCreate?: Prisma.AttachmentCreateOrConnectWithoutStudy_session_attachmentsInput
+  upsert?: Prisma.AttachmentUpsertWithoutStudy_session_attachmentsInput
+  connect?: Prisma.AttachmentWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.AttachmentUpdateToOneWithWhereWithoutStudy_session_attachmentsInput, Prisma.AttachmentUpdateWithoutStudy_session_attachmentsInput>, Prisma.AttachmentUncheckedUpdateWithoutStudy_session_attachmentsInput>
+}
+
 export type AttachmentCreateNestedOneWithoutStudy_session_userInput = {
   create?: Prisma.XOR<Prisma.AttachmentCreateWithoutStudy_session_userInput, Prisma.AttachmentUncheckedCreateWithoutStudy_session_userInput>
   connectOrCreate?: Prisma.AttachmentCreateOrConnectWithoutStudy_session_userInput
@@ -456,21 +548,85 @@ export type AttachmentUpdateOneWithoutStudy_session_userNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.AttachmentUpdateToOneWithWhereWithoutStudy_session_userInput, Prisma.AttachmentUpdateWithoutStudy_session_userInput>, Prisma.AttachmentUncheckedUpdateWithoutStudy_session_userInput>
 }
 
-export type AttachmentCreateWithoutTaskInput = {
+export type AttachmentCreateWithoutUserInput = {
   file_name: string
   file_path: string
   file_type: string
   attachment_uploaded_at?: Date | string
+  task?: Prisma.TaskCreateNestedOneWithoutAttachmentsInput
   study_session_user?: Prisma.StudySessionUserCreateNestedManyWithoutAttachmentInput
+  study_session_attachments?: Prisma.StudySessionAttachmentCreateNestedManyWithoutAttachmentInput
 }
 
-export type AttachmentUncheckedCreateWithoutTaskInput = {
+export type AttachmentUncheckedCreateWithoutUserInput = {
   attachment_id?: number
+  task_id?: number | null
   file_name: string
   file_path: string
   file_type: string
   attachment_uploaded_at?: Date | string
   study_session_user?: Prisma.StudySessionUserUncheckedCreateNestedManyWithoutAttachmentInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedCreateNestedManyWithoutAttachmentInput
+}
+
+export type AttachmentCreateOrConnectWithoutUserInput = {
+  where: Prisma.AttachmentWhereUniqueInput
+  create: Prisma.XOR<Prisma.AttachmentCreateWithoutUserInput, Prisma.AttachmentUncheckedCreateWithoutUserInput>
+}
+
+export type AttachmentCreateManyUserInputEnvelope = {
+  data: Prisma.AttachmentCreateManyUserInput | Prisma.AttachmentCreateManyUserInput[]
+  skipDuplicates?: boolean
+}
+
+export type AttachmentUpsertWithWhereUniqueWithoutUserInput = {
+  where: Prisma.AttachmentWhereUniqueInput
+  update: Prisma.XOR<Prisma.AttachmentUpdateWithoutUserInput, Prisma.AttachmentUncheckedUpdateWithoutUserInput>
+  create: Prisma.XOR<Prisma.AttachmentCreateWithoutUserInput, Prisma.AttachmentUncheckedCreateWithoutUserInput>
+}
+
+export type AttachmentUpdateWithWhereUniqueWithoutUserInput = {
+  where: Prisma.AttachmentWhereUniqueInput
+  data: Prisma.XOR<Prisma.AttachmentUpdateWithoutUserInput, Prisma.AttachmentUncheckedUpdateWithoutUserInput>
+}
+
+export type AttachmentUpdateManyWithWhereWithoutUserInput = {
+  where: Prisma.AttachmentScalarWhereInput
+  data: Prisma.XOR<Prisma.AttachmentUpdateManyMutationInput, Prisma.AttachmentUncheckedUpdateManyWithoutUserInput>
+}
+
+export type AttachmentScalarWhereInput = {
+  AND?: Prisma.AttachmentScalarWhereInput | Prisma.AttachmentScalarWhereInput[]
+  OR?: Prisma.AttachmentScalarWhereInput[]
+  NOT?: Prisma.AttachmentScalarWhereInput | Prisma.AttachmentScalarWhereInput[]
+  attachment_id?: Prisma.IntFilter<"Attachment"> | number
+  task_id?: Prisma.IntNullableFilter<"Attachment"> | number | null
+  user_id?: Prisma.StringNullableFilter<"Attachment"> | string | null
+  file_name?: Prisma.StringFilter<"Attachment"> | string
+  file_path?: Prisma.StringFilter<"Attachment"> | string
+  file_type?: Prisma.StringFilter<"Attachment"> | string
+  attachment_uploaded_at?: Prisma.DateTimeFilter<"Attachment"> | Date | string
+}
+
+export type AttachmentCreateWithoutTaskInput = {
+  file_name: string
+  file_path: string
+  file_type: string
+  attachment_uploaded_at?: Date | string
+  user?: Prisma.UserCreateNestedOneWithoutAttachmentsInput
+  study_session_user?: Prisma.StudySessionUserCreateNestedManyWithoutAttachmentInput
+  study_session_attachments?: Prisma.StudySessionAttachmentCreateNestedManyWithoutAttachmentInput
+}
+
+export type AttachmentUncheckedCreateWithoutTaskInput = {
+  attachment_id?: number
+  user_id?: string | null
+  file_name: string
+  file_path: string
+  file_type: string
+  attachment_uploaded_at?: Date | string
+  study_session_user?: Prisma.StudySessionUserUncheckedCreateNestedManyWithoutAttachmentInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedCreateNestedManyWithoutAttachmentInput
 }
 
 export type AttachmentCreateOrConnectWithoutTaskInput = {
@@ -499,16 +655,62 @@ export type AttachmentUpdateManyWithWhereWithoutTaskInput = {
   data: Prisma.XOR<Prisma.AttachmentUpdateManyMutationInput, Prisma.AttachmentUncheckedUpdateManyWithoutTaskInput>
 }
 
-export type AttachmentScalarWhereInput = {
-  AND?: Prisma.AttachmentScalarWhereInput | Prisma.AttachmentScalarWhereInput[]
-  OR?: Prisma.AttachmentScalarWhereInput[]
-  NOT?: Prisma.AttachmentScalarWhereInput | Prisma.AttachmentScalarWhereInput[]
-  attachment_id?: Prisma.IntFilter<"Attachment"> | number
-  task_id?: Prisma.IntNullableFilter<"Attachment"> | number | null
-  file_name?: Prisma.StringFilter<"Attachment"> | string
-  file_path?: Prisma.StringFilter<"Attachment"> | string
-  file_type?: Prisma.StringFilter<"Attachment"> | string
-  attachment_uploaded_at?: Prisma.DateTimeFilter<"Attachment"> | Date | string
+export type AttachmentCreateWithoutStudy_session_attachmentsInput = {
+  file_name: string
+  file_path: string
+  file_type: string
+  attachment_uploaded_at?: Date | string
+  task?: Prisma.TaskCreateNestedOneWithoutAttachmentsInput
+  user?: Prisma.UserCreateNestedOneWithoutAttachmentsInput
+  study_session_user?: Prisma.StudySessionUserCreateNestedManyWithoutAttachmentInput
+}
+
+export type AttachmentUncheckedCreateWithoutStudy_session_attachmentsInput = {
+  attachment_id?: number
+  task_id?: number | null
+  user_id?: string | null
+  file_name: string
+  file_path: string
+  file_type: string
+  attachment_uploaded_at?: Date | string
+  study_session_user?: Prisma.StudySessionUserUncheckedCreateNestedManyWithoutAttachmentInput
+}
+
+export type AttachmentCreateOrConnectWithoutStudy_session_attachmentsInput = {
+  where: Prisma.AttachmentWhereUniqueInput
+  create: Prisma.XOR<Prisma.AttachmentCreateWithoutStudy_session_attachmentsInput, Prisma.AttachmentUncheckedCreateWithoutStudy_session_attachmentsInput>
+}
+
+export type AttachmentUpsertWithoutStudy_session_attachmentsInput = {
+  update: Prisma.XOR<Prisma.AttachmentUpdateWithoutStudy_session_attachmentsInput, Prisma.AttachmentUncheckedUpdateWithoutStudy_session_attachmentsInput>
+  create: Prisma.XOR<Prisma.AttachmentCreateWithoutStudy_session_attachmentsInput, Prisma.AttachmentUncheckedCreateWithoutStudy_session_attachmentsInput>
+  where?: Prisma.AttachmentWhereInput
+}
+
+export type AttachmentUpdateToOneWithWhereWithoutStudy_session_attachmentsInput = {
+  where?: Prisma.AttachmentWhereInput
+  data: Prisma.XOR<Prisma.AttachmentUpdateWithoutStudy_session_attachmentsInput, Prisma.AttachmentUncheckedUpdateWithoutStudy_session_attachmentsInput>
+}
+
+export type AttachmentUpdateWithoutStudy_session_attachmentsInput = {
+  file_name?: Prisma.StringFieldUpdateOperationsInput | string
+  file_path?: Prisma.StringFieldUpdateOperationsInput | string
+  file_type?: Prisma.StringFieldUpdateOperationsInput | string
+  attachment_uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  task?: Prisma.TaskUpdateOneWithoutAttachmentsNestedInput
+  user?: Prisma.UserUpdateOneWithoutAttachmentsNestedInput
+  study_session_user?: Prisma.StudySessionUserUpdateManyWithoutAttachmentNestedInput
+}
+
+export type AttachmentUncheckedUpdateWithoutStudy_session_attachmentsInput = {
+  attachment_id?: Prisma.IntFieldUpdateOperationsInput | number
+  task_id?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  user_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  file_name?: Prisma.StringFieldUpdateOperationsInput | string
+  file_path?: Prisma.StringFieldUpdateOperationsInput | string
+  file_type?: Prisma.StringFieldUpdateOperationsInput | string
+  attachment_uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  study_session_user?: Prisma.StudySessionUserUncheckedUpdateManyWithoutAttachmentNestedInput
 }
 
 export type AttachmentCreateWithoutStudy_session_userInput = {
@@ -517,15 +719,19 @@ export type AttachmentCreateWithoutStudy_session_userInput = {
   file_type: string
   attachment_uploaded_at?: Date | string
   task?: Prisma.TaskCreateNestedOneWithoutAttachmentsInput
+  user?: Prisma.UserCreateNestedOneWithoutAttachmentsInput
+  study_session_attachments?: Prisma.StudySessionAttachmentCreateNestedManyWithoutAttachmentInput
 }
 
 export type AttachmentUncheckedCreateWithoutStudy_session_userInput = {
   attachment_id?: number
   task_id?: number | null
+  user_id?: string | null
   file_name: string
   file_path: string
   file_type: string
   attachment_uploaded_at?: Date | string
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedCreateNestedManyWithoutAttachmentInput
 }
 
 export type AttachmentCreateOrConnectWithoutStudy_session_userInput = {
@@ -550,9 +756,52 @@ export type AttachmentUpdateWithoutStudy_session_userInput = {
   file_type?: Prisma.StringFieldUpdateOperationsInput | string
   attachment_uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   task?: Prisma.TaskUpdateOneWithoutAttachmentsNestedInput
+  user?: Prisma.UserUpdateOneWithoutAttachmentsNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUpdateManyWithoutAttachmentNestedInput
 }
 
 export type AttachmentUncheckedUpdateWithoutStudy_session_userInput = {
+  attachment_id?: Prisma.IntFieldUpdateOperationsInput | number
+  task_id?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  user_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  file_name?: Prisma.StringFieldUpdateOperationsInput | string
+  file_path?: Prisma.StringFieldUpdateOperationsInput | string
+  file_type?: Prisma.StringFieldUpdateOperationsInput | string
+  attachment_uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedUpdateManyWithoutAttachmentNestedInput
+}
+
+export type AttachmentCreateManyUserInput = {
+  attachment_id?: number
+  task_id?: number | null
+  file_name: string
+  file_path: string
+  file_type: string
+  attachment_uploaded_at?: Date | string
+}
+
+export type AttachmentUpdateWithoutUserInput = {
+  file_name?: Prisma.StringFieldUpdateOperationsInput | string
+  file_path?: Prisma.StringFieldUpdateOperationsInput | string
+  file_type?: Prisma.StringFieldUpdateOperationsInput | string
+  attachment_uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  task?: Prisma.TaskUpdateOneWithoutAttachmentsNestedInput
+  study_session_user?: Prisma.StudySessionUserUpdateManyWithoutAttachmentNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUpdateManyWithoutAttachmentNestedInput
+}
+
+export type AttachmentUncheckedUpdateWithoutUserInput = {
+  attachment_id?: Prisma.IntFieldUpdateOperationsInput | number
+  task_id?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  file_name?: Prisma.StringFieldUpdateOperationsInput | string
+  file_path?: Prisma.StringFieldUpdateOperationsInput | string
+  file_type?: Prisma.StringFieldUpdateOperationsInput | string
+  attachment_uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  study_session_user?: Prisma.StudySessionUserUncheckedUpdateManyWithoutAttachmentNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedUpdateManyWithoutAttachmentNestedInput
+}
+
+export type AttachmentUncheckedUpdateManyWithoutUserInput = {
   attachment_id?: Prisma.IntFieldUpdateOperationsInput | number
   task_id?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   file_name?: Prisma.StringFieldUpdateOperationsInput | string
@@ -563,6 +812,7 @@ export type AttachmentUncheckedUpdateWithoutStudy_session_userInput = {
 
 export type AttachmentCreateManyTaskInput = {
   attachment_id?: number
+  user_id?: string | null
   file_name: string
   file_path: string
   file_type: string
@@ -574,20 +824,25 @@ export type AttachmentUpdateWithoutTaskInput = {
   file_path?: Prisma.StringFieldUpdateOperationsInput | string
   file_type?: Prisma.StringFieldUpdateOperationsInput | string
   attachment_uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  user?: Prisma.UserUpdateOneWithoutAttachmentsNestedInput
   study_session_user?: Prisma.StudySessionUserUpdateManyWithoutAttachmentNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUpdateManyWithoutAttachmentNestedInput
 }
 
 export type AttachmentUncheckedUpdateWithoutTaskInput = {
   attachment_id?: Prisma.IntFieldUpdateOperationsInput | number
+  user_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   file_name?: Prisma.StringFieldUpdateOperationsInput | string
   file_path?: Prisma.StringFieldUpdateOperationsInput | string
   file_type?: Prisma.StringFieldUpdateOperationsInput | string
   attachment_uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   study_session_user?: Prisma.StudySessionUserUncheckedUpdateManyWithoutAttachmentNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedUpdateManyWithoutAttachmentNestedInput
 }
 
 export type AttachmentUncheckedUpdateManyWithoutTaskInput = {
   attachment_id?: Prisma.IntFieldUpdateOperationsInput | number
+  user_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   file_name?: Prisma.StringFieldUpdateOperationsInput | string
   file_path?: Prisma.StringFieldUpdateOperationsInput | string
   file_type?: Prisma.StringFieldUpdateOperationsInput | string
@@ -601,10 +856,12 @@ export type AttachmentUncheckedUpdateManyWithoutTaskInput = {
 
 export type AttachmentCountOutputType = {
   study_session_user: number
+  study_session_attachments: number
 }
 
 export type AttachmentCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   study_session_user?: boolean | AttachmentCountOutputTypeCountStudy_session_userArgs
+  study_session_attachments?: boolean | AttachmentCountOutputTypeCountStudy_session_attachmentsArgs
 }
 
 /**
@@ -624,70 +881,92 @@ export type AttachmentCountOutputTypeCountStudy_session_userArgs<ExtArgs extends
   where?: Prisma.StudySessionUserWhereInput
 }
 
+/**
+ * AttachmentCountOutputType without action
+ */
+export type AttachmentCountOutputTypeCountStudy_session_attachmentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.StudySessionAttachmentWhereInput
+}
+
 
 export type AttachmentSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   attachment_id?: boolean
   task_id?: boolean
+  user_id?: boolean
   file_name?: boolean
   file_path?: boolean
   file_type?: boolean
   attachment_uploaded_at?: boolean
   task?: boolean | Prisma.Attachment$taskArgs<ExtArgs>
+  user?: boolean | Prisma.Attachment$userArgs<ExtArgs>
   study_session_user?: boolean | Prisma.Attachment$study_session_userArgs<ExtArgs>
+  study_session_attachments?: boolean | Prisma.Attachment$study_session_attachmentsArgs<ExtArgs>
   _count?: boolean | Prisma.AttachmentCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["attachment"]>
 
 export type AttachmentSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   attachment_id?: boolean
   task_id?: boolean
+  user_id?: boolean
   file_name?: boolean
   file_path?: boolean
   file_type?: boolean
   attachment_uploaded_at?: boolean
   task?: boolean | Prisma.Attachment$taskArgs<ExtArgs>
+  user?: boolean | Prisma.Attachment$userArgs<ExtArgs>
 }, ExtArgs["result"]["attachment"]>
 
 export type AttachmentSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   attachment_id?: boolean
   task_id?: boolean
+  user_id?: boolean
   file_name?: boolean
   file_path?: boolean
   file_type?: boolean
   attachment_uploaded_at?: boolean
   task?: boolean | Prisma.Attachment$taskArgs<ExtArgs>
+  user?: boolean | Prisma.Attachment$userArgs<ExtArgs>
 }, ExtArgs["result"]["attachment"]>
 
 export type AttachmentSelectScalar = {
   attachment_id?: boolean
   task_id?: boolean
+  user_id?: boolean
   file_name?: boolean
   file_path?: boolean
   file_type?: boolean
   attachment_uploaded_at?: boolean
 }
 
-export type AttachmentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"attachment_id" | "task_id" | "file_name" | "file_path" | "file_type" | "attachment_uploaded_at", ExtArgs["result"]["attachment"]>
+export type AttachmentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"attachment_id" | "task_id" | "user_id" | "file_name" | "file_path" | "file_type" | "attachment_uploaded_at", ExtArgs["result"]["attachment"]>
 export type AttachmentInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   task?: boolean | Prisma.Attachment$taskArgs<ExtArgs>
+  user?: boolean | Prisma.Attachment$userArgs<ExtArgs>
   study_session_user?: boolean | Prisma.Attachment$study_session_userArgs<ExtArgs>
+  study_session_attachments?: boolean | Prisma.Attachment$study_session_attachmentsArgs<ExtArgs>
   _count?: boolean | Prisma.AttachmentCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type AttachmentIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   task?: boolean | Prisma.Attachment$taskArgs<ExtArgs>
+  user?: boolean | Prisma.Attachment$userArgs<ExtArgs>
 }
 export type AttachmentIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   task?: boolean | Prisma.Attachment$taskArgs<ExtArgs>
+  user?: boolean | Prisma.Attachment$userArgs<ExtArgs>
 }
 
 export type $AttachmentPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Attachment"
   objects: {
     task: Prisma.$TaskPayload<ExtArgs> | null
+    user: Prisma.$UserPayload<ExtArgs> | null
     study_session_user: Prisma.$StudySessionUserPayload<ExtArgs>[]
+    study_session_attachments: Prisma.$StudySessionAttachmentPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     attachment_id: number
     task_id: number | null
+    user_id: string | null
     file_name: string
     file_path: string
     file_type: string
@@ -1087,7 +1366,9 @@ readonly fields: AttachmentFieldRefs;
 export interface Prisma__AttachmentClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   task<T extends Prisma.Attachment$taskArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Attachment$taskArgs<ExtArgs>>): Prisma.Prisma__TaskClient<runtime.Types.Result.GetResult<Prisma.$TaskPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  user<T extends Prisma.Attachment$userArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Attachment$userArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   study_session_user<T extends Prisma.Attachment$study_session_userArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Attachment$study_session_userArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$StudySessionUserPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  study_session_attachments<T extends Prisma.Attachment$study_session_attachmentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Attachment$study_session_attachmentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$StudySessionAttachmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1119,6 +1400,7 @@ export interface Prisma__AttachmentClient<T, Null = never, ExtArgs extends runti
 export interface AttachmentFieldRefs {
   readonly attachment_id: Prisma.FieldRef<"Attachment", 'Int'>
   readonly task_id: Prisma.FieldRef<"Attachment", 'Int'>
+  readonly user_id: Prisma.FieldRef<"Attachment", 'String'>
   readonly file_name: Prisma.FieldRef<"Attachment", 'String'>
   readonly file_path: Prisma.FieldRef<"Attachment", 'String'>
   readonly file_type: Prisma.FieldRef<"Attachment", 'String'>
@@ -1538,6 +1820,25 @@ export type Attachment$taskArgs<ExtArgs extends runtime.Types.Extensions.Interna
 }
 
 /**
+ * Attachment.user
+ */
+export type Attachment$userArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the User
+   */
+  select?: Prisma.UserSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the User
+   */
+  omit?: Prisma.UserOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserInclude<ExtArgs> | null
+  where?: Prisma.UserWhereInput
+}
+
+/**
  * Attachment.study_session_user
  */
 export type Attachment$study_session_userArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1559,6 +1860,30 @@ export type Attachment$study_session_userArgs<ExtArgs extends runtime.Types.Exte
   take?: number
   skip?: number
   distinct?: Prisma.StudySessionUserScalarFieldEnum | Prisma.StudySessionUserScalarFieldEnum[]
+}
+
+/**
+ * Attachment.study_session_attachments
+ */
+export type Attachment$study_session_attachmentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the StudySessionAttachment
+   */
+  select?: Prisma.StudySessionAttachmentSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the StudySessionAttachment
+   */
+  omit?: Prisma.StudySessionAttachmentOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.StudySessionAttachmentInclude<ExtArgs> | null
+  where?: Prisma.StudySessionAttachmentWhereInput
+  orderBy?: Prisma.StudySessionAttachmentOrderByWithRelationInput | Prisma.StudySessionAttachmentOrderByWithRelationInput[]
+  cursor?: Prisma.StudySessionAttachmentWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.StudySessionAttachmentScalarFieldEnum | Prisma.StudySessionAttachmentScalarFieldEnum[]
 }
 
 /**

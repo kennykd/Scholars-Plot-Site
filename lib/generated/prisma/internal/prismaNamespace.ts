@@ -399,6 +399,7 @@ export const ModelName = {
   TaskUser: 'TaskUser',
   Attachment: 'Attachment',
   StudySession: 'StudySession',
+  StudySessionAttachment: 'StudySessionAttachment',
   StudySessionUser: 'StudySessionUser',
   StudySessionReminder: 'StudySessionReminder',
   TaskReminder: 'TaskReminder',
@@ -421,7 +422,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userFormulaWeights" | "userAvailability" | "project" | "projectUser" | "task" | "taskUser" | "attachment" | "studySession" | "studySessionUser" | "studySessionReminder" | "taskReminder" | "overloadWarning" | "chatConversation" | "chatMessage" | "analytics"
+    modelProps: "user" | "userFormulaWeights" | "userAvailability" | "project" | "projectUser" | "task" | "taskUser" | "attachment" | "studySession" | "studySessionAttachment" | "studySessionUser" | "studySessionReminder" | "taskReminder" | "overloadWarning" | "chatConversation" | "chatMessage" | "analytics"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1091,6 +1092,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    StudySessionAttachment: {
+      payload: Prisma.$StudySessionAttachmentPayload<ExtArgs>
+      fields: Prisma.StudySessionAttachmentFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.StudySessionAttachmentFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StudySessionAttachmentPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.StudySessionAttachmentFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StudySessionAttachmentPayload>
+        }
+        findFirst: {
+          args: Prisma.StudySessionAttachmentFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StudySessionAttachmentPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.StudySessionAttachmentFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StudySessionAttachmentPayload>
+        }
+        findMany: {
+          args: Prisma.StudySessionAttachmentFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StudySessionAttachmentPayload>[]
+        }
+        create: {
+          args: Prisma.StudySessionAttachmentCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StudySessionAttachmentPayload>
+        }
+        createMany: {
+          args: Prisma.StudySessionAttachmentCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.StudySessionAttachmentCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StudySessionAttachmentPayload>[]
+        }
+        delete: {
+          args: Prisma.StudySessionAttachmentDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StudySessionAttachmentPayload>
+        }
+        update: {
+          args: Prisma.StudySessionAttachmentUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StudySessionAttachmentPayload>
+        }
+        deleteMany: {
+          args: Prisma.StudySessionAttachmentDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.StudySessionAttachmentUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.StudySessionAttachmentUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StudySessionAttachmentPayload>[]
+        }
+        upsert: {
+          args: Prisma.StudySessionAttachmentUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StudySessionAttachmentPayload>
+        }
+        aggregate: {
+          args: Prisma.StudySessionAttachmentAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateStudySessionAttachment>
+        }
+        groupBy: {
+          args: Prisma.StudySessionAttachmentGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.StudySessionAttachmentGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.StudySessionAttachmentCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.StudySessionAttachmentCountAggregateOutputType> | number
+        }
+      }
+    }
     StudySessionUser: {
       payload: Prisma.$StudySessionUserPayload<ExtArgs>
       fields: Prisma.StudySessionUserFieldRefs
@@ -1747,6 +1822,7 @@ export type TaskUserScalarFieldEnum = (typeof TaskUserScalarFieldEnum)[keyof typ
 export const AttachmentScalarFieldEnum = {
   attachment_id: 'attachment_id',
   task_id: 'task_id',
+  user_id: 'user_id',
   file_name: 'file_name',
   file_path: 'file_path',
   file_type: 'file_type',
@@ -1772,6 +1848,16 @@ export const StudySessionScalarFieldEnum = {
 } as const
 
 export type StudySessionScalarFieldEnum = (typeof StudySessionScalarFieldEnum)[keyof typeof StudySessionScalarFieldEnum]
+
+
+export const StudySessionAttachmentScalarFieldEnum = {
+  study_session_id: 'study_session_id',
+  attachment_id: 'attachment_id',
+  user_id: 'user_id',
+  linked_at: 'linked_at'
+} as const
+
+export type StudySessionAttachmentScalarFieldEnum = (typeof StudySessionAttachmentScalarFieldEnum)[keyof typeof StudySessionAttachmentScalarFieldEnum]
 
 
 export const StudySessionUserScalarFieldEnum = {
@@ -2219,6 +2305,7 @@ export type GlobalOmitConfig = {
   taskUser?: Prisma.TaskUserOmit
   attachment?: Prisma.AttachmentOmit
   studySession?: Prisma.StudySessionOmit
+  studySessionAttachment?: Prisma.StudySessionAttachmentOmit
   studySessionUser?: Prisma.StudySessionUserOmit
   studySessionReminder?: Prisma.StudySessionReminderOmit
   taskReminder?: Prisma.TaskReminderOmit

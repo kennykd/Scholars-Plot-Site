@@ -15,17 +15,16 @@ export function UpcomingDeadlines({ tasks }: UpcomingDeadlinesProps) {
     .sort(
       (a, b) =>
         new Date(a.deadline).getTime() - new Date(b.deadline).getTime(),
-    )
-    .slice(0, 5);
+    );
 
   return (
-    <Card className="bg-card/80 backdrop-blur-sm border-0">
+    <Card className="bg-card/80 backdrop-blur-sm border-0 h-full">
       <CardHeader className="pb-4">
         <CardTitle className="font-display text-base font-bold tracking-wide">
           UPCOMING DEADLINES
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-3 flex-1 min-h-0 overflow-y-auto">
         {upcoming.length === 0 ? (
           <p className="text-sm text-muted-foreground">No upcoming deadlines.</p>
         ) : (

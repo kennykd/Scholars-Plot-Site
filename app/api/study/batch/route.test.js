@@ -11,6 +11,10 @@ jest.mock("@/lib/firebase/auth", () => ({
   getSession: jest.fn(),
 }));
 
+jest.mock("@/lib/services/userService", () => ({
+  ensureUserRecordForSession: jest.fn(),
+}));
+
 jest.mock("@/lib/services/studySessionService", () => {
   class StudySessionServiceError extends Error {
     constructor(status, message) {
@@ -40,6 +44,7 @@ jest.mock("@/lib/services/taskService", () => {
 
 import { POST } from "./route";
 import { getSession } from "@/lib/firebase/auth";
+import { ensureUserRecordForSession } from "@/lib/services/userService";
 import { createStudySessionsForTask } from "@/lib/services/studySessionService";
 import { TaskServiceError } from "@/lib/services/taskService";
 
@@ -65,6 +70,12 @@ function request(body) {
 describe("POST /api/study/batch", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    ensureUserRecordForSession.mockResolvedValue({
+      id: "user-1",
+      email: "student@example.com",
+      name: "Student",
+      image: null,
+    });
   });
 
   it("returns 401 when the user is not authenticated", async () => {
@@ -90,7 +101,12 @@ describe("POST /api/study/batch", () => {
   });
 
   it("returns task access errors from the service", async () => {
-    getSession.mockResolvedValue({ id: "user-1" });
+    getSession.mockResolvedValue({
+      id: "user-1",
+      email: "student@example.com",
+      name: "Student",
+      image: null,
+    });
     createStudySessionsForTask.mockRejectedValue(
       new TaskServiceError(403, "You do not have access to this task"),
     );
@@ -103,7 +119,12 @@ describe("POST /api/study/batch", () => {
   });
 
   it("creates linked sessions from plan rules for the authenticated user", async () => {
-    getSession.mockResolvedValue({ id: "user-1" });
+    getSession.mockResolvedValue({
+      id: "user-1",
+      email: "student@example.com",
+      name: "Student",
+      image: null,
+    });
     createStudySessionsForTask.mockResolvedValue({
       studySessions: [
         { study_session_id: 1, study_session_name: "Mechanical Physics" },
@@ -115,6 +136,15 @@ describe("POST /api/study/batch", () => {
     const body = await response.json();
 
     expect(response.status).toBe(201);
+    expect(ensureUserRecordForSession).toHaveBeenCalledWith({
+      id: "user-1",
+      email: "student@example.com",
+      name: "Student",
+      image: null,
+    });
+    expect(
+      ensureUserRecordForSession.mock.invocationCallOrder[0],
+    ).toBeLessThan(createStudySessionsForTask.mock.invocationCallOrder[0]);
     expect(createStudySessionsForTask).toHaveBeenCalledWith(
       "user-1",
       42,
@@ -132,7 +162,12 @@ describe("POST /api/study/batch", () => {
   });
 
   it("passes batch reminder settings to the study session service", async () => {
-    getSession.mockResolvedValue({ id: "user-1" });
+    getSession.mockResolvedValue({
+      id: "user-1",
+      email: "student@example.com",
+      name: "Student",
+      image: null,
+    });
     createStudySessionsForTask.mockResolvedValue({
       studySessions: [
         { study_session_id: 1, study_session_name: "Mechanical Physics" },

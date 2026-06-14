@@ -683,6 +683,8 @@ export function ChatbotDemo() {
     );
   }
 
+  const userId = user.id;
+
   async function sendMessage(content: string) {
     const trimmed = content.trim();
     if (!trimmed) return;
@@ -702,7 +704,7 @@ export function ChatbotDemo() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user_id: user.id,
+          user_id: userId,
           message: trimmed,
           conversation_id: conversationId ?? undefined,
         }),
@@ -759,7 +761,7 @@ export function ChatbotDemo() {
                   <ActionCard
                     messageId={message.messageId}
                     conversationId={conversationId ?? 0}
-                    userId={user.id}
+                    userId={userId}
                     actionType={message.action.type}
                     payload={message.action.payload}
                     initialStatus={message.actionStatus ?? "pending"}

@@ -55,7 +55,7 @@ export function Sidebar({ user }: { user: SidebarUser }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
-    setCollapsed(localStorage.getItem("sidebarCollapsed") === "true");
+    setCollapsed(localStorage.getItem("sidebar-collapsed") === "true");
   }, []);
   const [logoutLoading, setLogoutLoading] = useState(false);
 

@@ -7,6 +7,8 @@ import {
   StudySessionServiceError,
 } from '@/lib/services/studySessionService';
 import { TaskServiceError } from '@/lib/services/taskService';
+import { ensureUserRecordForSession } from '@/lib/services/userService';
+import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services/prismaErrors';
 
 export async function POST(request: Request) {
   try {
@@ -32,6 +34,8 @@ export async function POST(request: Request) {
       );
     }
 
+    await ensureUserRecordForSession(session);
+
     const result = await createStudySessionsForTask(
       session.id,
       parsed.data.task_id,
@@ -55,6 +59,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: error.message }, { status: error.status });
     }
 
-    return NextResponse.json({ message: 'Error creating study sessions', error }, { status: 500 });
+    if (isPrismaForeignKeyError(error)) {
+      console.error('[api/study/batch] Foreign key error while creating study sessions:', error);
+      return NextResponse.json({ message: foreignKeyRepairMessage() }, { status: 409 });
+    }
+
+    console.error('[api/study/batch] Error creating study sessions:', error);
+    return NextResponse.json({ message: 'Error creating study sessions' }, { status: 500 });
   }
 }

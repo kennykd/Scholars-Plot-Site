@@ -19,6 +19,7 @@ import type { Attachment, Task } from "@/types";
 import { format, formatDistanceToNow } from "date-fns";
 import { ArrowLeft, BookOpen, Paperclip } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { taskStatusColors, taskStatusLabels } from "@/lib/tasks/task-status";
 
 interface LinkedStudySession {
   id: number;
@@ -26,18 +27,6 @@ interface LinkedStudySession {
   scheduledAt: string;
   focusMinutes: number;
 }
-
-const statusColors: Record<Task["status"], string> = {
-  Pending: "bg-muted text-muted-foreground",
-  In_Progress: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-  Completed: "bg-green-500/20 text-green-400 border-green-500/30",
-};
-
-const statusLabels: Record<Task["status"], string> = {
-  Pending: "PENDING",
-  In_Progress: "IN PROGRESS",
-  Completed: "COMPLETED",
-};
 
 export default async function TaskDetailPage({
   params,
@@ -104,11 +93,11 @@ export default async function TaskDetailPage({
             <Badge
               className={cn(
                 "shrink-0 font-mono text-xs border",
-                statusColors[task.status],
+                taskStatusColors[task.status],
               )}
               variant="outline"
             >
-              {statusLabels[task.status]}
+              {taskStatusLabels[task.status]}
             </Badge>
           </div>
           <StarRating value={task.priority} size="lg" readOnly />

@@ -58,6 +58,7 @@ export const ModelName = {
   TaskUser: 'TaskUser',
   Attachment: 'Attachment',
   StudySession: 'StudySession',
+  StudySessionAttachment: 'StudySessionAttachment',
   StudySessionUser: 'StudySessionUser',
   StudySessionReminder: 'StudySessionReminder',
   TaskReminder: 'TaskReminder',
@@ -182,6 +183,7 @@ export type TaskUserScalarFieldEnum = (typeof TaskUserScalarFieldEnum)[keyof typ
 export const AttachmentScalarFieldEnum = {
   attachment_id: 'attachment_id',
   task_id: 'task_id',
+  user_id: 'user_id',
   file_name: 'file_name',
   file_path: 'file_path',
   file_type: 'file_type',
@@ -207,6 +209,16 @@ export const StudySessionScalarFieldEnum = {
 } as const
 
 export type StudySessionScalarFieldEnum = (typeof StudySessionScalarFieldEnum)[keyof typeof StudySessionScalarFieldEnum]
+
+
+export const StudySessionAttachmentScalarFieldEnum = {
+  study_session_id: 'study_session_id',
+  attachment_id: 'attachment_id',
+  user_id: 'user_id',
+  linked_at: 'linked_at'
+} as const
+
+export type StudySessionAttachmentScalarFieldEnum = (typeof StudySessionAttachmentScalarFieldEnum)[keyof typeof StudySessionAttachmentScalarFieldEnum]
 
 
 export const StudySessionUserScalarFieldEnum = {

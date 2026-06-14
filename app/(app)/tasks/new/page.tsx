@@ -23,10 +23,11 @@ import {
 } from "@/components/ui/select";
 import { StarRating } from "@/app/components/common/star-rating";
 import { StudySessionPrompt } from "@/app/components/tasks/study-session-prompt";
+import { AiSuggestionsButton } from "@/app/components/common/ai-suggestions-button";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ArrowLeft, CalendarIcon, Paperclip, X } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, openNativePicker } from "@/lib/utils";
 
 type ReminderOption = "none" | "daily" | "every-3-days" | "weekly" | "biweekly";
 
@@ -253,6 +254,8 @@ export default function TaskForm() {
                   type="time"
                   value={deadlineTime}
                   onChange={(e) => setDeadlineTime(e.target.value)}
+                  onClick={openNativePicker}
+                  onFocus={openNativePicker}
                   placeholder="23:59"
                 />
                 <p className="font-mono text-[10px] text-muted-foreground">
@@ -357,6 +360,8 @@ export default function TaskForm() {
                 We&apos;ll nudge you on this cadence until the deadline.
               </p>
             </div>
+
+            <AiSuggestionsButton description="Get task ideas based on your title and description." />
 
             <div className="flex gap-3 pt-2">
               <Button

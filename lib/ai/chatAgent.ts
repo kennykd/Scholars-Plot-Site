@@ -294,7 +294,10 @@ function parseEnvelope(raw: string): { text: string; action: ChatAction | null }
 
     return {
       text,
-      action: { type: actionType, payload: payloadResult.data },
+      action: {
+        type: actionType,
+        payload: payloadResult.data as Record<string, unknown>,
+      },
     };
   } catch {
     // Malformed JSON — return raw text as a plain response, no action

@@ -4,6 +4,8 @@ import { createTaskSchema } from '../../../lib/validation/task';
 import { createTask, getTasks, serializeTask, TaskServiceError } from '@/lib/services/taskService';
 import { runTaskAnalysis } from '@/lib/services/aiService';
 import { getSession } from '@/lib/firebase/auth';
+import { ensureUserRecordForSession } from '@/lib/services/userService';
+import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services/prismaErrors';
 
 /**
  * @swagger
@@ -175,6 +177,8 @@ export async function POST(request: Request) {
       );
     }
 
+    await ensureUserRecordForSession(session);
+
     const created = await createTask(session.id, parsed.data);
 
     runTaskAnalysis(created.task_id, session.id).catch((error) => {
@@ -190,6 +194,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: error.message }, { status: error.status });
     }
 
-    return NextResponse.json({ message: 'Error creating task', error }, { status: 500 });
+    if (isPrismaForeignKeyError(error)) {
+      console.error('[api/task] Foreign key error while creating task:', error);
+      return NextResponse.json({ message: foreignKeyRepairMessage() }, { status: 409 });
+    }
+
+    console.error('[api/task] Error creating task:', error);
+    return NextResponse.json({ message: 'Error creating task' }, { status: 500 });
   }
 }

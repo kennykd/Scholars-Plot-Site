@@ -34,13 +34,14 @@ jest.mock("@/lib/study/study-session-helper", () => ({
 describe("StudyPageClient View", () => {
   const mockInitialSessions: StudySession[] = [];
 
-  it("renders the upcoming and completed study session boxes", async () => {
-    // Render the client component with its required array props
+  it("renders the task-style study toolbar and empty list state", async () => {
     render(<StudyPageClient initialSessions={mockInitialSessions} />);
 
-    // Since we updated your ListCard component earlier to always show 
-    // "Upcoming Sessions" and "Completed Sessions" layouts:
-    expect(screen.getByText(/Upcoming Sessions/i)).toBeInTheDocument();
-    expect(screen.getByText(/Completed Sessions/i)).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "All" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "In Progress" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Upcoming" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Completed" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Expired" })).toBeInTheDocument();
+    expect(screen.getByText(/No study sessions found/i)).toBeInTheDocument();
   });
 });

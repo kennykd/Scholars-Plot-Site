@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { ActionStatus } from "@prisma/client";
+import { ActionStatus } from "@/lib/generated/prisma/client";
 import {
   getConversation,
   deleteConversation,
@@ -25,6 +25,10 @@ const PatchSchema = z.object({
 
 // ─── Param helper ─────────────────────────────────────────────────────────────
 
+type ConversationRouteContext = {
+  params: Promise<{ conversationId: string }>;
+};
+
 function parseConversationId(params: { conversationId: string }): number | null {
   const id = parseInt(params.conversationId, 10);
   return isNaN(id) || id <= 0 ? null : id;
@@ -34,9 +38,9 @@ function parseConversationId(params: { conversationId: string }): number | null 
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { conversationId: string } }
+  { params }: ConversationRouteContext
 ) {
-  const convId = parseConversationId(params);
+  const convId = parseConversationId(await params);
   if (!convId) {
     return NextResponse.json({ error: "Invalid conversation ID." }, { status: 400 });
   }
@@ -72,9 +76,9 @@ export async function GET(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { conversationId: string } }
+  { params }: ConversationRouteContext
 ) {
-  const convId = parseConversationId(params);
+  const convId = parseConversationId(await params);
   if (!convId) {
     return NextResponse.json({ error: "Invalid conversation ID." }, { status: 400 });
   }
@@ -116,9 +120,9 @@ export async function DELETE(
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { conversationId: string } }
+  { params }: ConversationRouteContext
 ) {
-  const convId = parseConversationId(params);
+  const convId = parseConversationId(await params);
   if (!convId) {
     return NextResponse.json({ error: "Invalid conversation ID." }, { status: 400 });
   }

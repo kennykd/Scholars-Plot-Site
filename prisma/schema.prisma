@@ -42,13 +42,13 @@ enum SessionTimerStatus {
 }
 
 enum ReminderIntervalType {
-  minutes 
+  minutes
   hours
   days
   weeks
-  months  
-  fixed   
-  custom  
+  months
+  fixed
+  custom
 }
 
 enum MessageRole {
@@ -61,11 +61,6 @@ enum ActionStatus {
   pending
   confirmed
   dismissed
-  minutes
-  hours
-  days
-  weeks
-  months
 }
 
 // ─── MODELS ──────────────────────────────────────────────────────────────────
@@ -77,7 +72,7 @@ model User {
   user_email        String   @unique
   avatar_url        String?
   user_role         UserRole @default(user)
-  push_subscription String? 
+  push_subscription String?
   user_last_login   DateTime
   user_created_at   DateTime @default(now())
 
@@ -93,6 +88,8 @@ model User {
   user_availability    UserAvailability[]  // Restored
   overload_warnings    OverloadWarning[]   // Restored
   chat_conversations   ChatConversation[]  // Restored
+  attachments          Attachment[]
+  study_session_attachments StudySessionAttachment[]
 
   @@map("user")
 }
@@ -104,8 +101,8 @@ model UserFormulaWeights {
   w_confidence     Decimal   @default(1.0) @db.Decimal(4, 2) // Saved from main
   w_ease           Decimal   @default(2.0) @db.Decimal(4, 2)
   w_urgency        Decimal   @default(4.0) @db.Decimal(4, 2)
-  last_adapted_at  DateTime? 
-  tasks_since_last Int       @default(0)   
+  last_adapted_at  DateTime?
+  tasks_since_last Int       @default(0)
   updated_at       DateTime  @updatedAt
 
   user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
@@ -116,13 +113,13 @@ model UserFormulaWeights {
 model UserAvailability {
   id          Int     @id @default(autoincrement())
   user_id     String
-  day_of_week Int     
-  start_time  String  
-  end_time    String  
+  day_of_week Int
+  start_time  String
+  end_time    String
   is_active   Boolean @default(true)
 
   user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-  
+
   @@map("user_availability")
 }
 
@@ -166,10 +163,10 @@ model Task {
   task_created_at   DateTime   @default(now())
 
   estimated_minutes    Int?
-  confidence_score     Int?      
-  grade_weight_percent Decimal?  @db.Decimal(5, 2) 
-  ai_priority_score    Int?      
-  ai_analyzed_at       DateTime? 
+  confidence_score     Int?
+  grade_weight_percent Decimal?  @db.Decimal(5, 2)
+  ai_priority_score    Int?
+  ai_analyzed_at       DateTime?
 
   project        Project?       @relation(fields: [project_id], references: [project_id], onDelete: SetNull)
   task_users     TaskUser[]
@@ -220,13 +217,14 @@ model StudySession {
   study_session_scheduled_at      DateTime
   study_session_created_at        DateTime @default(now())
   checklist_json                  Json?
-  
+
   // Kept inline configurations from main
   study_session_reminder_enabled Boolean  @default(true)
   study_session_remind_at_minutes Int[]    @default([])
 
   study_session_user StudySessionUser[]
   study_session_attachments StudySessionAttachment[]
+  study_session_reminders StudySessionReminder[]
 
   @@map("study_session")
 }

@@ -2,6 +2,7 @@ import { analyzeTask, TaskAnalysisInput } from "@/lib/ai/taskAnalyzer";
 import { calculatePriorityScore } from "@/lib/ai/priorityFormula";
 import { optimizeSchedule } from "@/lib/ai/scheduleOptimizer";
 import { detectOverload } from "@/lib/ai/overloadDetector";
+import prisma from "@/lib/prisma";
 import {
   updateTaskAIFields,
   getTaskWithProject,

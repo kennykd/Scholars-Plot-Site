@@ -5,13 +5,12 @@ import { useRouter } from "next/navigation";
 import {
   differenceInSeconds,
   format,
-  formatDistanceToNow,
   isPast,
   isToday,
   isTomorrow,
   parseISO,
 } from "date-fns";
-import { Bell, ChevronRight, Timer } from "lucide-react";
+import { ChevronRight, Timer } from "lucide-react";
 import type { StudySession } from "@/types";
 import { useAuth } from "@/lib/firebase/auth-context";
 import {
@@ -490,7 +489,7 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
               value={sortMode}
               onValueChange={(value) => setSortMode(value as StudySort)}
             >
-              <SelectTrigger className="w-44 font-mono text-xs">
+              <SelectTrigger className="w-auto min-w-[12rem] font-mono text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -528,38 +527,6 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
               </DialogContent>
             </Dialog>
           </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 font-mono text-xs text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <Bell className="h-4 w-4 text-accent" />
-            <p className="font-semibold text-foreground">Upcoming Reminders</p>
-          </div>
-          {upcomingSoon.length === 0 ? (
-            <p>
-              No study reminders are due soon.
-            </p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {upcomingSoon.map((studySession) => (
-                <button
-                  key={studySession.id}
-                  type="button"
-                  onClick={() => openSession(studySession)}
-                  className="rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-left text-xs hover:bg-accent/15"
-                >
-                  <span className="font-medium text-foreground">
-                    Reminder: {studySession.title}
-                  </span>{" "}
-                  <span className="text-muted-foreground">
-                    {formatDistanceToNow(parseISO(studySession.scheduledAt), {
-                      addSuffix: true,
-                    })}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
         <div className="space-y-2">

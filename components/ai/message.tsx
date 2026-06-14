@@ -1,6 +1,6 @@
 "use client";
 
-import type { FileUIPart, UIMessage } from "ai";
+import type { FileUIPart, UIMessage } from "./types";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,

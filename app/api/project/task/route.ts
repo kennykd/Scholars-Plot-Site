@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { getSession } from '@/lib/firebase/auth';
 import { createProjectTaskSchema } from '../../../../lib/validation/project';
 import { createProjectTask, ProjectServiceError } from '@/lib/services/projectService';
+import { ensureUserRecordForSession } from '@/lib/services/userService';
+import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services/prismaErrors';
 
 /**
  * @swagger
@@ -116,6 +118,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
+    await ensureUserRecordForSession(session);
+
     let body: unknown;
 
     try {
@@ -144,6 +148,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: error.message }, { status: error.status });
     }
 
-    return NextResponse.json({ message: 'Error creating project task', error }, { status: 500 });
+    if (isPrismaForeignKeyError(error)) {
+      console.error('[api/project/task] Foreign key error while creating project task:', error);
+      return NextResponse.json({ message: foreignKeyRepairMessage() }, { status: 409 });
+    }
+
+    console.error('[api/project/task] Error creating project task:', error);
+    return NextResponse.json({ message: 'Error creating project task' }, { status: 500 });
   }
 }

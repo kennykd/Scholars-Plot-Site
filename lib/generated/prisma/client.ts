@@ -90,6 +90,11 @@ export type Attachment = Prisma.AttachmentModel
  */
 export type StudySession = Prisma.StudySessionModel
 /**
+ * Model StudySessionAttachment
+ * 
+ */
+export type StudySessionAttachment = Prisma.StudySessionAttachmentModel
+/**
  * Model StudySessionUser
  * 
  */
