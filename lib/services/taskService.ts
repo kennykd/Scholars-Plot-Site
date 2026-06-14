@@ -213,7 +213,22 @@ export async function updateTaskById(
 
   await replaceTaskReminder(taskId, data.reminder);
 
-  return updated;
+  const becameCompleted =
+    statusChanging &&
+    data.status === 'Completed' &&
+    existing.task_status !== 'Completed';
+
+  return { task: updated, becameCompleted };
+}
+
+/**
+ * Runs the completion side-effects (adapter counter) without mutating task
+ * status. Use this when a task has just transitioned to Completed via
+ * {@link updateTaskById}. Returns whether the weight adapter should run.
+ */
+export async function recordTaskCompletion(user_id: string) {
+  await incrementTasksSinceLast(user_id);
+  return shouldRunAdapter(user_id);
 }
 
 export async function deleteTaskById(taskId: number, userId: string) {

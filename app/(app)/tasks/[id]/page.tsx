@@ -7,6 +7,7 @@ import { StarRating } from "@/app/components/common/star-rating";
 import { TaskDeleteButton } from "../../../components/tasks/task-delete-button";
 import { TaskAttachmentDeleteButton } from "../../../components/tasks/task-attachment-delete-button";
 import { TaskCompleteButton } from "../../../components/tasks/task-complete-button";
+import { TaskInProgressButton } from "../../../components/tasks/task-in-progress-button";
 import { getSession } from "@/lib/firebase/auth";
 import {
   getStudySessionsForTask,
@@ -79,7 +80,7 @@ export default async function TaskDetailPage({
   const deadlineDate = new Date(task.deadline);
 
   return (
-    <div className="p-6 max-w-2xl mx-auto space-y-6">
+    <div className="p-6 space-y-6">
       <Button variant="ghost" size="sm" asChild className="font-mono text-xs">
         <Link href="/tasks">
           <ArrowLeft className="h-4 w-4 mr-1" /> Tasks
@@ -199,12 +200,15 @@ export default async function TaskDetailPage({
               </ul>
             </div>
           )}
-          {task.status !== "Completed" && (
-            <TaskCompleteButton taskId={task.id} />
-          )}
-          <div className="flex gap-3 pt-2">
-            <Button variant="outline" disabled className="font-mono text-xs">
-              Edit
+          <div className="flex flex-wrap gap-3 pt-2">
+            {task.status === "Pending" && (
+              <TaskInProgressButton taskId={task.id} />
+            )}
+            {task.status !== "Completed" && (
+              <TaskCompleteButton taskId={task.id} />
+            )}
+            <Button variant="outline" asChild className="font-mono text-xs">
+              <Link href={`/tasks/${task.id}/edit`}>Edit</Link>
             </Button>
             <TaskDeleteButton taskId={task.id} taskTitle={task.title} />
           </div>

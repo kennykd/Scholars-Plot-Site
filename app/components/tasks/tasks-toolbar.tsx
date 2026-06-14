@@ -88,6 +88,33 @@ export function TasksToolbar({ tasks }: TasksToolbarProps) {
     }
   };
 
+  const markInProgressSelected = async () => {
+    try {
+      const responses = await Promise.all(
+        selectedIds.map((taskId) =>
+          fetch(`/api/task/${taskId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "In_Progress" }),
+          }),
+        ),
+      );
+
+      if (!responses.every((res) => res.ok)) {
+        toast.error("Some tasks could not be updated");
+        return;
+      }
+
+      toast.success(
+        `Marked ${selectedIds.length} task${selectedIds.length > 1 ? "s" : ""} in progress`,
+      );
+      setSelectedIds([]);
+      router.refresh();
+    } catch {
+      toast.error("Could not update tasks");
+    }
+  };
+
   const deleteSelected = async () => {
     const confirmed = window.confirm(
       "Are you sure you want to delete the selected task(s)?",
@@ -135,6 +162,7 @@ export function TasksToolbar({ tasks }: TasksToolbarProps) {
         onSelectAll={selectVisible}
         onDeselectAll={deselectAll}
         onEditSelected={editSelected}
+        onMarkInProgress={markInProgressSelected}
         onMarkDone={markDoneSelected}
         onDeleteSelected={deleteSelected}
       />

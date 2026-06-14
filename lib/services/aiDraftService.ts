@@ -112,7 +112,7 @@ const taskDraftSchema = z.object({
 const studyTrackSchema = z.object({
   title: z.string().min(1).max(100),
   start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  repeat_enabled: z.coerce.boolean().default(false),
+  repeat_enabled: z.boolean(),
   repeat_every: z.coerce.number().int().min(1).max(30).default(1),
   repeat_unit: z.enum(['days', 'weeks']).default('weeks'),
   time: z.string().regex(/^\d{2}:\d{2}$/),
@@ -602,13 +602,13 @@ export async function generateStudyTrackDraft(
     - Do not infer today from training data. Use only the trusted current server time and current local date above.
     - Do not invent months or years. Every start_date must be inside the allowed scheduling window.
     - If availability exists, choose dates and times that fit the listed weekday and time slots.
-    - Use repeat_enabled, repeat_every, and repeat_unit for per-track cadence.
+    - You MUST set repeat_enabled (true or false) explicitly for every track. Never omit it.
+    - Default to repeat_enabled = true with repeat_unit "weeks" whenever at least THREE occurrences of that track fit between its start_date and the deadline.
     - For repeat_unit "days", repeat_every must be a whole number from 1 to 30.
     - For repeat_unit "weeks", repeat_every must be a whole number from 1 to 12.
-    - Use repeat intervals when the deadline is far enough away.
     - Prefer shorter day-based repeats for high-priority or practice-heavy tasks.
     - Prefer weekly repeats for review or long-running preparation.
-    - Disable repeat for one-off sessions, near deadlines, or when repeating would produce only one valid session.
+    - Only set repeat_enabled = false for genuine one-off sessions, when the deadline is within about one week, or when repeating would produce only one valid session.
 
     <untrusted_user_content>
     Task id: ${input.task.id}

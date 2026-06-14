@@ -582,7 +582,7 @@ export default function StudyNewPage() {
   if (taskId) {
     if (taskLoading) {
       return (
-        <div className="p-6 max-w-2xl mx-auto space-y-6">
+        <div className="p-6 space-y-6">
           <p className="text-sm text-muted-foreground">Loading task...</p>
         </div>
       );
@@ -590,7 +590,7 @@ export default function StudyNewPage() {
 
     if (taskLoadError || !taskContext || !taskDeadline) {
       return (
-        <div className="p-6 max-w-2xl mx-auto space-y-4">
+        <div className="p-6 space-y-4">
           <h1 className="font-display text-2xl font-bold text-foreground">
             Task not available
           </h1>
@@ -605,7 +605,7 @@ export default function StudyNewPage() {
     }
 
     return (
-      <div className="p-6 max-w-2xl mx-auto space-y-6">
+      <div className="p-6 space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">
@@ -1210,7 +1210,7 @@ export default function StudyNewPage() {
   }
 
   return (
-    <div className="p-6 max-w-2xl mx-auto space-y-6">
+    <div className="p-6 space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">

@@ -36,6 +36,10 @@ jest.mock("../../../components/tasks/task-complete-button", () => ({
   TaskCompleteButton: () => <button type="button">Mark Complete</button>,
 }));
 
+jest.mock("../../../components/tasks/task-in-progress-button", () => ({
+  TaskInProgressButton: () => <button type="button">Mark in progress</button>,
+}));
+
 jest.mock("../../../components/tasks/task-attachment-delete-button", () => ({
   TaskAttachmentDeleteButton: () => <button type="button">Remove attachment</button>,
 }));

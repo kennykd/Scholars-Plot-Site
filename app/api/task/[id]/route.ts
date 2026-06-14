@@ -4,12 +4,12 @@ import { updateTaskSchema } from '../../../../lib/validation/task';
 import {
   deleteTaskById,
   getTaskById,
+  recordTaskCompletion,
   serializeTask,
   TaskServiceError,
   updateTaskById,
 } from '@/lib/services/taskService';
 import { getSession } from '@/lib/firebase/auth';
-import { completeTask } from "@/lib/services/taskService";
 import { runWeightAdapter } from "@/lib/services/aiService";
 
 /**
@@ -197,14 +197,19 @@ export async function PATCH(request: Request, context: RouteContext) {
       return NextResponse.json({ message: 'No fields provided for update' }, { status: 400 });
     }
 
-    const updated = await updateTaskById(parsedId.data, session.id, parsed.data);
+    const { task: updated, becameCompleted } = await updateTaskById(
+      parsedId.data,
+      session.id,
+      parsed.data,
+    );
 
-    const { task, shouldAdapt } = await completeTask(parsedId.data, session.id);
-
-    if (shouldAdapt) {
-      runWeightAdapter(session.id).catch((error) => {
-        console.error(`Weight adapter failed for user ${session.id}:`, error);
-      });
+    if (becameCompleted) {
+      const shouldAdapt = await recordTaskCompletion(session.id);
+      if (shouldAdapt) {
+        runWeightAdapter(session.id).catch((error) => {
+          console.error(`Weight adapter failed for user ${session.id}:`, error);
+        });
+      }
     }
 
     return NextResponse.json(

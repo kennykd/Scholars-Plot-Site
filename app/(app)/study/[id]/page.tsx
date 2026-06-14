@@ -692,6 +692,11 @@ export default function StudySessionPage() {
               session.sessionStatus.slice(1)}
           </Badge>
           <Button variant="outline" size="sm" asChild>
+            <Link href={`/study/${session.id}/edit`} className="font-mono text-xs">
+              Edit
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
             <Link href="/study" className="font-mono text-xs">
               Back to Planner
             </Link>
