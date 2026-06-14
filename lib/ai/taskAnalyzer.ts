@@ -157,7 +157,7 @@ export async function analyzeTask(
   }
 
   const response = await geminiFlash.generateContent({
-    model: "gemini-2.5-flash",
+    model: "gemini-3.1-flash-lite",
     config: {
       responseMimeType: "application/json",
       systemInstruction: SYSTEM_PROMPT,

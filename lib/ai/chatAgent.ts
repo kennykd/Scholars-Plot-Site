@@ -27,15 +27,15 @@ export interface ChatAction {
 // payload that will fail when the user clicks "Confirm".
 
 const proposedSessionSchema = z.object({
-  task_id: z.number().int(),
-  task_name: z.string().min(1),
-  study_session_name: z.string().min(1),
-  scheduled_at: z.string().min(1),
-  focus_minutes: z.number().positive(),
-  break_minutes: z.number().nonnegative(),
+  study_session_name: z.string().min(1).max(100),
+  study_session_scheduled_at: z.coerce.date(),
+  focus_minutes: z.number().int().positive(),
+  break_minutes: z.number().int().nonnegative(),
   total_pomodoros: z.number().int().positive(),
-  total_minutes: z.number().positive(),
-  reasoning: z.string(),
+  total_minutes: z.number().int().positive(),
+  task_id: z.number().int(),
+  // task_name: z.string().min(1),
+  // reasoning: z.string(),
 });
 
 const createStudyPlanPayloadSchema = z.object({
@@ -45,10 +45,10 @@ const createStudyPlanPayloadSchema = z.object({
 });
 
 const createTaskPayloadSchema = z.object({
-  task_name: z.string().min(1),
-  task_description: z.string().nullable(),
-  task_deadline: z.string().min(1),
-  task_priority: z.number().min(0.5).max(5.0),
+  title: z.string().min(1).max(100),
+  description: z.string().nullable().optional(),
+  deadline: z.string().min(1),
+  priority: z.number().min(0.5).max(5).optional(),
 });
 
 const updateSchedulePayloadSchema = z.object({
@@ -115,7 +115,7 @@ CREATE_STUDY_PLAN payload:
       "task_id": number,
       "task_name": string,
       "study_session_name": string,
-      "scheduled_at": "ISO 8601 string",
+      "study_session_scheduled_at": "ISO 8601 string",
       "focus_minutes": number,
       "break_minutes": number,
       "total_pomodoros": number,
@@ -129,10 +129,10 @@ CREATE_STUDY_PLAN payload:
 
 CREATE_TASK payload:
 {
-  "task_name": string,
-  "task_description": string | null,
-  "task_deadline": "ISO 8601 string",
-  "task_priority": number (0.5-5.0 scale)
+  "title": string (1-100 characters),
+  "description": string | null,
+  "deadline": "ISO 8601 string, must be a future date/time relative to the current date/time given above",
+  "priority": number (0.5-5.0 scale)
 }
 
 UPDATE_SCHEDULE payload:
@@ -316,7 +316,7 @@ export async function runChatAgent(
   const history = buildGeminiHistory(previousMessages);
 
   const response = await geminiFlash.generateContent({
-    model: "gemini-2.5-flash",
+    model: "gemini-3.1-flash-lite",
     config: {
       responseMimeType: "application/json",
       systemInstruction,

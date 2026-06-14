@@ -1,0 +1,245 @@
+/* ─── Action Card (base) ──────────────────────────────────────────────────── */
+
+.action-card {
+  margin-top: 0.75rem;
+  border: 1px solid var(--border, #e2e2e2);
+  border-radius: 12px;
+  background: var(--card-bg, #ffffff);
+  overflow: hidden;
+  max-width: 420px;
+}
+
+.action-card__header {
+  padding: 0.6rem 1rem;
+  background: var(--card-header-bg, #f5f5f7);
+  border-bottom: 1px solid var(--border, #e2e2e2);
+}
+
+.action-card__type-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-foreground, #6b7280);
+}
+
+.action-card__body {
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.action-card__error {
+  margin: 0 1rem 0.5rem;
+  font-size: 0.8rem;
+  color: #dc2626;
+}
+
+/* Dim the card once it's been actioned */
+.action-card--confirmed,
+.action-card--dismissed {
+  opacity: 0.7;
+}
+
+/* ─── ConfirmBar ───────────────────────────────────────────────────────────── */
+
+.confirm-bar {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border-top: 1px solid var(--border, #e2e2e2);
+}
+
+.confirm-bar__btn {
+  flex: 1;
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.confirm-bar__btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.confirm-bar__btn--confirm {
+  background: var(--primary, #2563eb);
+  color: #ffffff;
+}
+
+.confirm-bar__btn--confirm:hover:not(:disabled) {
+  background: var(--primary-hover, #1d4ed8);
+}
+
+.confirm-bar__btn--dismiss {
+  background: transparent;
+  border-color: var(--border, #d1d5db);
+  color: var(--muted-foreground, #6b7280);
+}
+
+.confirm-bar__btn--dismiss:hover:not(:disabled) {
+  background: var(--muted, #f3f4f6);
+}
+
+/* Confirmed / dismissed states — no buttons, just a status line */
+
+.confirm-bar--confirmed,
+.confirm-bar--dismissed {
+  padding: 0.6rem 1rem;
+  font-size: 0.85rem;
+  color: var(--muted-foreground, #6b7280);
+}
+
+.confirm-bar--confirmed {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #16a34a;
+  font-weight: 500;
+}
+
+.confirm-bar__icon {
+  font-size: 0.9rem;
+}
+
+/* ─── TaskCard ─────────────────────────────────────────────────────────────── */
+
+.task-card__row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.task-card__label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-foreground, #9ca3af);
+}
+
+.task-card__value {
+  font-size: 0.9rem;
+  color: var(--foreground, #111827);
+}
+
+.task-card__value--name {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.task-card__priority {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  width: fit-content;
+}
+
+.task-card__priority--high {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.task-card__priority--medium {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.task-card__priority--low {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.task-card__priority--not-set {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+/* ─── StudyPlanCard ────────────────────────────────────────────────────────── */
+
+.study-plan__meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--foreground, #111827);
+}
+
+.study-plan__count {
+  color: var(--muted-foreground, #6b7280);
+  font-weight: 400;
+}
+
+.study-plan__warnings {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.8rem;
+  color: #b45309;
+}
+
+.study-plan__warning {
+  margin-bottom: 0.2rem;
+}
+
+.study-plan__sessions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.study-plan__session {
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+}
+
+.study-plan__session-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.study-plan__session-task {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--muted-foreground, #6b7280);
+}
+
+.study-plan__session-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--muted-foreground, #6b7280);
+  margin-top: 0.25rem;
+}
+
+.study-plan__session-reasoning {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  color: var(--muted-foreground, #6b7280);
+  font-style: italic;
+}
+
+/* ─── UPDATE_SCHEDULE ──────────────────────────────────────────────────────── */
+
+.update-schedule__suggestion {
+  margin: 0;
+  font-size: 0.85rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border, #f1f1f1);
+}
+
+.update-schedule__suggestion:last-child {
+  border-bottom: none;
+}

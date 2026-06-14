@@ -1,21 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import type { ActionStatus } from "../../../lib/generated/prisma/client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-type ActionStatus = "none" | "pending" | "confirmed" | "dismissed";
 
 export interface ProposedSession {
   task_id: number;
   task_name: string;
   study_session_name: string;
-  scheduled_at: string;
+  study_session_scheduled_at: Date;
   focus_minutes: number;
   break_minutes: number;
   total_pomodoros: number;
   total_minutes: number;
-  reasoning: string;
 }
 
 export interface StudyPlanPayload {
@@ -25,10 +23,10 @@ export interface StudyPlanPayload {
 }
 
 export interface TaskPayload {
-  task_name: string;
-  task_description: string | null;
-  task_deadline: string;
-  task_priority: number;
+  title: string;
+  description: string | null;
+  deadline: string;
+  priority?: number;
 }
 
 export interface ActionCardProps {
@@ -121,7 +119,7 @@ function StudyPlanCard({ payload }: StudyPlanCardProps) {
 
       <ul className="study-plan__sessions">
         {proposed_sessions.map((session, i) => {
-          const date = new Date(session.scheduled_at);
+          const date = new Date(session.study_session_scheduled_at);
           const dateLabel = date.toLocaleDateString("en-ID", {
             weekday: "short",
             month: "short",
@@ -143,9 +141,6 @@ function StudyPlanCard({ payload }: StudyPlanCardProps) {
                 <span>{dateLabel} · {timeLabel}</span>
                 <span>{session.total_minutes} min · {session.total_pomodoros} pomodoros</span>
               </div>
-              {session.reasoning && (
-                <p className="study-plan__session-reasoning">{session.reasoning}</p>
-              )}
             </li>
           );
         })}
@@ -161,32 +156,35 @@ interface TaskCardProps {
 }
 
 function TaskCard({ payload }: TaskCardProps) {
-  const { task_name, task_description, task_deadline, task_priority } = payload;
+  const { title, description, deadline, priority } = payload;
 
-  const deadline = new Date(task_deadline);
-  const deadlineLabel = deadline.toLocaleDateString("en-ID", {
+  const deadlineDate = new Date(deadline);
+  const deadlineLabel = deadlineDate.toLocaleDateString("en-ID", {
     weekday: "short",
     year: "numeric",
     month: "short",
     day: "numeric",
   });
 
-  const priorityLabel = (p: number) => {
+  const priorityLabel = (p?: number) => {
+    if (p === undefined || p === null) return "Not set";
     if (p >= 4) return "High";
     if (p >= 2.5) return "Medium";
     return "Low";
   };
 
+  const priorityText = priorityLabel(priority);
+
   return (
     <div className="action-card__body">
       <div className="task-card__row">
         <span className="task-card__label">Task</span>
-        <span className="task-card__value task-card__value--name">{task_name}</span>
+        <span className="task-card__value task-card__value--name">{title}</span>
       </div>
-      {task_description && (
+      {description && (
         <div className="task-card__row">
           <span className="task-card__label">Notes</span>
-          <span className="task-card__value">{task_description}</span>
+          <span className="task-card__value">{description}</span>
         </div>
       )}
       <div className="task-card__row">
@@ -195,8 +193,8 @@ function TaskCard({ payload }: TaskCardProps) {
       </div>
       <div className="task-card__row">
         <span className="task-card__label">Priority</span>
-        <span className={`task-card__value task-card__priority task-card__priority--${priorityLabel(task_priority).toLowerCase()}`}>
-          {priorityLabel(task_priority)}
+        <span className={`task-card__value task-card__priority task-card__priority--${priorityText.toLowerCase().replace(" ", "-")}`}>
+          {priorityText}
         </span>
       </div>
     </div>
@@ -242,8 +240,8 @@ export function ActionCard({
     try {
       if (actionType === "CREATE_STUDY_PLAN") {
         // Call the schedule confirm endpoint with the proposed sessions
-        const res = await fetch("/api/ai/schedule", {
-          method: "PUT",
+        const res = await fetch("/api/study", {
+          method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             user_id: userId,
@@ -254,11 +252,26 @@ export function ActionCard({
       }
 
       if (actionType === "CREATE_TASK") {
-        // Call the task creation endpoint
+        const taskPayload = payload as TaskPayload;
+
+        // /api/task's createTaskSchema expects `description` as optional
+        // (string | undefined), not nullable — so a null value must be
+        // omitted entirely rather than sent as null.
+        const body: Record<string, unknown> = {
+          title: taskPayload.title,
+          deadline: taskPayload.deadline,
+        };
+        if (taskPayload.description) {
+          body.description = taskPayload.description;
+        }
+        if (taskPayload.priority !== undefined && taskPayload.priority !== null) {
+          body.priority = taskPayload.priority;
+        }
+
         const res = await fetch("/api/task", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: userId, ...(payload as TaskPayload) }),
+          body: JSON.stringify(body),
         });
         if (!res.ok) throw new Error("Failed to create task.");
       }

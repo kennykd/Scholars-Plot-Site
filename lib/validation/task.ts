@@ -19,7 +19,8 @@ export const createTaskSchema = z.object({
     .refine((date) => date >= new Date(),
       { message: 'Deadline must be in the future' },
     ),
-  status: z.enum(['Pending', 'In_Progress', 'Completed']),
+  status: z.enum(['Pending', 'In_Progress', 'Completed'])
+    .default('Pending'),
   priority: z.coerce.number()
     .min(0.5).max(5)
     .optional(),
@@ -34,6 +35,7 @@ export const updateTaskSchema = z.object({
   deadline: z.coerce.date()
     .optional(),
   status: z.enum(['Pending', 'In_Progress', 'Completed'])
+    .default('Pending')
     .optional(),
   description: z.string()
     .optional(),
