@@ -201,12 +201,8 @@ export default async function TaskDetailPage({
             </div>
           )}
           <div className="flex flex-wrap gap-3 pt-2">
-            {task.status === "Pending" && (
-              <TaskInProgressButton taskId={task.id} />
-            )}
-            {task.status !== "Completed" && (
-              <TaskCompleteButton taskId={task.id} />
-            )}
+            <TaskInProgressButton taskId={task.id} initialStatus={task.status} />
+            <TaskCompleteButton taskId={task.id} initialStatus={task.status} />
             <Button variant="outline" asChild className="font-mono text-xs">
               <Link href={`/tasks/${task.id}/edit`}>Edit</Link>
             </Button>

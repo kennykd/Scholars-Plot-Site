@@ -33,11 +33,19 @@ jest.mock("../../../components/tasks/task-delete-button", () => ({
 }));
 
 jest.mock("../../../components/tasks/task-complete-button", () => ({
-  TaskCompleteButton: () => <button type="button">Mark Complete</button>,
+  TaskCompleteButton: ({ initialStatus }) => (
+    <button type="button">
+      {initialStatus === "Completed" ? "Mark incomplete" : "Mark Complete"}
+    </button>
+  ),
 }));
 
 jest.mock("../../../components/tasks/task-in-progress-button", () => ({
-  TaskInProgressButton: () => <button type="button">Mark in progress</button>,
+  TaskInProgressButton: ({ initialStatus }) => (
+    <button type="button">
+      {initialStatus === "In_Progress" ? "Mark incomplete from progress" : "Mark in progress"}
+    </button>
+  ),
 }));
 
 jest.mock("../../../components/tasks/task-attachment-delete-button", () => ({
@@ -100,5 +108,45 @@ describe("TaskDetailPage study-session actions", () => {
       "href",
       "https://example.com/rubric.pdf",
     );
+  });
+
+  it("keeps incomplete and in-progress actions available after completion", async () => {
+    serializeTask.mockReturnValue({
+      id: 42,
+      projectId: null,
+      title: "Physics Final",
+      description: "Review mechanics",
+      deadline: "2099-03-31T23:59:00.000Z",
+      priority: 4,
+      status: "Completed",
+      createdAt: "2099-03-01T00:00:00.000Z",
+      completedAt: "2099-03-15T00:00:00.000Z",
+      attachments: [],
+    });
+
+    render(await TaskDetailPage({ params: Promise.resolve({ id: "42" }) }));
+
+    expect(screen.getByRole("button", { name: /mark incomplete/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /mark in progress/i })).toBeInTheDocument();
+  });
+
+  it("keeps the incomplete toggle available while a task is in progress", async () => {
+    serializeTask.mockReturnValue({
+      id: 42,
+      projectId: null,
+      title: "Physics Final",
+      description: "Review mechanics",
+      deadline: "2099-03-31T23:59:00.000Z",
+      priority: 4,
+      status: "In_Progress",
+      createdAt: "2099-03-01T00:00:00.000Z",
+      completedAt: null,
+      attachments: [],
+    });
+
+    render(await TaskDetailPage({ params: Promise.resolve({ id: "42" }) }));
+
+    expect(screen.getByRole("button", { name: /mark incomplete from progress/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /mark complete/i })).toBeInTheDocument();
   });
 });
