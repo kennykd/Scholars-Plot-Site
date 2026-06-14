@@ -255,6 +255,79 @@ describe("aiDraftService", () => {
     expect(geminiFlash.generateContent).not.toHaveBeenCalled();
   });
 
+  it("turns a Gemini prompt-injection safety signal into a draft error", async () => {
+    (geminiFlash.generateContent as jest.Mock).mockResolvedValue({
+      text: JSON.stringify({
+        safetyCode: "PROMPT_INJECTION_DETECTED",
+        safetyMessage:
+          "The attached material asked the model to ignore its instructions.",
+        title: "Blocked draft",
+        description: "Do not show this as a suggestion.",
+        priority: 3,
+        reasoning: "This response should become a route error.",
+      }),
+    });
+
+    await expect(
+      generateTaskDraft({
+        title: "Lab report",
+        description: "finish report",
+        deadline: new Date("2099-03-20T16:00:00.000Z"),
+      }),
+    ).rejects.toMatchObject({
+      code: "PROMPT_INJECTION_DETECTED",
+      message: AI_DRAFT_ERROR_MESSAGES.PROMPT_INJECTION_DETECTED,
+    });
+  });
+
+  it("turns a Gemini study-track safety signal into a draft error without returning tracks", async () => {
+    (geminiFlash.generateContent as jest.Mock).mockResolvedValue({
+      text: JSON.stringify({
+        safetyCode: "PROMPT_INJECTION_DETECTED",
+        safetyMessage:
+          "The attachment tried to override the study planning rules.",
+        tracks: [
+          {
+            title: "Blocked track",
+            start_date: "2099-03-21",
+            repeat: "none",
+            time: "15:30",
+            focus_minutes: 30,
+            break_minutes: 5,
+            total_pomodoros: 2,
+            notes: "Do not show this as a study plan.",
+            description_as_checklist: true,
+          },
+        ],
+        warnings: [],
+        reasoning: "This response should become a route error.",
+      }),
+    });
+
+    await expect(
+      generateStudyTrackDraft({
+        task: {
+          id: 42,
+          title: "Physics Final",
+          description: "Mechanics",
+          deadline: new Date("2099-03-31T23:59:00.000Z"),
+          priority: 4,
+        },
+        preferences: {
+          focus_minutes: 25,
+          break_minutes: 5,
+          total_pomodoros: 2,
+          total_minutes: 60,
+        },
+        availability: [],
+        behaviorProfile: null,
+      }),
+    ).rejects.toMatchObject({
+      code: "PROMPT_INJECTION_DETECTED",
+      message: AI_DRAFT_ERROR_MESSAGES.PROMPT_INJECTION_DETECTED,
+    });
+  });
+
   it("returns a specific timeout error when Gemini takes too long", async () => {
     jest.useFakeTimers();
     (geminiFlash.generateContent as jest.Mock).mockImplementation(

@@ -308,5 +308,7 @@ describe("TaskForm", () => {
         "AI suggestions were blocked because the task text or attachment appears to contain instructions that try to override the AI rules. Please remove those instructions and try again.",
       );
     });
+    expect(screen.queryByText("AI DRAFT")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /apply suggestions/i })).not.toBeInTheDocument();
   });
 });

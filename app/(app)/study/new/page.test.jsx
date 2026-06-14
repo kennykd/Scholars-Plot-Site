@@ -408,5 +408,7 @@ describe("StudyNewPage", () => {
         "AI suggestions took too long to generate. Try again with fewer or smaller attachments.",
       );
     });
+    expect(screen.queryByRole("button", { name: /apply study plan/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/AI Mechanics Review/i)).not.toBeInTheDocument();
   });
 });
