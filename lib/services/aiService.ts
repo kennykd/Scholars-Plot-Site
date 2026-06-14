@@ -28,6 +28,7 @@ import {
   saveAdaptedWeights,
   getAllActiveUserIds,
 } from "@/lib/services/weightService";
+import prisma from "@/lib/prisma";
 
 export async function runTaskAnalysis(
   task_id: number,

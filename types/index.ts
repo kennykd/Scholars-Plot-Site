@@ -90,39 +90,51 @@ export interface UpdateStudySessionPayload {
   checklist_json?: any;
 }
 
+export interface AnalyticsInput {
+  tasks_completed_early: number;
+  tasks_completed_on_time: number;
+  tasks_completed_late: number;
+  tasks_pending: number;
+  total_focus_minutes: number;
+  total_tasks_completed: number;
+  streak: number;
+  streak_activity?: boolean;
+}
+
+export interface DecryptedAnalytics {
+  analytics_id: number;
+  tasks_completed_early: number;
+  tasks_completed_on_time: number;
+  tasks_completed_late: number;
+  tasks_pending: number;
+  total_focus_minutes: number;
+  total_tasks_completed: number;
+  streak: number;
+  updated_at: Date;
+}
+
+export interface ProductivityDay {
+  day: string;
+  tasksCompleted: number;
+  sessionsCompleted: number;
+}
+
+export interface TimeByTask {
+  taskName: string;
+  minutes: number;
+}
+
 export interface AnalyticsData {
-  /** Task completion metrics categorized by timing */
   completionStats: {
-    /** Number of tasks completed before deadline */
     early: number;
-    /** Number of tasks completed on time */
     onTime: number;
-    /** Number of tasks completed after deadline */
     late: number;
-    /** Number of tasks still pending */
     pending: number;
   };
-  /** Time allocation breakdown by subject/category */
-  timeBySubject: {
-    /** Subject or category name */
-    subject: string;
-    /** Hours spent on this subject */
-    hours: number;
-  }[];
-  /** Productivity metrics by day of week */
-  productivityByDay: {
-    /** Day of the week (e.g., "Monday", "Tuesday") */
-    day: string;
-    /** Productivity score for the day */
-    score: number;
-    /** Number of tasks completed on that day */
-    tasksCompleted: number;
-  }[];
-  /** Number of consecutive productive days */
+  timeByTask: TimeByTask[];
+  productivityByDay: ProductivityDay[];
   streak: number;
-  /** Total Pomodoro minutes completed */
   totalFocusMinutes: number;
-  /** Total number of tasks completed */
   totalTasksCompleted: number;
 }
 

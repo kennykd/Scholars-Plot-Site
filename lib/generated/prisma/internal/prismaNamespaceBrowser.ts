@@ -289,13 +289,16 @@ export type ChatMessageScalarFieldEnum = (typeof ChatMessageScalarFieldEnum)[key
 
 export const AnalyticsScalarFieldEnum = {
   analytics_id: 'analytics_id',
+  user_id: 'user_id',
   tasks_completed_early: 'tasks_completed_early',
   tasks_completed_on_time: 'tasks_completed_on_time',
   tasks_completed_late: 'tasks_completed_late',
   tasks_pending: 'tasks_pending',
-  total_focus_minutes: 'total_focus_minutes',
   total_tasks_completed: 'total_tasks_completed',
+  total_focus_minutes: 'total_focus_minutes',
   streak: 'streak',
+  last_completion_date: 'last_completion_date',
+  created_at: 'created_at',
   updated_at: 'updated_at'
 } as const
 

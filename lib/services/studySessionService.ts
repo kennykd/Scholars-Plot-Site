@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import { Prisma } from "@/lib/generated/prisma/client";
 import type { StudySession } from "@/types";
+import { getAnalyticsByUserId, updateAnalyticsByUserId } from "@/lib/services/analyticService";
 
 type StudySessionRow = Prisma.StudySessionGetPayload<{
   include: {
@@ -148,6 +149,10 @@ export async function updateStudySessionForMember(studySessionId: number, userId
 
   if (!membership) return { notFound: true };
 
+  // When the parsed data status is changing to completed from a non-completed status, 
+  // it means the user is completing the study session.
+  const isCompleting = parsedData.status === "completed" && membership.status !== "completed";
+
   const userFields = ['status', 'started_at', 'current_time', 'completed_at', 'actual_duration'];
   const userUpdates = Object.fromEntries(Object.entries(parsedData).filter(([key]) => userFields.includes(key)));
   const sessionUpdates = Object.fromEntries(Object.entries(parsedData).filter(([key]) => !userFields.includes(key)));
@@ -177,6 +182,27 @@ export async function updateStudySessionForMember(studySessionId: number, userId
       where: { study_session_id: studySessionId },
       data,
     });
+  }
+
+  // When the user is 
+  if (isCompleting) {
+    let focusSecondsGiven = Number(parsedData.actual_duration);
+
+    if (!isNaN(focusSecondsGiven) && focusSecondsGiven > 0) {
+      const focusedMinutesGiven = Math.round(focusSecondsGiven / 60);
+
+      if (focusedMinutesGiven > 0) {
+        const currentAnalytics = await getAnalyticsByUserId(userId);
+
+        if (currentAnalytics) {
+          // Access totalFocusMinutes from the structured AnalyticsData view object
+          await updateAnalyticsByUserId(userId, {
+            total_focus_minutes: currentAnalytics.totalFocusMinutes + focusedMinutesGiven,
+            streak_activity: true, // signal the streak activity when study session is completed
+          });
+        }
+      }
+    }
   }
 
   return { notFound: false, updatedStudySession };

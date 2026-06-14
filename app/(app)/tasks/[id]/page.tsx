@@ -206,9 +206,7 @@ export default async function TaskDetailPage({
               </ul>
             </div>
           )}
-          {task.status !== "Completed" && (
-            <TaskCompleteButton taskId={task.id} />
-          )}
+          <TaskCompleteButton taskId={task.id} initialStatus={task.status} />
           <div className="flex gap-3 pt-2">
             <Button
               asChild

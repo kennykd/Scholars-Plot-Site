@@ -623,7 +623,6 @@ import {
 import { Suggestion, Suggestions } from "./suggestion";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
 type ActionType = "CREATE_STUDY_PLAN" | "CREATE_TASK" | "UPDATE_SCHEDULE";
 type ActionStatus = "none" | "pending" | "confirmed" | "dismissed";
 
@@ -642,7 +641,6 @@ interface MessageType {
 }
 
 // ─── Initial state ────────────────────────────────────────────────────────────
-
 const initialMessages: MessageType[] = [
   {
     key: nanoid(),
@@ -652,9 +650,6 @@ const initialMessages: MessageType[] = [
   },
 ];
 
-// Suggestions aligned with the AI features actually wired up in the backend:
-// the schedule optimizer (CREATE_STUDY_PLAN), task creation (CREATE_TASK),
-// the priority formula / scored task list, and the overload detector.
 const suggestions = [
   "What should I focus on today?",
   "Make me a study plan for this week",
@@ -665,7 +660,6 @@ const suggestions = [
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
-
 export function ChatbotDemo() {
   const { user } = useAuth();
   const [text, setText] = useState<string>("");
@@ -677,11 +671,13 @@ export function ChatbotDemo() {
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
+      <div className="flex items-center justify-center h-full w-full text-sm font-mono text-muted-foreground p-6 text-center">
         Please log in to use the chat assistant.
       </div>
     );
   }
+
+  const userId = user.id;
 
   async function sendMessage(content: string) {
     const trimmed = content.trim();
@@ -702,18 +698,15 @@ export function ChatbotDemo() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user_id: user.id,
+          user_id: userId,
           message: trimmed,
           conversation_id: conversationId ?? undefined,
         }),
       });
 
-      if (!res.ok) {
-        throw new Error("Chat request failed");
-      }
+      if (!res.ok) throw new Error("Chat request failed");
 
       const data = await res.json();
-
       setConversationId(data.conversation_id);
 
       const assistantMessage: MessageType = {
@@ -745,25 +738,32 @@ export function ChatbotDemo() {
   };
 
   return (
-    <div className="fixed inset-0 flex flex-col overflow-hidden">
-      <Conversation className="min-h-0 flex-1 border-b">
-        <ConversationContent>
+    /* FIXED: Swapped 'fixed inset-0' for 'h-full w-full relative' 
+      This forces the layout to adapt fluidly to whatever size its wrapper container is.
+    */
+    <div className="h-full w-full relative flex flex-col overflow-hidden bg-transparent">
+      
+      {/* Scrollable Conversation Stream */}
+      <Conversation className="min-h-0 flex-1 border-b border-border/40">
+        <ConversationContent className="p-4 space-y-4">
           {messages.map((message) => (
             <Message from={message.from} key={message.key}>
-              <div>
+              <div className="space-y-2">
                 <MessageContent>
                   <MessageResponse>{message.content}</MessageResponse>
                 </MessageContent>
 
                 {message.action && message.messageId && (
-                  <ActionCard
-                    messageId={message.messageId}
-                    conversationId={conversationId ?? 0}
-                    userId={user.id}
-                    actionType={message.action.type}
-                    payload={message.action.payload}
-                    initialStatus={message.actionStatus ?? "pending"}
-                  />
+                  <div className="mt-2 max-w-sm">
+                    <ActionCard
+                      messageId={message.messageId}
+                      conversationId={conversationId ?? 0}
+                      userId={userId}
+                      actionType={message.action.type}
+                      payload={message.action.payload}
+                      initialStatus={message.actionStatus ?? "pending"}
+                    />
+                  </div>
                 )}
               </div>
             </Message>
@@ -772,30 +772,34 @@ export function ChatbotDemo() {
         <ConversationScrollButton />
       </Conversation>
 
-      <div className="shrink-0 space-y-4 pt-4">
-        <Suggestions className="px-4">
+      {/* Input Tray & Tactical Quick Actions Container */}
+      <div className="shrink-0 space-y-3 pt-3 bg-card/40 backdrop-blur-sm">
+        <Suggestions className="px-3 gap-1.5 flex flex-wrap max-h-28 overflow-y-auto custom-scrollbar">
           {suggestions.map((suggestion) => (
             <Suggestion
               key={suggestion}
               onClick={() => handleSuggestionClick(suggestion)}
               suggestion={suggestion}
+              className="text-xs py-1 px-2.5 bg-background/50 border border-border/60 hover:bg-accent/10 hover:text-accent transition-colors"
             />
           ))}
         </Suggestions>
 
-        <div className="w-full px-4 pb-4">
-          <PromptInput onSubmit={handleSubmit}>
+        <div className="w-full px-3 pb-3">
+          <PromptInput onSubmit={handleSubmit} className="border border-border/80 rounded-xl bg-background/60 shadow-sm focus-within:ring-1 focus-within:ring-ring">
             <PromptInputBody>
               <PromptInputTextarea
                 onChange={(event) => setText(event.target.value)}
                 placeholder="Ask about your tasks, schedule, or workload..."
                 value={text}
+                className="text-sm min-h-10 resize-none bg-transparent"
               />
             </PromptInputBody>
-            <PromptInputFooter>
+            <PromptInputFooter className="pt-1 flex items-center justify-end">
               <PromptInputSubmit
                 disabled={!text.trim() || status === "submitted"}
                 status={status}
+                className="h-8 px-3 bg-accent text-accent-foreground rounded-lg transition-transform active:scale-95 text-xs font-semibold"
               />
             </PromptInputFooter>
           </PromptInput>

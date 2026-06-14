@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -50,6 +50,9 @@ const valueToMs = (valueUnit: StudyReminderValueUnit, value: number) => {
 
 export default function StudyNewPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Get the taskId if the user is coming from a task
+  const taskId = searchParams.get("taskId")
 
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
@@ -169,23 +172,25 @@ export default function StudyNewPage() {
       total_minutes: totalMinutesComputed,
       checklist_json: descriptionAsChecklist
         ? notes
-            .split("\n")
-            .map((line) => line.trim())
-            .filter(Boolean)
-            .map((text) => ({
-              id: crypto.randomUUID(),
-              text,
-              completed: false,
-            }))
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .map((text) => ({
+            id: crypto.randomUUID(),
+            text,
+            completed: false,
+          }))
         : null,
       study_session_scheduled_at: sessionScheduledAt.toISOString(),
       attachment_names: attachments.length > 0 ? attachments : undefined,
       reminders: reminderEnabled
         ? normalizedReminders.map((reminder) =>
-            reminder.atStart ? 0 : Math.max(1, Number(reminder.value) || 1),
-          )
+          reminder.atStart ? 0 : Math.max(1, Number(reminder.value) || 1),
+        )
         : [],
       reminder_enabled: reminderEnabled,
+      // Give the task ID if it exist (user comes from task)
+      task_id: taskId ? Number(taskId) : null,
     };
 
     try {
@@ -438,12 +443,12 @@ export default function StudyNewPage() {
                     {reminders.map((reminder, index) => {
                       const reminderTime = scheduledAt
                         ? new Date(
-                            scheduledAt.getTime() -
-                              valueToMs(
-                                reminder.unit,
-                                reminder.atStart ? 0 : reminder.value,
-                              ),
-                          )
+                          scheduledAt.getTime() -
+                          valueToMs(
+                            reminder.unit,
+                            reminder.atStart ? 0 : reminder.value,
+                          ),
+                        )
                         : null;
                       const isAtStart = reminder.atStart === true;
 

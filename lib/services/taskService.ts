@@ -4,6 +4,7 @@ import type { CreateTaskInput, ReminderOption, UpdateTaskInput } from '@/lib/val
 import type { Attachment, Task, TaskStatus } from '@/types';
 import { TaskAttachment } from '@/lib/ai/taskAnalyzer';
 import { incrementTasksSinceLast, shouldRunAdapter } from "@/lib/services/weightService";
+import { getAnalyticsByUserId, updateAnalyticsByUserId } from "@/lib/services/analyticService";
 
 type ReminderInterval = { interval_type: 'days' | 'weeks' | 'months'; interval_value: number };
 
@@ -90,7 +91,6 @@ export async function requireTaskAccess(taskId: number, userId: string) {
 // ─── User-scoped CRUD ────────────────────────────────────────────────────────
 
 export async function getTasks(userId: string) {
-  // 7-day overdue cutoff: hide uncompleted tasks whose deadline is older than 7 days.
   const overdueCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   return prisma.task.findMany({
     where: {
@@ -142,7 +142,7 @@ export async function getStudySessionsForTask(taskId: number, userId: string) {
 
 export async function createTask(userId: string, data: CreateTaskInput) {
   const reminderInterval = reminderOptionToInterval(data.reminder);
-  return prisma.task.create({
+  const task = await prisma.task.create({
     data: {
       task_name: data.title,
       task_description: data.description,
@@ -153,17 +153,26 @@ export async function createTask(userId: string, data: CreateTaskInput) {
       task_users: { create: { user_id: userId } },
       ...(reminderInterval
         ? {
-            task_reminders: {
-              create: {
-                interval_type: reminderInterval.interval_type,
-                interval_value: reminderInterval.interval_value,
-                remind_at: new Date(Date.now() + intervalToMs(reminderInterval)),
-              },
+          task_reminders: {
+            create: {
+              interval_type: reminderInterval.interval_type,
+              interval_value: reminderInterval.interval_value,
+              remind_at: new Date(Date.now() + intervalToMs(reminderInterval)),
             },
-          }
+          },
+        }
         : {}),
     },
   });
+
+  const currentAnalytics = await getAnalyticsByUserId(userId);
+  if (currentAnalytics) {
+    await updateAnalyticsByUserId(userId, {
+      tasks_pending: currentAnalytics.completionStats.pending + 1,
+    });
+  }
+
+  return task;
 }
 
 export async function updateTaskById(
@@ -172,7 +181,6 @@ export async function updateTaskById(
   data: UpdateTaskInput,
 ) {
   const existing = await requireTaskAccess(taskId, userId);
-
   const statusChanging = data.status !== undefined && data.status !== existing.task_status;
 
   const updated = await prisma.task.update({
@@ -189,20 +197,93 @@ export async function updateTaskById(
     },
   });
 
-  await replaceTaskReminder(taskId, data.reminder);
+  if (statusChanging) {
+    const currentAnalytics = await getAnalyticsByUserId(userId);
 
+    if (currentAnalytics) {
+      let pendingDelta = 0;
+      let completedDelta = 0;
+      let earlyDelta = 0;
+      let onTimeDelta = 0;
+      let lateDelta = 0;
+
+      if (data.status === "Completed") {
+        pendingDelta = -1;
+        completedDelta = 1;
+
+        const now = new Date();
+        const deadline = new Date(existing.task_deadline);
+        if (now < deadline) earlyDelta = 1;
+        else if (now > deadline) lateDelta = 1;
+        else onTimeDelta = 1;
+      }
+      else if (existing.task_status === "Completed") {
+        pendingDelta = 1;
+        completedDelta = -1;
+
+        const completedAt = existing.task_completed_at ? new Date(existing.task_completed_at) : new Date();
+        const deadline = new Date(existing.task_deadline);
+        if (completedAt < deadline) earlyDelta = -1;
+        else if (completedAt > deadline) lateDelta = -1;
+        else onTimeDelta = -1;
+      }
+
+      await updateAnalyticsByUserId(userId, {
+        tasks_pending: Math.max(0, currentAnalytics.completionStats.pending + pendingDelta),
+        total_tasks_completed: Math.max(0, currentAnalytics.totalTasksCompleted + completedDelta),
+        tasks_completed_early: Math.max(0, currentAnalytics.completionStats.early + earlyDelta),
+        tasks_completed_on_time: Math.max(0, currentAnalytics.completionStats.onTime + onTimeDelta),
+        tasks_completed_late: Math.max(0, currentAnalytics.completionStats.late + lateDelta),
+      });
+    }
+  }
+
+  await replaceTaskReminder(taskId, data.reminder);
   return updated;
 }
 
 export async function deleteTaskById(taskId: number, userId: string) {
-  await requireTaskAccess(taskId, userId);
+  const taskToDelete = await requireTaskAccess(taskId, userId);
 
   await prisma.task.delete({
     where: { task_id: taskId },
   });
+
+  const currentAnalytics = await getAnalyticsByUserId(userId);
+  if (currentAnalytics) {
+    if (taskToDelete.task_status === "Completed") {
+      const completedAt = taskToDelete.task_completed_at ? new Date(taskToDelete.task_completed_at) : new Date();
+      const deadline = new Date(taskToDelete.task_deadline);
+
+      let earlyDelta = 0;
+      let onTimeDelta = 0;
+      let lateDelta = 0;
+
+      if (completedAt < deadline) earlyDelta = -1;
+      else if (completedAt > deadline) lateDelta = -1;
+      else onTimeDelta = -1;
+
+      await updateAnalyticsByUserId(userId, {
+        total_tasks_completed: Math.max(0, currentAnalytics.totalTasksCompleted - 1),
+        tasks_completed_early: Math.max(0, currentAnalytics.completionStats.early + earlyDelta),
+        tasks_completed_on_time: Math.max(0, currentAnalytics.completionStats.onTime + onTimeDelta),
+        tasks_completed_late: Math.max(0, currentAnalytics.completionStats.late + lateDelta),
+      });
+    } else {
+      await updateAnalyticsByUserId(userId, {
+        tasks_pending: Math.max(0, currentAnalytics.completionStats.pending - 1),
+      });
+    }
+  }
 }
 
 export async function completeTask(task_id: number, user_id: string) {
+  const existingTask = await prisma.task.findUnique({
+    where: { task_id },
+  });
+
+  const isAlreadyCompleted = existingTask?.task_status === "Completed";
+
   const task = await prisma.task.update({
     where: { task_id },
     data: {
@@ -211,14 +292,38 @@ export async function completeTask(task_id: number, user_id: string) {
     },
   });
 
-  // Increment counter and check if adapter should run
+  if (existingTask && !isAlreadyCompleted) {
+    const currentAnalytics = await getAnalyticsByUserId(user_id);
+    if (currentAnalytics) {
+      const now = new Date();
+      const deadline = new Date(existingTask.task_deadline);
+
+      let earlyDelta = 0;
+      let onTimeDelta = 0;
+      let lateDelta = 0;
+
+      if (now < deadline) earlyDelta = 1;
+      else if (now > deadline) lateDelta = 1;
+      else onTimeDelta = 1;
+
+      await updateAnalyticsByUserId(user_id, {
+        tasks_pending: Math.max(0, currentAnalytics.completionStats.pending - 1),
+        total_tasks_completed: currentAnalytics.totalTasksCompleted + 1,
+        tasks_completed_early: Math.max(0, currentAnalytics.completionStats.early + earlyDelta),
+        tasks_completed_on_time: Math.max(0, currentAnalytics.completionStats.onTime + onTimeDelta),
+        tasks_completed_late: Math.max(0, currentAnalytics.completionStats.late + lateDelta),
+        streak_activity: true, // signal the streak activity when task is completed
+      });
+    }
+  }
+
   await incrementTasksSinceLast(user_id);
   const shouldAdapt = await shouldRunAdapter(user_id);
 
   return { task, shouldAdapt };
 }
 
-// ─── AI helpers (used by lib/services/aiService.ts) ──────────────────────────
+// ─── AI helpers ──────────────────────────────────────────────────────────────
 
 export async function getTaskWithProject(task_id: number) {
   return prisma.task.findUnique({
