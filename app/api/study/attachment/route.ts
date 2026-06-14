@@ -8,6 +8,8 @@ import {
   linkAttachmentToStudySessions,
   StudySessionServiceError,
 } from "@/lib/services/studySessionService";
+import { ensureUserRecordForSession } from "@/lib/services/userService";
+import { foreignKeyRepairMessage, isPrismaForeignKeyError } from "@/lib/services/prismaErrors";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
@@ -60,6 +62,8 @@ export async function POST(request: Request) {
       );
     }
 
+    await ensureUserRecordForSession(session);
+
     const buffer = Buffer.from(await file.arrayBuffer());
     const attachment = await addStudyAttachmentForUser(session.id, {
       name: file.name,
@@ -81,6 +85,12 @@ export async function POST(request: Request) {
     if (error instanceof AttachmentServiceError || error instanceof StudySessionServiceError) {
       return NextResponse.json({ message: error.message }, { status: error.status });
     }
-    return NextResponse.json({ message: "Error uploading attachment", error }, { status: 500 });
+    if (isPrismaForeignKeyError(error)) {
+      console.error("[api/study/attachment] Foreign key error while uploading attachment:", error);
+      return NextResponse.json({ message: foreignKeyRepairMessage() }, { status: 409 });
+    }
+
+    console.error("[api/study/attachment] Error uploading attachment:", error);
+    return NextResponse.json({ message: "Error uploading attachment" }, { status: 500 });
   }
 }

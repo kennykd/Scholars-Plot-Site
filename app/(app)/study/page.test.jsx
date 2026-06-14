@@ -122,7 +122,7 @@ describe("StudyPage client sections", () => {
     expect(screen.getByText("Planned Session 10")).toBeInTheDocument();
   });
 
-  it("shows upcoming reminders inline with the task-style menu", () => {
+  it("does not render an upcoming reminders section", () => {
     renderStudyPage([
       {
         id: "12",
@@ -141,7 +141,7 @@ describe("StudyPage client sections", () => {
       },
     ]);
 
-    expect(screen.getByText(/Upcoming Reminders/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Upcoming Reminders/i)).not.toBeInTheDocument();
     expect(screen.getByText("Reminder Session")).toBeInTheDocument();
   });
 

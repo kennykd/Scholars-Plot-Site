@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { createStudySchema } from '../../../lib/validation/study';
 import { getStudySessionsForUser, createStudySessionForUser } from '@/lib/services/studySessionService';
 import { getSession } from '@/lib/firebase/auth';
+import { ensureUserRecordForSession } from '@/lib/services/userService';
+import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services/prismaErrors';
 
 /**
  * @swagger
@@ -195,11 +197,11 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const session = await getSession();
-    
+
     if(!session) {
       return NextResponse.json({ message: "User is not authenticated!" }, { status: 401 })
     }
-    const userId = session.id; 
+    const userId = session.id;
 
     let body: unknown;
 
@@ -222,10 +224,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'No fields provided for update' }, { status: 400 });
     }
 
+    await ensureUserRecordForSession(session);
+
     const studySession = await createStudySessionForUser(userId, parsed.data);
 
     return NextResponse.json({ message: 'Study session created successfully', studySession }, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ message: 'Error creating study session', error }, { status: 500 });
+    if (isPrismaForeignKeyError(error)) {
+      console.error('[api/study] Foreign key error while creating study session:', error);
+      return NextResponse.json({ message: foreignKeyRepairMessage() }, { status: 409 });
+    }
+
+    console.error('[api/study] Error creating study session:', error);
+    return NextResponse.json({ message: 'Error creating study session' }, { status: 500 });
   }
 }

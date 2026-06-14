@@ -44,6 +44,7 @@ export type UserMinAggregateOutputType = {
   push_subscription: string | null
   user_last_login: Date | null
   user_created_at: Date | null
+  ai_profile_updated_at: Date | null
 }
 
 export type UserMaxAggregateOutputType = {
@@ -56,6 +57,7 @@ export type UserMaxAggregateOutputType = {
   push_subscription: string | null
   user_last_login: Date | null
   user_created_at: Date | null
+  ai_profile_updated_at: Date | null
 }
 
 export type UserCountAggregateOutputType = {
@@ -68,6 +70,8 @@ export type UserCountAggregateOutputType = {
   push_subscription: number
   user_last_login: number
   user_created_at: number
+  ai_behavior_profile: number
+  ai_profile_updated_at: number
   _all: number
 }
 
@@ -90,6 +94,7 @@ export type UserMinAggregateInputType = {
   push_subscription?: true
   user_last_login?: true
   user_created_at?: true
+  ai_profile_updated_at?: true
 }
 
 export type UserMaxAggregateInputType = {
@@ -102,6 +107,7 @@ export type UserMaxAggregateInputType = {
   push_subscription?: true
   user_last_login?: true
   user_created_at?: true
+  ai_profile_updated_at?: true
 }
 
 export type UserCountAggregateInputType = {
@@ -114,6 +120,8 @@ export type UserCountAggregateInputType = {
   push_subscription?: true
   user_last_login?: true
   user_created_at?: true
+  ai_behavior_profile?: true
+  ai_profile_updated_at?: true
   _all?: true
 }
 
@@ -213,6 +221,8 @@ export type UserGroupByOutputType = {
   push_subscription: string | null
   user_last_login: Date
   user_created_at: Date
+  ai_behavior_profile: runtime.JsonValue | null
+  ai_profile_updated_at: Date | null
   _count: UserCountAggregateOutputType | null
   _avg: UserAvgAggregateOutputType | null
   _sum: UserSumAggregateOutputType | null
@@ -248,10 +258,18 @@ export type UserWhereInput = {
   push_subscription?: Prisma.StringNullableFilter<"User"> | string | null
   user_last_login?: Prisma.DateTimeFilter<"User"> | Date | string
   user_created_at?: Prisma.DateTimeFilter<"User"> | Date | string
+  ai_behavior_profile?: Prisma.JsonNullableFilter<"User">
+  ai_profile_updated_at?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
   analytics?: Prisma.XOR<Prisma.AnalyticsNullableScalarRelationFilter, Prisma.AnalyticsWhereInput> | null
   project_members?: Prisma.ProjectUserListRelationFilter
   task_users?: Prisma.TaskUserListRelationFilter
   study_session_user?: Prisma.StudySessionUserListRelationFilter
+  user_formula_weights?: Prisma.XOR<Prisma.UserFormulaWeightsNullableScalarRelationFilter, Prisma.UserFormulaWeightsWhereInput> | null
+  user_availability?: Prisma.UserAvailabilityListRelationFilter
+  overload_warnings?: Prisma.OverloadWarningListRelationFilter
+  chat_conversations?: Prisma.ChatConversationListRelationFilter
+  attachments?: Prisma.AttachmentListRelationFilter
+  study_session_attachments?: Prisma.StudySessionAttachmentListRelationFilter
 }
 
 export type UserOrderByWithRelationInput = {
@@ -264,10 +282,18 @@ export type UserOrderByWithRelationInput = {
   push_subscription?: Prisma.SortOrderInput | Prisma.SortOrder
   user_last_login?: Prisma.SortOrder
   user_created_at?: Prisma.SortOrder
+  ai_behavior_profile?: Prisma.SortOrderInput | Prisma.SortOrder
+  ai_profile_updated_at?: Prisma.SortOrderInput | Prisma.SortOrder
   analytics?: Prisma.AnalyticsOrderByWithRelationInput
   project_members?: Prisma.ProjectUserOrderByRelationAggregateInput
   task_users?: Prisma.TaskUserOrderByRelationAggregateInput
   study_session_user?: Prisma.StudySessionUserOrderByRelationAggregateInput
+  user_formula_weights?: Prisma.UserFormulaWeightsOrderByWithRelationInput
+  user_availability?: Prisma.UserAvailabilityOrderByRelationAggregateInput
+  overload_warnings?: Prisma.OverloadWarningOrderByRelationAggregateInput
+  chat_conversations?: Prisma.ChatConversationOrderByRelationAggregateInput
+  attachments?: Prisma.AttachmentOrderByRelationAggregateInput
+  study_session_attachments?: Prisma.StudySessionAttachmentOrderByRelationAggregateInput
 }
 
 export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -283,10 +309,18 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   push_subscription?: Prisma.StringNullableFilter<"User"> | string | null
   user_last_login?: Prisma.DateTimeFilter<"User"> | Date | string
   user_created_at?: Prisma.DateTimeFilter<"User"> | Date | string
+  ai_behavior_profile?: Prisma.JsonNullableFilter<"User">
+  ai_profile_updated_at?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
   analytics?: Prisma.XOR<Prisma.AnalyticsNullableScalarRelationFilter, Prisma.AnalyticsWhereInput> | null
   project_members?: Prisma.ProjectUserListRelationFilter
   task_users?: Prisma.TaskUserListRelationFilter
   study_session_user?: Prisma.StudySessionUserListRelationFilter
+  user_formula_weights?: Prisma.XOR<Prisma.UserFormulaWeightsNullableScalarRelationFilter, Prisma.UserFormulaWeightsWhereInput> | null
+  user_availability?: Prisma.UserAvailabilityListRelationFilter
+  overload_warnings?: Prisma.OverloadWarningListRelationFilter
+  chat_conversations?: Prisma.ChatConversationListRelationFilter
+  attachments?: Prisma.AttachmentListRelationFilter
+  study_session_attachments?: Prisma.StudySessionAttachmentListRelationFilter
 }, "user_id" | "analytics_id" | "user_email">
 
 export type UserOrderByWithAggregationInput = {
@@ -299,6 +333,8 @@ export type UserOrderByWithAggregationInput = {
   push_subscription?: Prisma.SortOrderInput | Prisma.SortOrder
   user_last_login?: Prisma.SortOrder
   user_created_at?: Prisma.SortOrder
+  ai_behavior_profile?: Prisma.SortOrderInput | Prisma.SortOrder
+  ai_profile_updated_at?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.UserCountOrderByAggregateInput
   _avg?: Prisma.UserAvgOrderByAggregateInput
   _max?: Prisma.UserMaxOrderByAggregateInput
@@ -319,6 +355,8 @@ export type UserScalarWhereWithAggregatesInput = {
   push_subscription?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
   user_last_login?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
   user_created_at?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
+  ai_behavior_profile?: Prisma.JsonNullableWithAggregatesFilter<"User">
+  ai_profile_updated_at?: Prisma.DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
 }
 
 export type UserCreateInput = {
@@ -330,10 +368,18 @@ export type UserCreateInput = {
   push_subscription?: string | null
   user_last_login: Date | string
   user_created_at?: Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Date | string | null
   analytics?: Prisma.AnalyticsCreateNestedOneWithoutUserInput
   project_members?: Prisma.ProjectUserCreateNestedManyWithoutUserInput
   task_users?: Prisma.TaskUserCreateNestedManyWithoutUserInput
   study_session_user?: Prisma.StudySessionUserCreateNestedManyWithoutUserInput
+  user_formula_weights?: Prisma.UserFormulaWeightsCreateNestedOneWithoutUserInput
+  user_availability?: Prisma.UserAvailabilityCreateNestedManyWithoutUserInput
+  overload_warnings?: Prisma.OverloadWarningCreateNestedManyWithoutUserInput
+  chat_conversations?: Prisma.ChatConversationCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateInput = {
@@ -346,9 +392,17 @@ export type UserUncheckedCreateInput = {
   push_subscription?: string | null
   user_last_login: Date | string
   user_created_at?: Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Date | string | null
   project_members?: Prisma.ProjectUserUncheckedCreateNestedManyWithoutUserInput
   task_users?: Prisma.TaskUserUncheckedCreateNestedManyWithoutUserInput
   study_session_user?: Prisma.StudySessionUserUncheckedCreateNestedManyWithoutUserInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUncheckedCreateNestedOneWithoutUserInput
+  user_availability?: Prisma.UserAvailabilityUncheckedCreateNestedManyWithoutUserInput
+  overload_warnings?: Prisma.OverloadWarningUncheckedCreateNestedManyWithoutUserInput
+  chat_conversations?: Prisma.ChatConversationUncheckedCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserUpdateInput = {
@@ -360,10 +414,18 @@ export type UserUpdateInput = {
   push_subscription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   user_last_login?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   analytics?: Prisma.AnalyticsUpdateOneWithoutUserNestedInput
   project_members?: Prisma.ProjectUserUpdateManyWithoutUserNestedInput
   task_users?: Prisma.TaskUserUpdateManyWithoutUserNestedInput
   study_session_user?: Prisma.StudySessionUserUpdateManyWithoutUserNestedInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUpdateOneWithoutUserNestedInput
+  user_availability?: Prisma.UserAvailabilityUpdateManyWithoutUserNestedInput
+  overload_warnings?: Prisma.OverloadWarningUpdateManyWithoutUserNestedInput
+  chat_conversations?: Prisma.ChatConversationUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateInput = {
@@ -376,9 +438,17 @@ export type UserUncheckedUpdateInput = {
   push_subscription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   user_last_login?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   project_members?: Prisma.ProjectUserUncheckedUpdateManyWithoutUserNestedInput
   task_users?: Prisma.TaskUserUncheckedUpdateManyWithoutUserNestedInput
   study_session_user?: Prisma.StudySessionUserUncheckedUpdateManyWithoutUserNestedInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUncheckedUpdateOneWithoutUserNestedInput
+  user_availability?: Prisma.UserAvailabilityUncheckedUpdateManyWithoutUserNestedInput
+  overload_warnings?: Prisma.OverloadWarningUncheckedUpdateManyWithoutUserNestedInput
+  chat_conversations?: Prisma.ChatConversationUncheckedUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateManyInput = {
@@ -391,6 +461,8 @@ export type UserCreateManyInput = {
   push_subscription?: string | null
   user_last_login: Date | string
   user_created_at?: Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Date | string | null
 }
 
 export type UserUpdateManyMutationInput = {
@@ -402,6 +474,8 @@ export type UserUpdateManyMutationInput = {
   push_subscription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   user_last_login?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type UserUncheckedUpdateManyInput = {
@@ -414,6 +488,8 @@ export type UserUncheckedUpdateManyInput = {
   push_subscription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   user_last_login?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type UserCountOrderByAggregateInput = {
@@ -426,6 +502,8 @@ export type UserCountOrderByAggregateInput = {
   push_subscription?: Prisma.SortOrder
   user_last_login?: Prisma.SortOrder
   user_created_at?: Prisma.SortOrder
+  ai_behavior_profile?: Prisma.SortOrder
+  ai_profile_updated_at?: Prisma.SortOrder
 }
 
 export type UserAvgOrderByAggregateInput = {
@@ -442,6 +520,7 @@ export type UserMaxOrderByAggregateInput = {
   push_subscription?: Prisma.SortOrder
   user_last_login?: Prisma.SortOrder
   user_created_at?: Prisma.SortOrder
+  ai_profile_updated_at?: Prisma.SortOrder
 }
 
 export type UserMinOrderByAggregateInput = {
@@ -454,6 +533,7 @@ export type UserMinOrderByAggregateInput = {
   push_subscription?: Prisma.SortOrder
   user_last_login?: Prisma.SortOrder
   user_created_at?: Prisma.SortOrder
+  ai_profile_updated_at?: Prisma.SortOrder
 }
 
 export type UserSumOrderByAggregateInput = {
@@ -486,12 +566,44 @@ export type DateTimeFieldUpdateOperationsInput = {
   set?: Date | string
 }
 
+export type NullableDateTimeFieldUpdateOperationsInput = {
+  set?: Date | string | null
+}
+
 export type NullableIntFieldUpdateOperationsInput = {
   set?: number | null
   increment?: number
   decrement?: number
   multiply?: number
   divide?: number
+}
+
+export type UserCreateNestedOneWithoutUser_formula_weightsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutUser_formula_weightsInput, Prisma.UserUncheckedCreateWithoutUser_formula_weightsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutUser_formula_weightsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutUser_formula_weightsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutUser_formula_weightsInput, Prisma.UserUncheckedCreateWithoutUser_formula_weightsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutUser_formula_weightsInput
+  upsert?: Prisma.UserUpsertWithoutUser_formula_weightsInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutUser_formula_weightsInput, Prisma.UserUpdateWithoutUser_formula_weightsInput>, Prisma.UserUncheckedUpdateWithoutUser_formula_weightsInput>
+}
+
+export type UserCreateNestedOneWithoutUser_availabilityInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutUser_availabilityInput, Prisma.UserUncheckedCreateWithoutUser_availabilityInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutUser_availabilityInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutUser_availabilityNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutUser_availabilityInput, Prisma.UserUncheckedCreateWithoutUser_availabilityInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutUser_availabilityInput
+  upsert?: Prisma.UserUpsertWithoutUser_availabilityInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutUser_availabilityInput, Prisma.UserUpdateWithoutUser_availabilityInput>, Prisma.UserUncheckedUpdateWithoutUser_availabilityInput>
 }
 
 export type UserCreateNestedOneWithoutProject_membersInput = {
@@ -522,6 +634,36 @@ export type UserUpdateOneRequiredWithoutTask_usersNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutTask_usersInput, Prisma.UserUpdateWithoutTask_usersInput>, Prisma.UserUncheckedUpdateWithoutTask_usersInput>
 }
 
+export type UserCreateNestedOneWithoutAttachmentsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutAttachmentsInput, Prisma.UserUncheckedCreateWithoutAttachmentsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAttachmentsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneWithoutAttachmentsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutAttachmentsInput, Prisma.UserUncheckedCreateWithoutAttachmentsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAttachmentsInput
+  upsert?: Prisma.UserUpsertWithoutAttachmentsInput
+  disconnect?: Prisma.UserWhereInput | boolean
+  delete?: Prisma.UserWhereInput | boolean
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutAttachmentsInput, Prisma.UserUpdateWithoutAttachmentsInput>, Prisma.UserUncheckedUpdateWithoutAttachmentsInput>
+}
+
+export type UserCreateNestedOneWithoutStudy_session_attachmentsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutStudy_session_attachmentsInput, Prisma.UserUncheckedCreateWithoutStudy_session_attachmentsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutStudy_session_attachmentsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutStudy_session_attachmentsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutStudy_session_attachmentsInput, Prisma.UserUncheckedCreateWithoutStudy_session_attachmentsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutStudy_session_attachmentsInput
+  upsert?: Prisma.UserUpsertWithoutStudy_session_attachmentsInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutStudy_session_attachmentsInput, Prisma.UserUpdateWithoutStudy_session_attachmentsInput>, Prisma.UserUncheckedUpdateWithoutStudy_session_attachmentsInput>
+}
+
 export type UserCreateNestedOneWithoutStudy_session_userInput = {
   create?: Prisma.XOR<Prisma.UserCreateWithoutStudy_session_userInput, Prisma.UserUncheckedCreateWithoutStudy_session_userInput>
   connectOrCreate?: Prisma.UserCreateOrConnectWithoutStudy_session_userInput
@@ -534,6 +676,34 @@ export type UserUpdateOneRequiredWithoutStudy_session_userNestedInput = {
   upsert?: Prisma.UserUpsertWithoutStudy_session_userInput
   connect?: Prisma.UserWhereUniqueInput
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutStudy_session_userInput, Prisma.UserUpdateWithoutStudy_session_userInput>, Prisma.UserUncheckedUpdateWithoutStudy_session_userInput>
+}
+
+export type UserCreateNestedOneWithoutOverload_warningsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutOverload_warningsInput, Prisma.UserUncheckedCreateWithoutOverload_warningsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutOverload_warningsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutOverload_warningsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutOverload_warningsInput, Prisma.UserUncheckedCreateWithoutOverload_warningsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutOverload_warningsInput
+  upsert?: Prisma.UserUpsertWithoutOverload_warningsInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutOverload_warningsInput, Prisma.UserUpdateWithoutOverload_warningsInput>, Prisma.UserUncheckedUpdateWithoutOverload_warningsInput>
+}
+
+export type UserCreateNestedOneWithoutChat_conversationsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutChat_conversationsInput, Prisma.UserUncheckedCreateWithoutChat_conversationsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutChat_conversationsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutChat_conversationsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutChat_conversationsInput, Prisma.UserUncheckedCreateWithoutChat_conversationsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutChat_conversationsInput
+  upsert?: Prisma.UserUpsertWithoutChat_conversationsInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutChat_conversationsInput, Prisma.UserUpdateWithoutChat_conversationsInput>, Prisma.UserUncheckedUpdateWithoutChat_conversationsInput>
 }
 
 export type UserCreateNestedOneWithoutAnalyticsInput = {
@@ -568,6 +738,214 @@ export type UserUncheckedUpdateOneWithoutAnalyticsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutAnalyticsInput, Prisma.UserUpdateWithoutAnalyticsInput>, Prisma.UserUncheckedUpdateWithoutAnalyticsInput>
 }
 
+export type UserCreateWithoutUser_formula_weightsInput = {
+  user_id: string
+  user_name: string
+  user_email: string
+  avatar_url?: string | null
+  user_role?: $Enums.UserRole
+  push_subscription?: string | null
+  user_last_login: Date | string
+  user_created_at?: Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Date | string | null
+  analytics?: Prisma.AnalyticsCreateNestedOneWithoutUserInput
+  project_members?: Prisma.ProjectUserCreateNestedManyWithoutUserInput
+  task_users?: Prisma.TaskUserCreateNestedManyWithoutUserInput
+  study_session_user?: Prisma.StudySessionUserCreateNestedManyWithoutUserInput
+  user_availability?: Prisma.UserAvailabilityCreateNestedManyWithoutUserInput
+  overload_warnings?: Prisma.OverloadWarningCreateNestedManyWithoutUserInput
+  chat_conversations?: Prisma.ChatConversationCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutUser_formula_weightsInput = {
+  user_id: string
+  analytics_id?: number | null
+  user_name: string
+  user_email: string
+  avatar_url?: string | null
+  user_role?: $Enums.UserRole
+  push_subscription?: string | null
+  user_last_login: Date | string
+  user_created_at?: Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Date | string | null
+  project_members?: Prisma.ProjectUserUncheckedCreateNestedManyWithoutUserInput
+  task_users?: Prisma.TaskUserUncheckedCreateNestedManyWithoutUserInput
+  study_session_user?: Prisma.StudySessionUserUncheckedCreateNestedManyWithoutUserInput
+  user_availability?: Prisma.UserAvailabilityUncheckedCreateNestedManyWithoutUserInput
+  overload_warnings?: Prisma.OverloadWarningUncheckedCreateNestedManyWithoutUserInput
+  chat_conversations?: Prisma.ChatConversationUncheckedCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutUser_formula_weightsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutUser_formula_weightsInput, Prisma.UserUncheckedCreateWithoutUser_formula_weightsInput>
+}
+
+export type UserUpsertWithoutUser_formula_weightsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutUser_formula_weightsInput, Prisma.UserUncheckedUpdateWithoutUser_formula_weightsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutUser_formula_weightsInput, Prisma.UserUncheckedCreateWithoutUser_formula_weightsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutUser_formula_weightsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutUser_formula_weightsInput, Prisma.UserUncheckedUpdateWithoutUser_formula_weightsInput>
+}
+
+export type UserUpdateWithoutUser_formula_weightsInput = {
+  user_id?: Prisma.StringFieldUpdateOperationsInput | string
+  user_name?: Prisma.StringFieldUpdateOperationsInput | string
+  user_email?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  user_role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole
+  push_subscription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  user_last_login?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  user_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  analytics?: Prisma.AnalyticsUpdateOneWithoutUserNestedInput
+  project_members?: Prisma.ProjectUserUpdateManyWithoutUserNestedInput
+  task_users?: Prisma.TaskUserUpdateManyWithoutUserNestedInput
+  study_session_user?: Prisma.StudySessionUserUpdateManyWithoutUserNestedInput
+  user_availability?: Prisma.UserAvailabilityUpdateManyWithoutUserNestedInput
+  overload_warnings?: Prisma.OverloadWarningUpdateManyWithoutUserNestedInput
+  chat_conversations?: Prisma.ChatConversationUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutUser_formula_weightsInput = {
+  user_id?: Prisma.StringFieldUpdateOperationsInput | string
+  analytics_id?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  user_name?: Prisma.StringFieldUpdateOperationsInput | string
+  user_email?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  user_role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole
+  push_subscription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  user_last_login?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  user_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  project_members?: Prisma.ProjectUserUncheckedUpdateManyWithoutUserNestedInput
+  task_users?: Prisma.TaskUserUncheckedUpdateManyWithoutUserNestedInput
+  study_session_user?: Prisma.StudySessionUserUncheckedUpdateManyWithoutUserNestedInput
+  user_availability?: Prisma.UserAvailabilityUncheckedUpdateManyWithoutUserNestedInput
+  overload_warnings?: Prisma.OverloadWarningUncheckedUpdateManyWithoutUserNestedInput
+  chat_conversations?: Prisma.ChatConversationUncheckedUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedUpdateManyWithoutUserNestedInput
+}
+
+export type UserCreateWithoutUser_availabilityInput = {
+  user_id: string
+  user_name: string
+  user_email: string
+  avatar_url?: string | null
+  user_role?: $Enums.UserRole
+  push_subscription?: string | null
+  user_last_login: Date | string
+  user_created_at?: Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Date | string | null
+  analytics?: Prisma.AnalyticsCreateNestedOneWithoutUserInput
+  project_members?: Prisma.ProjectUserCreateNestedManyWithoutUserInput
+  task_users?: Prisma.TaskUserCreateNestedManyWithoutUserInput
+  study_session_user?: Prisma.StudySessionUserCreateNestedManyWithoutUserInput
+  user_formula_weights?: Prisma.UserFormulaWeightsCreateNestedOneWithoutUserInput
+  overload_warnings?: Prisma.OverloadWarningCreateNestedManyWithoutUserInput
+  chat_conversations?: Prisma.ChatConversationCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutUser_availabilityInput = {
+  user_id: string
+  analytics_id?: number | null
+  user_name: string
+  user_email: string
+  avatar_url?: string | null
+  user_role?: $Enums.UserRole
+  push_subscription?: string | null
+  user_last_login: Date | string
+  user_created_at?: Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Date | string | null
+  project_members?: Prisma.ProjectUserUncheckedCreateNestedManyWithoutUserInput
+  task_users?: Prisma.TaskUserUncheckedCreateNestedManyWithoutUserInput
+  study_session_user?: Prisma.StudySessionUserUncheckedCreateNestedManyWithoutUserInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUncheckedCreateNestedOneWithoutUserInput
+  overload_warnings?: Prisma.OverloadWarningUncheckedCreateNestedManyWithoutUserInput
+  chat_conversations?: Prisma.ChatConversationUncheckedCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutUser_availabilityInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutUser_availabilityInput, Prisma.UserUncheckedCreateWithoutUser_availabilityInput>
+}
+
+export type UserUpsertWithoutUser_availabilityInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutUser_availabilityInput, Prisma.UserUncheckedUpdateWithoutUser_availabilityInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutUser_availabilityInput, Prisma.UserUncheckedCreateWithoutUser_availabilityInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutUser_availabilityInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutUser_availabilityInput, Prisma.UserUncheckedUpdateWithoutUser_availabilityInput>
+}
+
+export type UserUpdateWithoutUser_availabilityInput = {
+  user_id?: Prisma.StringFieldUpdateOperationsInput | string
+  user_name?: Prisma.StringFieldUpdateOperationsInput | string
+  user_email?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  user_role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole
+  push_subscription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  user_last_login?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  user_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  analytics?: Prisma.AnalyticsUpdateOneWithoutUserNestedInput
+  project_members?: Prisma.ProjectUserUpdateManyWithoutUserNestedInput
+  task_users?: Prisma.TaskUserUpdateManyWithoutUserNestedInput
+  study_session_user?: Prisma.StudySessionUserUpdateManyWithoutUserNestedInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUpdateOneWithoutUserNestedInput
+  overload_warnings?: Prisma.OverloadWarningUpdateManyWithoutUserNestedInput
+  chat_conversations?: Prisma.ChatConversationUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutUser_availabilityInput = {
+  user_id?: Prisma.StringFieldUpdateOperationsInput | string
+  analytics_id?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  user_name?: Prisma.StringFieldUpdateOperationsInput | string
+  user_email?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  user_role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole
+  push_subscription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  user_last_login?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  user_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  project_members?: Prisma.ProjectUserUncheckedUpdateManyWithoutUserNestedInput
+  task_users?: Prisma.TaskUserUncheckedUpdateManyWithoutUserNestedInput
+  study_session_user?: Prisma.StudySessionUserUncheckedUpdateManyWithoutUserNestedInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUncheckedUpdateOneWithoutUserNestedInput
+  overload_warnings?: Prisma.OverloadWarningUncheckedUpdateManyWithoutUserNestedInput
+  chat_conversations?: Prisma.ChatConversationUncheckedUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedUpdateManyWithoutUserNestedInput
+}
+
 export type UserCreateWithoutProject_membersInput = {
   user_id: string
   user_name: string
@@ -577,9 +955,17 @@ export type UserCreateWithoutProject_membersInput = {
   push_subscription?: string | null
   user_last_login: Date | string
   user_created_at?: Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Date | string | null
   analytics?: Prisma.AnalyticsCreateNestedOneWithoutUserInput
   task_users?: Prisma.TaskUserCreateNestedManyWithoutUserInput
   study_session_user?: Prisma.StudySessionUserCreateNestedManyWithoutUserInput
+  user_formula_weights?: Prisma.UserFormulaWeightsCreateNestedOneWithoutUserInput
+  user_availability?: Prisma.UserAvailabilityCreateNestedManyWithoutUserInput
+  overload_warnings?: Prisma.OverloadWarningCreateNestedManyWithoutUserInput
+  chat_conversations?: Prisma.ChatConversationCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutProject_membersInput = {
@@ -592,8 +978,16 @@ export type UserUncheckedCreateWithoutProject_membersInput = {
   push_subscription?: string | null
   user_last_login: Date | string
   user_created_at?: Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Date | string | null
   task_users?: Prisma.TaskUserUncheckedCreateNestedManyWithoutUserInput
   study_session_user?: Prisma.StudySessionUserUncheckedCreateNestedManyWithoutUserInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUncheckedCreateNestedOneWithoutUserInput
+  user_availability?: Prisma.UserAvailabilityUncheckedCreateNestedManyWithoutUserInput
+  overload_warnings?: Prisma.OverloadWarningUncheckedCreateNestedManyWithoutUserInput
+  chat_conversations?: Prisma.ChatConversationUncheckedCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutProject_membersInput = {
@@ -621,9 +1015,17 @@ export type UserUpdateWithoutProject_membersInput = {
   push_subscription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   user_last_login?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   analytics?: Prisma.AnalyticsUpdateOneWithoutUserNestedInput
   task_users?: Prisma.TaskUserUpdateManyWithoutUserNestedInput
   study_session_user?: Prisma.StudySessionUserUpdateManyWithoutUserNestedInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUpdateOneWithoutUserNestedInput
+  user_availability?: Prisma.UserAvailabilityUpdateManyWithoutUserNestedInput
+  overload_warnings?: Prisma.OverloadWarningUpdateManyWithoutUserNestedInput
+  chat_conversations?: Prisma.ChatConversationUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutProject_membersInput = {
@@ -636,8 +1038,16 @@ export type UserUncheckedUpdateWithoutProject_membersInput = {
   push_subscription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   user_last_login?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   task_users?: Prisma.TaskUserUncheckedUpdateManyWithoutUserNestedInput
   study_session_user?: Prisma.StudySessionUserUncheckedUpdateManyWithoutUserNestedInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUncheckedUpdateOneWithoutUserNestedInput
+  user_availability?: Prisma.UserAvailabilityUncheckedUpdateManyWithoutUserNestedInput
+  overload_warnings?: Prisma.OverloadWarningUncheckedUpdateManyWithoutUserNestedInput
+  chat_conversations?: Prisma.ChatConversationUncheckedUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutTask_usersInput = {
@@ -649,9 +1059,17 @@ export type UserCreateWithoutTask_usersInput = {
   push_subscription?: string | null
   user_last_login: Date | string
   user_created_at?: Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Date | string | null
   analytics?: Prisma.AnalyticsCreateNestedOneWithoutUserInput
   project_members?: Prisma.ProjectUserCreateNestedManyWithoutUserInput
   study_session_user?: Prisma.StudySessionUserCreateNestedManyWithoutUserInput
+  user_formula_weights?: Prisma.UserFormulaWeightsCreateNestedOneWithoutUserInput
+  user_availability?: Prisma.UserAvailabilityCreateNestedManyWithoutUserInput
+  overload_warnings?: Prisma.OverloadWarningCreateNestedManyWithoutUserInput
+  chat_conversations?: Prisma.ChatConversationCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutTask_usersInput = {
@@ -664,8 +1082,16 @@ export type UserUncheckedCreateWithoutTask_usersInput = {
   push_subscription?: string | null
   user_last_login: Date | string
   user_created_at?: Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Date | string | null
   project_members?: Prisma.ProjectUserUncheckedCreateNestedManyWithoutUserInput
   study_session_user?: Prisma.StudySessionUserUncheckedCreateNestedManyWithoutUserInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUncheckedCreateNestedOneWithoutUserInput
+  user_availability?: Prisma.UserAvailabilityUncheckedCreateNestedManyWithoutUserInput
+  overload_warnings?: Prisma.OverloadWarningUncheckedCreateNestedManyWithoutUserInput
+  chat_conversations?: Prisma.ChatConversationUncheckedCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutTask_usersInput = {
@@ -693,9 +1119,17 @@ export type UserUpdateWithoutTask_usersInput = {
   push_subscription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   user_last_login?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   analytics?: Prisma.AnalyticsUpdateOneWithoutUserNestedInput
   project_members?: Prisma.ProjectUserUpdateManyWithoutUserNestedInput
   study_session_user?: Prisma.StudySessionUserUpdateManyWithoutUserNestedInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUpdateOneWithoutUserNestedInput
+  user_availability?: Prisma.UserAvailabilityUpdateManyWithoutUserNestedInput
+  overload_warnings?: Prisma.OverloadWarningUpdateManyWithoutUserNestedInput
+  chat_conversations?: Prisma.ChatConversationUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutTask_usersInput = {
@@ -708,8 +1142,224 @@ export type UserUncheckedUpdateWithoutTask_usersInput = {
   push_subscription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   user_last_login?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   project_members?: Prisma.ProjectUserUncheckedUpdateManyWithoutUserNestedInput
   study_session_user?: Prisma.StudySessionUserUncheckedUpdateManyWithoutUserNestedInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUncheckedUpdateOneWithoutUserNestedInput
+  user_availability?: Prisma.UserAvailabilityUncheckedUpdateManyWithoutUserNestedInput
+  overload_warnings?: Prisma.OverloadWarningUncheckedUpdateManyWithoutUserNestedInput
+  chat_conversations?: Prisma.ChatConversationUncheckedUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedUpdateManyWithoutUserNestedInput
+}
+
+export type UserCreateWithoutAttachmentsInput = {
+  user_id: string
+  user_name: string
+  user_email: string
+  avatar_url?: string | null
+  user_role?: $Enums.UserRole
+  push_subscription?: string | null
+  user_last_login: Date | string
+  user_created_at?: Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Date | string | null
+  analytics?: Prisma.AnalyticsCreateNestedOneWithoutUserInput
+  project_members?: Prisma.ProjectUserCreateNestedManyWithoutUserInput
+  task_users?: Prisma.TaskUserCreateNestedManyWithoutUserInput
+  study_session_user?: Prisma.StudySessionUserCreateNestedManyWithoutUserInput
+  user_formula_weights?: Prisma.UserFormulaWeightsCreateNestedOneWithoutUserInput
+  user_availability?: Prisma.UserAvailabilityCreateNestedManyWithoutUserInput
+  overload_warnings?: Prisma.OverloadWarningCreateNestedManyWithoutUserInput
+  chat_conversations?: Prisma.ChatConversationCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutAttachmentsInput = {
+  user_id: string
+  analytics_id?: number | null
+  user_name: string
+  user_email: string
+  avatar_url?: string | null
+  user_role?: $Enums.UserRole
+  push_subscription?: string | null
+  user_last_login: Date | string
+  user_created_at?: Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Date | string | null
+  project_members?: Prisma.ProjectUserUncheckedCreateNestedManyWithoutUserInput
+  task_users?: Prisma.TaskUserUncheckedCreateNestedManyWithoutUserInput
+  study_session_user?: Prisma.StudySessionUserUncheckedCreateNestedManyWithoutUserInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUncheckedCreateNestedOneWithoutUserInput
+  user_availability?: Prisma.UserAvailabilityUncheckedCreateNestedManyWithoutUserInput
+  overload_warnings?: Prisma.OverloadWarningUncheckedCreateNestedManyWithoutUserInput
+  chat_conversations?: Prisma.ChatConversationUncheckedCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutAttachmentsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutAttachmentsInput, Prisma.UserUncheckedCreateWithoutAttachmentsInput>
+}
+
+export type UserUpsertWithoutAttachmentsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutAttachmentsInput, Prisma.UserUncheckedUpdateWithoutAttachmentsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutAttachmentsInput, Prisma.UserUncheckedCreateWithoutAttachmentsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutAttachmentsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutAttachmentsInput, Prisma.UserUncheckedUpdateWithoutAttachmentsInput>
+}
+
+export type UserUpdateWithoutAttachmentsInput = {
+  user_id?: Prisma.StringFieldUpdateOperationsInput | string
+  user_name?: Prisma.StringFieldUpdateOperationsInput | string
+  user_email?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  user_role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole
+  push_subscription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  user_last_login?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  user_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  analytics?: Prisma.AnalyticsUpdateOneWithoutUserNestedInput
+  project_members?: Prisma.ProjectUserUpdateManyWithoutUserNestedInput
+  task_users?: Prisma.TaskUserUpdateManyWithoutUserNestedInput
+  study_session_user?: Prisma.StudySessionUserUpdateManyWithoutUserNestedInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUpdateOneWithoutUserNestedInput
+  user_availability?: Prisma.UserAvailabilityUpdateManyWithoutUserNestedInput
+  overload_warnings?: Prisma.OverloadWarningUpdateManyWithoutUserNestedInput
+  chat_conversations?: Prisma.ChatConversationUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutAttachmentsInput = {
+  user_id?: Prisma.StringFieldUpdateOperationsInput | string
+  analytics_id?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  user_name?: Prisma.StringFieldUpdateOperationsInput | string
+  user_email?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  user_role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole
+  push_subscription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  user_last_login?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  user_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  project_members?: Prisma.ProjectUserUncheckedUpdateManyWithoutUserNestedInput
+  task_users?: Prisma.TaskUserUncheckedUpdateManyWithoutUserNestedInput
+  study_session_user?: Prisma.StudySessionUserUncheckedUpdateManyWithoutUserNestedInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUncheckedUpdateOneWithoutUserNestedInput
+  user_availability?: Prisma.UserAvailabilityUncheckedUpdateManyWithoutUserNestedInput
+  overload_warnings?: Prisma.OverloadWarningUncheckedUpdateManyWithoutUserNestedInput
+  chat_conversations?: Prisma.ChatConversationUncheckedUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedUpdateManyWithoutUserNestedInput
+}
+
+export type UserCreateWithoutStudy_session_attachmentsInput = {
+  user_id: string
+  user_name: string
+  user_email: string
+  avatar_url?: string | null
+  user_role?: $Enums.UserRole
+  push_subscription?: string | null
+  user_last_login: Date | string
+  user_created_at?: Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Date | string | null
+  analytics?: Prisma.AnalyticsCreateNestedOneWithoutUserInput
+  project_members?: Prisma.ProjectUserCreateNestedManyWithoutUserInput
+  task_users?: Prisma.TaskUserCreateNestedManyWithoutUserInput
+  study_session_user?: Prisma.StudySessionUserCreateNestedManyWithoutUserInput
+  user_formula_weights?: Prisma.UserFormulaWeightsCreateNestedOneWithoutUserInput
+  user_availability?: Prisma.UserAvailabilityCreateNestedManyWithoutUserInput
+  overload_warnings?: Prisma.OverloadWarningCreateNestedManyWithoutUserInput
+  chat_conversations?: Prisma.ChatConversationCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutStudy_session_attachmentsInput = {
+  user_id: string
+  analytics_id?: number | null
+  user_name: string
+  user_email: string
+  avatar_url?: string | null
+  user_role?: $Enums.UserRole
+  push_subscription?: string | null
+  user_last_login: Date | string
+  user_created_at?: Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Date | string | null
+  project_members?: Prisma.ProjectUserUncheckedCreateNestedManyWithoutUserInput
+  task_users?: Prisma.TaskUserUncheckedCreateNestedManyWithoutUserInput
+  study_session_user?: Prisma.StudySessionUserUncheckedCreateNestedManyWithoutUserInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUncheckedCreateNestedOneWithoutUserInput
+  user_availability?: Prisma.UserAvailabilityUncheckedCreateNestedManyWithoutUserInput
+  overload_warnings?: Prisma.OverloadWarningUncheckedCreateNestedManyWithoutUserInput
+  chat_conversations?: Prisma.ChatConversationUncheckedCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutStudy_session_attachmentsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutStudy_session_attachmentsInput, Prisma.UserUncheckedCreateWithoutStudy_session_attachmentsInput>
+}
+
+export type UserUpsertWithoutStudy_session_attachmentsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutStudy_session_attachmentsInput, Prisma.UserUncheckedUpdateWithoutStudy_session_attachmentsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutStudy_session_attachmentsInput, Prisma.UserUncheckedCreateWithoutStudy_session_attachmentsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutStudy_session_attachmentsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutStudy_session_attachmentsInput, Prisma.UserUncheckedUpdateWithoutStudy_session_attachmentsInput>
+}
+
+export type UserUpdateWithoutStudy_session_attachmentsInput = {
+  user_id?: Prisma.StringFieldUpdateOperationsInput | string
+  user_name?: Prisma.StringFieldUpdateOperationsInput | string
+  user_email?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  user_role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole
+  push_subscription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  user_last_login?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  user_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  analytics?: Prisma.AnalyticsUpdateOneWithoutUserNestedInput
+  project_members?: Prisma.ProjectUserUpdateManyWithoutUserNestedInput
+  task_users?: Prisma.TaskUserUpdateManyWithoutUserNestedInput
+  study_session_user?: Prisma.StudySessionUserUpdateManyWithoutUserNestedInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUpdateOneWithoutUserNestedInput
+  user_availability?: Prisma.UserAvailabilityUpdateManyWithoutUserNestedInput
+  overload_warnings?: Prisma.OverloadWarningUpdateManyWithoutUserNestedInput
+  chat_conversations?: Prisma.ChatConversationUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutStudy_session_attachmentsInput = {
+  user_id?: Prisma.StringFieldUpdateOperationsInput | string
+  analytics_id?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  user_name?: Prisma.StringFieldUpdateOperationsInput | string
+  user_email?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  user_role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole
+  push_subscription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  user_last_login?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  user_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  project_members?: Prisma.ProjectUserUncheckedUpdateManyWithoutUserNestedInput
+  task_users?: Prisma.TaskUserUncheckedUpdateManyWithoutUserNestedInput
+  study_session_user?: Prisma.StudySessionUserUncheckedUpdateManyWithoutUserNestedInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUncheckedUpdateOneWithoutUserNestedInput
+  user_availability?: Prisma.UserAvailabilityUncheckedUpdateManyWithoutUserNestedInput
+  overload_warnings?: Prisma.OverloadWarningUncheckedUpdateManyWithoutUserNestedInput
+  chat_conversations?: Prisma.ChatConversationUncheckedUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutStudy_session_userInput = {
@@ -721,9 +1371,17 @@ export type UserCreateWithoutStudy_session_userInput = {
   push_subscription?: string | null
   user_last_login: Date | string
   user_created_at?: Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Date | string | null
   analytics?: Prisma.AnalyticsCreateNestedOneWithoutUserInput
   project_members?: Prisma.ProjectUserCreateNestedManyWithoutUserInput
   task_users?: Prisma.TaskUserCreateNestedManyWithoutUserInput
+  user_formula_weights?: Prisma.UserFormulaWeightsCreateNestedOneWithoutUserInput
+  user_availability?: Prisma.UserAvailabilityCreateNestedManyWithoutUserInput
+  overload_warnings?: Prisma.OverloadWarningCreateNestedManyWithoutUserInput
+  chat_conversations?: Prisma.ChatConversationCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutStudy_session_userInput = {
@@ -736,8 +1394,16 @@ export type UserUncheckedCreateWithoutStudy_session_userInput = {
   push_subscription?: string | null
   user_last_login: Date | string
   user_created_at?: Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Date | string | null
   project_members?: Prisma.ProjectUserUncheckedCreateNestedManyWithoutUserInput
   task_users?: Prisma.TaskUserUncheckedCreateNestedManyWithoutUserInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUncheckedCreateNestedOneWithoutUserInput
+  user_availability?: Prisma.UserAvailabilityUncheckedCreateNestedManyWithoutUserInput
+  overload_warnings?: Prisma.OverloadWarningUncheckedCreateNestedManyWithoutUserInput
+  chat_conversations?: Prisma.ChatConversationUncheckedCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutStudy_session_userInput = {
@@ -765,9 +1431,17 @@ export type UserUpdateWithoutStudy_session_userInput = {
   push_subscription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   user_last_login?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   analytics?: Prisma.AnalyticsUpdateOneWithoutUserNestedInput
   project_members?: Prisma.ProjectUserUpdateManyWithoutUserNestedInput
   task_users?: Prisma.TaskUserUpdateManyWithoutUserNestedInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUpdateOneWithoutUserNestedInput
+  user_availability?: Prisma.UserAvailabilityUpdateManyWithoutUserNestedInput
+  overload_warnings?: Prisma.OverloadWarningUpdateManyWithoutUserNestedInput
+  chat_conversations?: Prisma.ChatConversationUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutStudy_session_userInput = {
@@ -780,8 +1454,224 @@ export type UserUncheckedUpdateWithoutStudy_session_userInput = {
   push_subscription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   user_last_login?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   project_members?: Prisma.ProjectUserUncheckedUpdateManyWithoutUserNestedInput
   task_users?: Prisma.TaskUserUncheckedUpdateManyWithoutUserNestedInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUncheckedUpdateOneWithoutUserNestedInput
+  user_availability?: Prisma.UserAvailabilityUncheckedUpdateManyWithoutUserNestedInput
+  overload_warnings?: Prisma.OverloadWarningUncheckedUpdateManyWithoutUserNestedInput
+  chat_conversations?: Prisma.ChatConversationUncheckedUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedUpdateManyWithoutUserNestedInput
+}
+
+export type UserCreateWithoutOverload_warningsInput = {
+  user_id: string
+  user_name: string
+  user_email: string
+  avatar_url?: string | null
+  user_role?: $Enums.UserRole
+  push_subscription?: string | null
+  user_last_login: Date | string
+  user_created_at?: Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Date | string | null
+  analytics?: Prisma.AnalyticsCreateNestedOneWithoutUserInput
+  project_members?: Prisma.ProjectUserCreateNestedManyWithoutUserInput
+  task_users?: Prisma.TaskUserCreateNestedManyWithoutUserInput
+  study_session_user?: Prisma.StudySessionUserCreateNestedManyWithoutUserInput
+  user_formula_weights?: Prisma.UserFormulaWeightsCreateNestedOneWithoutUserInput
+  user_availability?: Prisma.UserAvailabilityCreateNestedManyWithoutUserInput
+  chat_conversations?: Prisma.ChatConversationCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutOverload_warningsInput = {
+  user_id: string
+  analytics_id?: number | null
+  user_name: string
+  user_email: string
+  avatar_url?: string | null
+  user_role?: $Enums.UserRole
+  push_subscription?: string | null
+  user_last_login: Date | string
+  user_created_at?: Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Date | string | null
+  project_members?: Prisma.ProjectUserUncheckedCreateNestedManyWithoutUserInput
+  task_users?: Prisma.TaskUserUncheckedCreateNestedManyWithoutUserInput
+  study_session_user?: Prisma.StudySessionUserUncheckedCreateNestedManyWithoutUserInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUncheckedCreateNestedOneWithoutUserInput
+  user_availability?: Prisma.UserAvailabilityUncheckedCreateNestedManyWithoutUserInput
+  chat_conversations?: Prisma.ChatConversationUncheckedCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutOverload_warningsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutOverload_warningsInput, Prisma.UserUncheckedCreateWithoutOverload_warningsInput>
+}
+
+export type UserUpsertWithoutOverload_warningsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutOverload_warningsInput, Prisma.UserUncheckedUpdateWithoutOverload_warningsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutOverload_warningsInput, Prisma.UserUncheckedCreateWithoutOverload_warningsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutOverload_warningsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutOverload_warningsInput, Prisma.UserUncheckedUpdateWithoutOverload_warningsInput>
+}
+
+export type UserUpdateWithoutOverload_warningsInput = {
+  user_id?: Prisma.StringFieldUpdateOperationsInput | string
+  user_name?: Prisma.StringFieldUpdateOperationsInput | string
+  user_email?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  user_role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole
+  push_subscription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  user_last_login?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  user_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  analytics?: Prisma.AnalyticsUpdateOneWithoutUserNestedInput
+  project_members?: Prisma.ProjectUserUpdateManyWithoutUserNestedInput
+  task_users?: Prisma.TaskUserUpdateManyWithoutUserNestedInput
+  study_session_user?: Prisma.StudySessionUserUpdateManyWithoutUserNestedInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUpdateOneWithoutUserNestedInput
+  user_availability?: Prisma.UserAvailabilityUpdateManyWithoutUserNestedInput
+  chat_conversations?: Prisma.ChatConversationUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutOverload_warningsInput = {
+  user_id?: Prisma.StringFieldUpdateOperationsInput | string
+  analytics_id?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  user_name?: Prisma.StringFieldUpdateOperationsInput | string
+  user_email?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  user_role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole
+  push_subscription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  user_last_login?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  user_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  project_members?: Prisma.ProjectUserUncheckedUpdateManyWithoutUserNestedInput
+  task_users?: Prisma.TaskUserUncheckedUpdateManyWithoutUserNestedInput
+  study_session_user?: Prisma.StudySessionUserUncheckedUpdateManyWithoutUserNestedInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUncheckedUpdateOneWithoutUserNestedInput
+  user_availability?: Prisma.UserAvailabilityUncheckedUpdateManyWithoutUserNestedInput
+  chat_conversations?: Prisma.ChatConversationUncheckedUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedUpdateManyWithoutUserNestedInput
+}
+
+export type UserCreateWithoutChat_conversationsInput = {
+  user_id: string
+  user_name: string
+  user_email: string
+  avatar_url?: string | null
+  user_role?: $Enums.UserRole
+  push_subscription?: string | null
+  user_last_login: Date | string
+  user_created_at?: Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Date | string | null
+  analytics?: Prisma.AnalyticsCreateNestedOneWithoutUserInput
+  project_members?: Prisma.ProjectUserCreateNestedManyWithoutUserInput
+  task_users?: Prisma.TaskUserCreateNestedManyWithoutUserInput
+  study_session_user?: Prisma.StudySessionUserCreateNestedManyWithoutUserInput
+  user_formula_weights?: Prisma.UserFormulaWeightsCreateNestedOneWithoutUserInput
+  user_availability?: Prisma.UserAvailabilityCreateNestedManyWithoutUserInput
+  overload_warnings?: Prisma.OverloadWarningCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutChat_conversationsInput = {
+  user_id: string
+  analytics_id?: number | null
+  user_name: string
+  user_email: string
+  avatar_url?: string | null
+  user_role?: $Enums.UserRole
+  push_subscription?: string | null
+  user_last_login: Date | string
+  user_created_at?: Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Date | string | null
+  project_members?: Prisma.ProjectUserUncheckedCreateNestedManyWithoutUserInput
+  task_users?: Prisma.TaskUserUncheckedCreateNestedManyWithoutUserInput
+  study_session_user?: Prisma.StudySessionUserUncheckedCreateNestedManyWithoutUserInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUncheckedCreateNestedOneWithoutUserInput
+  user_availability?: Prisma.UserAvailabilityUncheckedCreateNestedManyWithoutUserInput
+  overload_warnings?: Prisma.OverloadWarningUncheckedCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutChat_conversationsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutChat_conversationsInput, Prisma.UserUncheckedCreateWithoutChat_conversationsInput>
+}
+
+export type UserUpsertWithoutChat_conversationsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutChat_conversationsInput, Prisma.UserUncheckedUpdateWithoutChat_conversationsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutChat_conversationsInput, Prisma.UserUncheckedCreateWithoutChat_conversationsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutChat_conversationsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutChat_conversationsInput, Prisma.UserUncheckedUpdateWithoutChat_conversationsInput>
+}
+
+export type UserUpdateWithoutChat_conversationsInput = {
+  user_id?: Prisma.StringFieldUpdateOperationsInput | string
+  user_name?: Prisma.StringFieldUpdateOperationsInput | string
+  user_email?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  user_role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole
+  push_subscription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  user_last_login?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  user_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  analytics?: Prisma.AnalyticsUpdateOneWithoutUserNestedInput
+  project_members?: Prisma.ProjectUserUpdateManyWithoutUserNestedInput
+  task_users?: Prisma.TaskUserUpdateManyWithoutUserNestedInput
+  study_session_user?: Prisma.StudySessionUserUpdateManyWithoutUserNestedInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUpdateOneWithoutUserNestedInput
+  user_availability?: Prisma.UserAvailabilityUpdateManyWithoutUserNestedInput
+  overload_warnings?: Prisma.OverloadWarningUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutChat_conversationsInput = {
+  user_id?: Prisma.StringFieldUpdateOperationsInput | string
+  analytics_id?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  user_name?: Prisma.StringFieldUpdateOperationsInput | string
+  user_email?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  user_role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole
+  push_subscription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  user_last_login?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  user_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  project_members?: Prisma.ProjectUserUncheckedUpdateManyWithoutUserNestedInput
+  task_users?: Prisma.TaskUserUncheckedUpdateManyWithoutUserNestedInput
+  study_session_user?: Prisma.StudySessionUserUncheckedUpdateManyWithoutUserNestedInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUncheckedUpdateOneWithoutUserNestedInput
+  user_availability?: Prisma.UserAvailabilityUncheckedUpdateManyWithoutUserNestedInput
+  overload_warnings?: Prisma.OverloadWarningUncheckedUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutAnalyticsInput = {
@@ -793,9 +1683,17 @@ export type UserCreateWithoutAnalyticsInput = {
   push_subscription?: string | null
   user_last_login: Date | string
   user_created_at?: Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Date | string | null
   project_members?: Prisma.ProjectUserCreateNestedManyWithoutUserInput
   task_users?: Prisma.TaskUserCreateNestedManyWithoutUserInput
   study_session_user?: Prisma.StudySessionUserCreateNestedManyWithoutUserInput
+  user_formula_weights?: Prisma.UserFormulaWeightsCreateNestedOneWithoutUserInput
+  user_availability?: Prisma.UserAvailabilityCreateNestedManyWithoutUserInput
+  overload_warnings?: Prisma.OverloadWarningCreateNestedManyWithoutUserInput
+  chat_conversations?: Prisma.ChatConversationCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutAnalyticsInput = {
@@ -807,9 +1705,17 @@ export type UserUncheckedCreateWithoutAnalyticsInput = {
   push_subscription?: string | null
   user_last_login: Date | string
   user_created_at?: Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Date | string | null
   project_members?: Prisma.ProjectUserUncheckedCreateNestedManyWithoutUserInput
   task_users?: Prisma.TaskUserUncheckedCreateNestedManyWithoutUserInput
   study_session_user?: Prisma.StudySessionUserUncheckedCreateNestedManyWithoutUserInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUncheckedCreateNestedOneWithoutUserInput
+  user_availability?: Prisma.UserAvailabilityUncheckedCreateNestedManyWithoutUserInput
+  overload_warnings?: Prisma.OverloadWarningUncheckedCreateNestedManyWithoutUserInput
+  chat_conversations?: Prisma.ChatConversationUncheckedCreateNestedManyWithoutUserInput
+  attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUserInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutAnalyticsInput = {
@@ -837,9 +1743,17 @@ export type UserUpdateWithoutAnalyticsInput = {
   push_subscription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   user_last_login?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   project_members?: Prisma.ProjectUserUpdateManyWithoutUserNestedInput
   task_users?: Prisma.TaskUserUpdateManyWithoutUserNestedInput
   study_session_user?: Prisma.StudySessionUserUpdateManyWithoutUserNestedInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUpdateOneWithoutUserNestedInput
+  user_availability?: Prisma.UserAvailabilityUpdateManyWithoutUserNestedInput
+  overload_warnings?: Prisma.OverloadWarningUpdateManyWithoutUserNestedInput
+  chat_conversations?: Prisma.ChatConversationUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutAnalyticsInput = {
@@ -851,9 +1765,17 @@ export type UserUncheckedUpdateWithoutAnalyticsInput = {
   push_subscription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   user_last_login?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ai_behavior_profile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ai_profile_updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   project_members?: Prisma.ProjectUserUncheckedUpdateManyWithoutUserNestedInput
   task_users?: Prisma.TaskUserUncheckedUpdateManyWithoutUserNestedInput
   study_session_user?: Prisma.StudySessionUserUncheckedUpdateManyWithoutUserNestedInput
+  user_formula_weights?: Prisma.UserFormulaWeightsUncheckedUpdateOneWithoutUserNestedInput
+  user_availability?: Prisma.UserAvailabilityUncheckedUpdateManyWithoutUserNestedInput
+  overload_warnings?: Prisma.OverloadWarningUncheckedUpdateManyWithoutUserNestedInput
+  chat_conversations?: Prisma.ChatConversationUncheckedUpdateManyWithoutUserNestedInput
+  attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUserNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedUpdateManyWithoutUserNestedInput
 }
 
 
@@ -865,12 +1787,22 @@ export type UserCountOutputType = {
   project_members: number
   task_users: number
   study_session_user: number
+  user_availability: number
+  overload_warnings: number
+  chat_conversations: number
+  attachments: number
+  study_session_attachments: number
 }
 
 export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   project_members?: boolean | UserCountOutputTypeCountProject_membersArgs
   task_users?: boolean | UserCountOutputTypeCountTask_usersArgs
   study_session_user?: boolean | UserCountOutputTypeCountStudy_session_userArgs
+  user_availability?: boolean | UserCountOutputTypeCountUser_availabilityArgs
+  overload_warnings?: boolean | UserCountOutputTypeCountOverload_warningsArgs
+  chat_conversations?: boolean | UserCountOutputTypeCountChat_conversationsArgs
+  attachments?: boolean | UserCountOutputTypeCountAttachmentsArgs
+  study_session_attachments?: boolean | UserCountOutputTypeCountStudy_session_attachmentsArgs
 }
 
 /**
@@ -904,6 +1836,41 @@ export type UserCountOutputTypeCountStudy_session_userArgs<ExtArgs extends runti
   where?: Prisma.StudySessionUserWhereInput
 }
 
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountUser_availabilityArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.UserAvailabilityWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountOverload_warningsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.OverloadWarningWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountChat_conversationsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ChatConversationWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountAttachmentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.AttachmentWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountStudy_session_attachmentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.StudySessionAttachmentWhereInput
+}
+
 
 export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   user_id?: boolean
@@ -915,10 +1882,18 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   push_subscription?: boolean
   user_last_login?: boolean
   user_created_at?: boolean
+  ai_behavior_profile?: boolean
+  ai_profile_updated_at?: boolean
   analytics?: boolean | Prisma.User$analyticsArgs<ExtArgs>
   project_members?: boolean | Prisma.User$project_membersArgs<ExtArgs>
   task_users?: boolean | Prisma.User$task_usersArgs<ExtArgs>
   study_session_user?: boolean | Prisma.User$study_session_userArgs<ExtArgs>
+  user_formula_weights?: boolean | Prisma.User$user_formula_weightsArgs<ExtArgs>
+  user_availability?: boolean | Prisma.User$user_availabilityArgs<ExtArgs>
+  overload_warnings?: boolean | Prisma.User$overload_warningsArgs<ExtArgs>
+  chat_conversations?: boolean | Prisma.User$chat_conversationsArgs<ExtArgs>
+  attachments?: boolean | Prisma.User$attachmentsArgs<ExtArgs>
+  study_session_attachments?: boolean | Prisma.User$study_session_attachmentsArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["user"]>
 
@@ -932,6 +1907,8 @@ export type UserSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   push_subscription?: boolean
   user_last_login?: boolean
   user_created_at?: boolean
+  ai_behavior_profile?: boolean
+  ai_profile_updated_at?: boolean
   analytics?: boolean | Prisma.User$analyticsArgs<ExtArgs>
 }, ExtArgs["result"]["user"]>
 
@@ -945,6 +1922,8 @@ export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   push_subscription?: boolean
   user_last_login?: boolean
   user_created_at?: boolean
+  ai_behavior_profile?: boolean
+  ai_profile_updated_at?: boolean
   analytics?: boolean | Prisma.User$analyticsArgs<ExtArgs>
 }, ExtArgs["result"]["user"]>
 
@@ -958,14 +1937,22 @@ export type UserSelectScalar = {
   push_subscription?: boolean
   user_last_login?: boolean
   user_created_at?: boolean
+  ai_behavior_profile?: boolean
+  ai_profile_updated_at?: boolean
 }
 
-export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"user_id" | "analytics_id" | "user_name" | "user_email" | "avatar_url" | "user_role" | "push_subscription" | "user_last_login" | "user_created_at", ExtArgs["result"]["user"]>
+export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"user_id" | "analytics_id" | "user_name" | "user_email" | "avatar_url" | "user_role" | "push_subscription" | "user_last_login" | "user_created_at" | "ai_behavior_profile" | "ai_profile_updated_at", ExtArgs["result"]["user"]>
 export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   analytics?: boolean | Prisma.User$analyticsArgs<ExtArgs>
   project_members?: boolean | Prisma.User$project_membersArgs<ExtArgs>
   task_users?: boolean | Prisma.User$task_usersArgs<ExtArgs>
   study_session_user?: boolean | Prisma.User$study_session_userArgs<ExtArgs>
+  user_formula_weights?: boolean | Prisma.User$user_formula_weightsArgs<ExtArgs>
+  user_availability?: boolean | Prisma.User$user_availabilityArgs<ExtArgs>
+  overload_warnings?: boolean | Prisma.User$overload_warningsArgs<ExtArgs>
+  chat_conversations?: boolean | Prisma.User$chat_conversationsArgs<ExtArgs>
+  attachments?: boolean | Prisma.User$attachmentsArgs<ExtArgs>
+  study_session_attachments?: boolean | Prisma.User$study_session_attachmentsArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type UserIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -982,6 +1969,12 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     project_members: Prisma.$ProjectUserPayload<ExtArgs>[]
     task_users: Prisma.$TaskUserPayload<ExtArgs>[]
     study_session_user: Prisma.$StudySessionUserPayload<ExtArgs>[]
+    user_formula_weights: Prisma.$UserFormulaWeightsPayload<ExtArgs> | null
+    user_availability: Prisma.$UserAvailabilityPayload<ExtArgs>[]
+    overload_warnings: Prisma.$OverloadWarningPayload<ExtArgs>[]
+    chat_conversations: Prisma.$ChatConversationPayload<ExtArgs>[]
+    attachments: Prisma.$AttachmentPayload<ExtArgs>[]
+    study_session_attachments: Prisma.$StudySessionAttachmentPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     user_id: string
@@ -993,6 +1986,8 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     push_subscription: string | null
     user_last_login: Date
     user_created_at: Date
+    ai_behavior_profile: runtime.JsonValue | null
+    ai_profile_updated_at: Date | null
   }, ExtArgs["result"]["user"]>
   composites: {}
 }
@@ -1391,6 +2386,12 @@ export interface Prisma__UserClient<T, Null = never, ExtArgs extends runtime.Typ
   project_members<T extends Prisma.User$project_membersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$project_membersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ProjectUserPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   task_users<T extends Prisma.User$task_usersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$task_usersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TaskUserPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   study_session_user<T extends Prisma.User$study_session_userArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$study_session_userArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$StudySessionUserPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  user_formula_weights<T extends Prisma.User$user_formula_weightsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$user_formula_weightsArgs<ExtArgs>>): Prisma.Prisma__UserFormulaWeightsClient<runtime.Types.Result.GetResult<Prisma.$UserFormulaWeightsPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  user_availability<T extends Prisma.User$user_availabilityArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$user_availabilityArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$UserAvailabilityPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  overload_warnings<T extends Prisma.User$overload_warningsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$overload_warningsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$OverloadWarningPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  chat_conversations<T extends Prisma.User$chat_conversationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$chat_conversationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ChatConversationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  attachments<T extends Prisma.User$attachmentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$attachmentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AttachmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  study_session_attachments<T extends Prisma.User$study_session_attachmentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$study_session_attachmentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$StudySessionAttachmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1429,6 +2430,8 @@ export interface UserFieldRefs {
   readonly push_subscription: Prisma.FieldRef<"User", 'String'>
   readonly user_last_login: Prisma.FieldRef<"User", 'DateTime'>
   readonly user_created_at: Prisma.FieldRef<"User", 'DateTime'>
+  readonly ai_behavior_profile: Prisma.FieldRef<"User", 'Json'>
+  readonly ai_profile_updated_at: Prisma.FieldRef<"User", 'DateTime'>
 }
     
 
@@ -1913,6 +2916,145 @@ export type User$study_session_userArgs<ExtArgs extends runtime.Types.Extensions
   take?: number
   skip?: number
   distinct?: Prisma.StudySessionUserScalarFieldEnum | Prisma.StudySessionUserScalarFieldEnum[]
+}
+
+/**
+ * User.user_formula_weights
+ */
+export type User$user_formula_weightsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the UserFormulaWeights
+   */
+  select?: Prisma.UserFormulaWeightsSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the UserFormulaWeights
+   */
+  omit?: Prisma.UserFormulaWeightsOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserFormulaWeightsInclude<ExtArgs> | null
+  where?: Prisma.UserFormulaWeightsWhereInput
+}
+
+/**
+ * User.user_availability
+ */
+export type User$user_availabilityArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the UserAvailability
+   */
+  select?: Prisma.UserAvailabilitySelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the UserAvailability
+   */
+  omit?: Prisma.UserAvailabilityOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserAvailabilityInclude<ExtArgs> | null
+  where?: Prisma.UserAvailabilityWhereInput
+  orderBy?: Prisma.UserAvailabilityOrderByWithRelationInput | Prisma.UserAvailabilityOrderByWithRelationInput[]
+  cursor?: Prisma.UserAvailabilityWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.UserAvailabilityScalarFieldEnum | Prisma.UserAvailabilityScalarFieldEnum[]
+}
+
+/**
+ * User.overload_warnings
+ */
+export type User$overload_warningsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the OverloadWarning
+   */
+  select?: Prisma.OverloadWarningSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the OverloadWarning
+   */
+  omit?: Prisma.OverloadWarningOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.OverloadWarningInclude<ExtArgs> | null
+  where?: Prisma.OverloadWarningWhereInput
+  orderBy?: Prisma.OverloadWarningOrderByWithRelationInput | Prisma.OverloadWarningOrderByWithRelationInput[]
+  cursor?: Prisma.OverloadWarningWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.OverloadWarningScalarFieldEnum | Prisma.OverloadWarningScalarFieldEnum[]
+}
+
+/**
+ * User.chat_conversations
+ */
+export type User$chat_conversationsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ChatConversation
+   */
+  select?: Prisma.ChatConversationSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ChatConversation
+   */
+  omit?: Prisma.ChatConversationOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ChatConversationInclude<ExtArgs> | null
+  where?: Prisma.ChatConversationWhereInput
+  orderBy?: Prisma.ChatConversationOrderByWithRelationInput | Prisma.ChatConversationOrderByWithRelationInput[]
+  cursor?: Prisma.ChatConversationWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ChatConversationScalarFieldEnum | Prisma.ChatConversationScalarFieldEnum[]
+}
+
+/**
+ * User.attachments
+ */
+export type User$attachmentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Attachment
+   */
+  select?: Prisma.AttachmentSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Attachment
+   */
+  omit?: Prisma.AttachmentOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.AttachmentInclude<ExtArgs> | null
+  where?: Prisma.AttachmentWhereInput
+  orderBy?: Prisma.AttachmentOrderByWithRelationInput | Prisma.AttachmentOrderByWithRelationInput[]
+  cursor?: Prisma.AttachmentWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.AttachmentScalarFieldEnum | Prisma.AttachmentScalarFieldEnum[]
+}
+
+/**
+ * User.study_session_attachments
+ */
+export type User$study_session_attachmentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the StudySessionAttachment
+   */
+  select?: Prisma.StudySessionAttachmentSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the StudySessionAttachment
+   */
+  omit?: Prisma.StudySessionAttachmentOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.StudySessionAttachmentInclude<ExtArgs> | null
+  where?: Prisma.StudySessionAttachmentWhereInput
+  orderBy?: Prisma.StudySessionAttachmentOrderByWithRelationInput | Prisma.StudySessionAttachmentOrderByWithRelationInput[]
+  cursor?: Prisma.StudySessionAttachmentWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.StudySessionAttachmentScalarFieldEnum | Prisma.StudySessionAttachmentScalarFieldEnum[]
 }
 
 /**

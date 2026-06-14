@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { ArrowLeft, CalendarIcon, Paperclip, X, Sparkles } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import type { Attachment } from "@/types";
+import { AI_READABLE_ATTACHMENT_HELPER_TEXT } from "@/lib/ai/attachmentSupport";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
@@ -477,6 +478,9 @@ export default function StudyEditPage() {
               <Label className="font-mono text-xs tracking-wider">
                 ATTACHMENTS
               </Label>
+              <p className="font-mono text-[10px] text-muted-foreground">
+                {AI_READABLE_ATTACHMENT_HELPER_TEXT}
+              </p>
               {existingAttachments.length > 0 || attachments.length > 0 ? (
                 <div className="space-y-2">
                   {existingAttachments.map((file) => (

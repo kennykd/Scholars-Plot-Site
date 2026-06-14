@@ -39,10 +39,10 @@ self.addEventListener('notificationclick', function (event) {
 });
 
 /* Keep the worker alive for functional events */
-self.addEventListener('install', (event) => {
+self.addEventListener('install', () => {
   self.skipWaiting();
 });
 
-self.addEventListener('activate', (event) => {
+self.addEventListener('activate', () => {
   self.clients.claim();
 });

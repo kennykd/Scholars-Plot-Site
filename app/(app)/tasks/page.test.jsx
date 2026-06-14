@@ -1,6 +1,20 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useRouter } from "next/navigation";
 import { TasksToolbar } from "@/app/components/tasks/tasks-toolbar";
+
+jest.mock("next/navigation", () => ({
+  useRouter: jest.fn(),
+}));
+
+jest.mock("sonner", () => ({
+  toast: {
+    success: jest.fn(),
+    error: jest.fn(),
+    warning: jest.fn(),
+    info: jest.fn(),
+  },
+}));
 
 jest.mock("@/app/components/tasks/task-card", () => ({
   TaskCard: ({ task }) => <div data-testid="task-card">{task.title}</div>,
@@ -57,6 +71,11 @@ const fixtureTasks = [
 ];
 
 describe("TasksToolbar", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    useRouter.mockReturnValue({ push: jest.fn(), refresh: jest.fn() });
+  });
+
   it("renders all tasks sorted by priority by default", () => {
     render(<TasksToolbar tasks={fixtureTasks} />);
 

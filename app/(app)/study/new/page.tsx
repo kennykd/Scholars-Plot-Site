@@ -16,14 +16,14 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
+import { cn, openNativePicker } from "@/lib/utils";
+import { AiSuggestionsButton } from "@/app/components/common/ai-suggestions-button";
 import { toast } from "sonner";
 import {
   ArrowLeft,
   CalendarIcon,
   Paperclip,
   Plus,
-  Sparkles,
   Trash2,
   X,
 } from "lucide-react";
@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/select";
 import { format } from "date-fns";
 import { StudyReminderOffset, StudyReminderValueUnit, type Task } from "@/types";
+import { AI_READABLE_ATTACHMENT_HELPER_TEXT } from "@/lib/ai/attachmentSupport";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
@@ -43,7 +44,9 @@ type StudyTrack = {
   id: string;
   title: string;
   startDate: string;
-  repeat: "none" | "weekly" | "biweekly";
+  repeatEnabled: boolean;
+  repeatEvery: number;
+  repeatUnit: "days" | "weeks";
   time: string;
   focusMinutes: number;
   breakMinutes: number;
@@ -53,12 +56,37 @@ type StudyTrack = {
   attachments: File[];
 };
 
+type StudyTrackDraftPreview = {
+  tracks: {
+    title: string;
+    start_date: string;
+    repeat_enabled: boolean;
+    repeat_every: number;
+    repeat_unit: "days" | "weeks";
+    time: string;
+    focus_minutes: number;
+    break_minutes: number;
+    total_pomodoros: number;
+    notes: string;
+    description_as_checklist: boolean;
+  }[];
+  warnings?: string[];
+  reasoning?: string;
+  skippedAttachments?: {
+    fileName: string;
+    fileType: string;
+    reason: string;
+  }[];
+};
+
 function createEmptyTrack(title = ""): StudyTrack {
   return {
     id: crypto.randomUUID(),
     title,
     startDate: "",
-    repeat: "none",
+    repeatEnabled: false,
+    repeatEvery: 1,
+    repeatUnit: "weeks",
     time: "15:00",
     focusMinutes: 25,
     breakMinutes: 5,
@@ -107,6 +135,8 @@ export default function StudyNewPage() {
   const [tracks, setTracks] = useState<StudyTrack[]>([createEmptyTrack()]);
   const [savingBatch, setSavingBatch] = useState(false);
   const [plannerError, setPlannerError] = useState<string | null>(null);
+  const [studyDraftLoading, setStudyDraftLoading] = useState(false);
+  const [studyDraft, setStudyDraft] = useState<StudyTrackDraftPreview | null>(null);
 
   useEffect(() => {
     if (!taskId || !Number.isInteger(taskId) || taskId <= 0) {
@@ -263,18 +293,30 @@ export default function StudyNewPage() {
           task_id: taskId,
           reminder_enabled: reminderEnabled,
           reminders: reminderEnabled ? reminderOffsetsInMinutes : [],
-          plans: tracks.map((track) => ({
-            client_plan_id: track.id,
-            title: track.title.trim(),
-            start_date: track.startDate,
-            repeat: track.repeat,
-            time: track.time,
-            focus_minutes: Math.max(1, Number(track.focusMinutes) || 25),
-            break_minutes: Math.max(0, Number(track.breakMinutes) || 0),
-            total_pomodoros: Math.max(1, Number(track.totalPomodoro) || 1),
-            notes: track.notes.trim() || undefined,
-            description_as_checklist: track.descriptionAsChecklist,
-          })),
+          plans: tracks.map((track) => {
+            const repeatEvery = Math.max(
+              1,
+              Math.min(
+                track.repeatUnit === "days" ? 30 : 12,
+                Math.round(Number(track.repeatEvery) || 1),
+              ),
+            );
+
+            return {
+              client_plan_id: track.id,
+              title: track.title.trim(),
+              start_date: track.startDate,
+              repeat_enabled: track.repeatEnabled,
+              repeat_every: repeatEvery,
+              repeat_unit: track.repeatUnit,
+              time: track.time,
+              focus_minutes: Math.max(1, Number(track.focusMinutes) || 25),
+              break_minutes: Math.max(0, Number(track.breakMinutes) || 0),
+              total_pomodoros: Math.max(1, Number(track.totalPomodoro) || 1),
+              notes: track.notes.trim() || undefined,
+              description_as_checklist: track.descriptionAsChecklist,
+            };
+          }),
         }),
       });
 
@@ -379,6 +421,57 @@ export default function StudyNewPage() {
           : track,
       ),
     );
+  };
+
+  const requestStudyTrackDraft = async () => {
+    if (!taskId || !taskContext) return;
+
+    setStudyDraftLoading(true);
+    setPlannerError(null);
+    try {
+      const response = await fetch("/api/ai/study-track-draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskId }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.message ?? "Could not generate study plan");
+      }
+
+      setStudyDraft(data.draft);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Could not generate study plan";
+      setPlannerError(message);
+      toast.error(message);
+    } finally {
+      setStudyDraftLoading(false);
+    }
+  };
+
+  const applyStudyTrackDraft = () => {
+    if (!studyDraft?.tracks?.length) return;
+
+    setTracks(
+      studyDraft.tracks.map((track) => ({
+        id: crypto.randomUUID(),
+        title: track.title,
+        startDate: track.start_date,
+        repeatEnabled: track.repeat_enabled,
+        repeatEvery: track.repeat_every,
+        repeatUnit: track.repeat_unit,
+        time: track.time,
+        focusMinutes: track.focus_minutes,
+        breakMinutes: track.break_minutes,
+        totalPomodoro: track.total_pomodoros,
+        notes: track.notes,
+        descriptionAsChecklist: track.description_as_checklist,
+        attachments: [],
+      })),
+    );
+    setPlannerError(null);
+    toast.success("AI study plan applied");
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -623,6 +716,8 @@ export default function StudyNewPage() {
                         onChange={(event) =>
                           updateTrack(track.id, { time: event.target.value })
                         }
+                        onClick={openNativePicker}
+                        onFocus={openNativePicker}
                       />
                     </div>
                   </div>
@@ -654,7 +749,7 @@ export default function StudyNewPage() {
                             taskDeadlineDateValue &&
                             updateTrack(track.id, {
                               startDate: taskDeadlineDateValue,
-                              repeat: "none",
+                              repeatEnabled: false,
                             })
                           }
                           className="shrink-0"
@@ -664,27 +759,86 @@ export default function StudyNewPage() {
                       </div>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <Label className="font-mono text-xs tracking-wider">
-                        REPEAT
+                    <div className="space-y-2">
+                      
+                      <div className="flex items-center gap-2">
+                        <Label className="font-mono text-xs tracking-wider">
+                        REPEAT PER
                       </Label>
-                      <Select
-                        value={track.repeat}
-                        onValueChange={(value) =>
-                          updateTrack(track.id, {
-                            repeat: value as StudyTrack["repeat"],
-                          })
-                        }
-                      >
-                        <SelectTrigger className="font-mono text-sm">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">None</SelectItem>
-                          <SelectItem value="weekly">Every week</SelectItem>
-                          <SelectItem value="biweekly">Every 2 weeks</SelectItem>
-                        </SelectContent>
-                      </Select>
+                        <Checkbox
+                          id={`track-repeat-enabled-${track.id}`}
+                          checked={track.repeatEnabled}
+                          onCheckedChange={(checked) =>
+                            updateTrack(track.id, {
+                              repeatEnabled: checked === true,
+                            })
+                          }
+                        />
+                  
+                      </div>
+                      <div className="grid grid-cols-[minmax(0,1fr)_110px] gap-2">
+                        <div className="space-y-1.5">
+                      
+                          <Input
+                            id={`track-repeat-every-${track.id}`}
+                            type="number"
+                            min={1}
+                            max={track.repeatUnit === "days" ? 30 : 12}
+                            value={track.repeatEvery}
+                            disabled={!track.repeatEnabled}
+                            onChange={(event) =>
+                              updateTrack(track.id, {
+                                repeatEvery: Number(event.target.value),
+                              })
+                            }
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <div
+                            id={`track-repeat-unit-${track.id}`}
+                            role="group"
+                            aria-label="Repeat unit"
+                            className="grid grid-cols-2 gap-1"
+                          >
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={track.repeatUnit === "days" ? "default" : "outline"}
+                              disabled={!track.repeatEnabled}
+                              aria-pressed={track.repeatUnit === "days"}
+                              onClick={() =>
+                                updateTrack(track.id, {
+                                  repeatUnit: "days",
+                                  repeatEvery: Math.min(
+                                    Math.max(1, Number(track.repeatEvery) || 1),
+                                    30,
+                                  ),
+                                })
+                              }
+                            >
+                              Days
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={track.repeatUnit === "weeks" ? "default" : "outline"}
+                              disabled={!track.repeatEnabled}
+                              aria-pressed={track.repeatUnit === "weeks"}
+                              onClick={() =>
+                                updateTrack(track.id, {
+                                  repeatUnit: "weeks",
+                                  repeatEvery: Math.min(
+                                    Math.max(1, Number(track.repeatEvery) || 1),
+                                    12,
+                                  ),
+                                })
+                              }
+                            >
+                              Weeks
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -768,6 +922,9 @@ export default function StudyNewPage() {
                     <Label className="font-mono text-xs tracking-wider">
                       SESSION ATTACHMENTS
                     </Label>
+                    <p className="font-mono text-[10px] text-muted-foreground">
+                      {AI_READABLE_ATTACHMENT_HELPER_TEXT}
+                    </p>
                     {track.attachments.length > 0 && (
                       <div className="space-y-2">
                         {track.attachments.map((file, fileIndex) => (
@@ -956,6 +1113,83 @@ export default function StudyNewPage() {
               ) : null}
             </div>
 
+            <AiSuggestionsButton
+              description="Suggest a study plan from this task's deadline and topics."
+              loading={studyDraftLoading}
+              onClick={requestStudyTrackDraft}
+            />
+
+            {studyDraft && (
+              <div className="space-y-3 rounded-lg border border-accent/30 bg-accent/5 p-4">
+                <div>
+                  <p className="font-mono text-xs tracking-wider text-muted-foreground">
+                    AI STUDY PLAN
+                  </p>
+                  {studyDraft.reasoning ? (
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {studyDraft.reasoning}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="space-y-2">
+                  {studyDraft.tracks.map((track, index) => (
+                    <div
+                      key={`${track.title}-${index}`}
+                      className="rounded-md border border-border/60 bg-background/60 p-3"
+                    >
+                      <p className="text-sm font-semibold">{track.title}</p>
+                      <p className="font-mono text-xs text-muted-foreground">
+                        {track.start_date} at {track.time} · {track.focus_minutes}m x{" "}
+                        {track.total_pomodoros}
+                      </p>
+                      {track.notes ? (
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          {track.notes}
+                        </p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+                {studyDraft.warnings?.length ? (
+                  <div className="space-y-1 rounded-md border border-border/60 bg-background/60 p-3">
+                    {studyDraft.warnings.map((warning) => (
+                      <p key={warning} className="text-xs text-muted-foreground">
+                        {warning}
+                      </p>
+                    ))}
+                  </div>
+                ) : null}
+                {studyDraft.skippedAttachments?.length ? (
+                  <div className="space-y-1 rounded-md border border-border/60 bg-background/60 p-3">
+                    <p className="font-mono text-[10px] tracking-wider text-muted-foreground">
+                      SKIPPED FILES
+                    </p>
+                    {studyDraft.skippedAttachments.map((attachment) => (
+                      <p
+                        key={`${attachment.fileName}-${attachment.reason}`}
+                        className="text-xs text-muted-foreground"
+                      >
+                        {attachment.fileName}: {attachment.reason}
+                      </p>
+                    ))}
+                  </div>
+                ) : null}
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" size="sm" onClick={applyStudyTrackDraft}>
+                    Apply study plan
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setStudyDraft(null)}
+                  >
+                    Dismiss
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-3 pt-2">
               <Button
                 type="button"
@@ -1047,6 +1281,8 @@ export default function StudyNewPage() {
                   type="time"
                   value={scheduledTime}
                   onChange={(e) => setScheduledTime(e.target.value)}
+                  onClick={openNativePicker}
+                  onFocus={openNativePicker}
                 />
               </div>
             </div>
@@ -1127,6 +1363,9 @@ export default function StudyNewPage() {
               <Label className="font-mono text-xs tracking-wider">
                 ATTACHMENTS
               </Label>
+              <p className="font-mono text-[10px] text-muted-foreground">
+                {AI_READABLE_ATTACHMENT_HELPER_TEXT}
+              </p>
               {attachments.length ? (
                 <div className="space-y-2">
                   {attachments.map((file, index) => (
@@ -1301,25 +1540,7 @@ export default function StudyNewPage() {
               ) : null}
             </div>
 
-            <div className="flex items-center justify-between rounded-lg border border-accent/20 bg-accent/5 px-4 py-3">
-              <div>
-                <p className="text-sm font-medium text-foreground">
-                  AI Suggestions
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Get session ideas based on your title and attachments.
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                className="gap-1.5 font-mono text-xs border-accent/40 text-accent hover:bg-accent/10 hover:text-accent"
-                onClick={() => toast.info("AI suggestions coming soon!")}
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                AI Suggestions
-              </Button>
-            </div>
+            <AiSuggestionsButton description="Get session ideas based on your title and attachments." />
 
             <div className="flex gap-3 pt-2">
               <Button

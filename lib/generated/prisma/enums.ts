@@ -29,6 +29,7 @@ export type ProjectStatus = (typeof ProjectStatus)[keyof typeof ProjectStatus]
 export const ProjectUserRole = {
   owner: 'owner',
   moderator: 'moderator',
+  collaborator: 'collaborator',
   member: 'member'
 } as const
 
@@ -59,7 +60,27 @@ export const ReminderIntervalType = {
   hours: 'hours',
   days: 'days',
   weeks: 'weeks',
-  months: 'months'
+  months: 'months',
+  fixed: 'fixed',
+  custom: 'custom'
 } as const
 
 export type ReminderIntervalType = (typeof ReminderIntervalType)[keyof typeof ReminderIntervalType]
+
+
+export const MessageRole = {
+  user: 'user',
+  assistant: 'assistant'
+} as const
+
+export type MessageRole = (typeof MessageRole)[keyof typeof MessageRole]
+
+
+export const ActionStatus = {
+  none: 'none',
+  pending: 'pending',
+  confirmed: 'confirmed',
+  dismissed: 'dismissed'
+} as const
+
+export type ActionStatus = (typeof ActionStatus)[keyof typeof ActionStatus]

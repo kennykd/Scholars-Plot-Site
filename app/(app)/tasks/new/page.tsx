@@ -23,14 +23,31 @@ import {
 } from "@/components/ui/select";
 import { StarRating } from "@/app/components/common/star-rating";
 import { StudySessionPrompt } from "@/app/components/tasks/study-session-prompt";
+import { AiSuggestionsButton } from "@/app/components/common/ai-suggestions-button";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ArrowLeft, CalendarIcon, Paperclip, X } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, openNativePicker } from "@/lib/utils";
+import { AI_READABLE_ATTACHMENT_HELPER_TEXT } from "@/lib/ai/attachmentSupport";
 
 type ReminderOption = "none" | "daily" | "every-3-days" | "weekly" | "biweekly";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
+
+type TaskDraftPreview = {
+  draft: {
+    title: string;
+    description: string;
+    priority: number;
+    reasoning?: string;
+    skippedAttachments?: {
+      fileName: string;
+      fileType: string;
+      reason: string;
+    }[];
+  };
+  attachmentIds: number[];
+};
 
 export default function TaskForm() {
   const router = useRouter();
@@ -44,6 +61,9 @@ export default function TaskForm() {
   const [calOpen, setCalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [createdTask, setCreatedTask] = useState<{ id: number; title: string } | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiPreview, setAiPreview] = useState<TaskDraftPreview | null>(null);
+  const [draftAttachmentIds, setDraftAttachmentIds] = useState<number[]>([]);
 
   const addFiles = (incoming: FileList | File[]) => {
     const arr = Array.from(incoming);
@@ -55,7 +75,11 @@ export default function TaskForm() {
       }
       accepted.push(f);
     }
-    if (accepted.length > 0) setFiles((prev) => [...prev, ...accepted]);
+    if (accepted.length > 0) {
+      setAiPreview(null);
+      setDraftAttachmentIds([]);
+      setFiles((prev) => [...prev, ...accepted]);
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -69,7 +93,70 @@ export default function TaskForm() {
   };
 
   const removeFile = (idx: number) => {
+    setAiPreview(null);
+    setDraftAttachmentIds([]);
     setFiles((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const getCombinedDeadline = () => {
+    if (!deadline) return null;
+    const [hh, mm] = (deadlineTime || "23:59").split(":").map(Number);
+    const combinedDeadline = new Date(deadline);
+    combinedDeadline.setHours(hh, mm, 0, 0);
+    return combinedDeadline;
+  };
+
+  const requestTaskDraft = async () => {
+    if (!title.trim() && !description.trim() && files.length === 0) {
+      toast.error("Add a title, description, or attachment before asking AI");
+      return;
+    }
+
+    setAiLoading(true);
+    try {
+      const formData = new FormData();
+      formData.set("title", title);
+      formData.set("description", description);
+      formData.set("priority", String(priority));
+
+      const combinedDeadline = getCombinedDeadline();
+      if (combinedDeadline) {
+        formData.set("deadline", combinedDeadline.toISOString());
+      }
+
+      for (const file of files) {
+        formData.append("file", file);
+      }
+
+      const response = await fetch("/api/ai/task-draft", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.message ?? "Could not generate AI suggestions");
+      }
+
+      setAiPreview({
+        draft: data.draft,
+        attachmentIds: data.attachmentIds ?? [],
+      });
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not generate AI suggestions",
+      );
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const applyTaskDraft = () => {
+    if (!aiPreview) return;
+    setTitle(aiPreview.draft.title);
+    setDescription(aiPreview.draft.description);
+    setPriority(aiPreview.draft.priority);
+    setDraftAttachmentIds(aiPreview.attachmentIds);
+    toast.success("AI suggestions applied");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -85,9 +172,12 @@ export default function TaskForm() {
 
     setSubmitting(true);
     try {
-      const [hh, mm] = (deadlineTime || "23:59").split(":").map(Number);
-      const combinedDeadline = new Date(deadline);
-      combinedDeadline.setHours(hh, mm, 0, 0);
+      const combinedDeadline = getCombinedDeadline();
+      if (!combinedDeadline) {
+        toast.error("Deadline is required");
+        setSubmitting(false);
+        return;
+      }
 
       const res = await fetch("/api/task", {
         method: "POST",
@@ -99,6 +189,7 @@ export default function TaskForm() {
           status: "Pending",
           priority,
           ...(reminder !== "none" ? { reminder } : {}),
+          ...(draftAttachmentIds.length > 0 ? { attachmentIds: draftAttachmentIds } : {}),
         }),
       });
 
@@ -114,7 +205,7 @@ export default function TaskForm() {
       const created = await res.json();
       const taskId: number | undefined = created?.task?.id;
 
-      if (taskId && files.length > 0) {
+      if (taskId && files.length > 0 && draftAttachmentIds.length === 0) {
         const failures: string[] = [];
         for (const f of files) {
           const fd = new FormData();
@@ -253,6 +344,8 @@ export default function TaskForm() {
                   type="time"
                   value={deadlineTime}
                   onChange={(e) => setDeadlineTime(e.target.value)}
+                  onClick={openNativePicker}
+                  onFocus={openNativePicker}
                   placeholder="23:59"
                 />
                 <p className="font-mono text-[10px] text-muted-foreground">
@@ -281,6 +374,9 @@ export default function TaskForm() {
               <Label className="font-mono text-xs tracking-wider">
                 ATTACHMENTS
               </Label>
+              <p className="font-mono text-[10px] text-muted-foreground">
+                {AI_READABLE_ATTACHMENT_HELPER_TEXT}
+              </p>
               {files.length > 0 && (
                 <ul className="space-y-1.5">
                   {files.map((f, i) => (
@@ -357,6 +453,64 @@ export default function TaskForm() {
                 We&apos;ll nudge you on this cadence until the deadline.
               </p>
             </div>
+
+            <AiSuggestionsButton
+              description="Get task ideas based on your title, description, and files."
+              loading={aiLoading}
+              onClick={requestTaskDraft}
+            />
+
+            {aiPreview && (
+              <div className="space-y-3 rounded-lg border border-accent/30 bg-accent/5 p-4">
+                <div>
+                  <p className="font-mono text-xs tracking-wider text-muted-foreground">
+                    AI DRAFT
+                  </p>
+                  <h2 className="mt-1 text-base font-semibold">
+                    {aiPreview.draft.title}
+                  </h2>
+                  <p className="mt-2 text-sm text-muted-foreground whitespace-pre-line">
+                    {aiPreview.draft.description}
+                  </p>
+                </div>
+                <p className="font-mono text-xs text-muted-foreground">
+                  Priority: {Number(aiPreview.draft.priority).toFixed(1)} / 5.0
+                </p>
+                {aiPreview.draft.reasoning ? (
+                  <p className="text-sm text-muted-foreground">
+                    {aiPreview.draft.reasoning}
+                  </p>
+                ) : null}
+                {aiPreview.draft.skippedAttachments?.length ? (
+                  <div className="space-y-1 rounded-md border border-border/60 bg-background/60 p-3">
+                    <p className="font-mono text-[10px] tracking-wider text-muted-foreground">
+                      SKIPPED FILES
+                    </p>
+                    {aiPreview.draft.skippedAttachments.map((attachment) => (
+                      <p
+                        key={`${attachment.fileName}-${attachment.reason}`}
+                        className="text-xs text-muted-foreground"
+                      >
+                        {attachment.fileName}: {attachment.reason}
+                      </p>
+                    ))}
+                  </div>
+                ) : null}
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" size="sm" onClick={applyTaskDraft}>
+                    Apply suggestions
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setAiPreview(null)}
+                  >
+                    Dismiss
+                  </Button>
+                </div>
+              </div>
+            )}
 
             <div className="flex gap-3 pt-2">
               <Button

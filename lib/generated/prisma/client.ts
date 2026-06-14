@@ -55,6 +55,11 @@ export type User = Prisma.UserModel
  */
 export type UserFormulaWeights = Prisma.UserFormulaWeightsModel
 /**
+ * Model UserAvailability
+ * 
+ */
+export type UserAvailability = Prisma.UserAvailabilityModel
+/**
  * Model Project
  * 
  */
@@ -85,15 +90,40 @@ export type Attachment = Prisma.AttachmentModel
  */
 export type StudySession = Prisma.StudySessionModel
 /**
+ * Model StudySessionAttachment
+ * 
+ */
+export type StudySessionAttachment = Prisma.StudySessionAttachmentModel
+/**
  * Model StudySessionUser
  * 
  */
 export type StudySessionUser = Prisma.StudySessionUserModel
 /**
+ * Model StudySessionReminder
+ * 
+ */
+export type StudySessionReminder = Prisma.StudySessionReminderModel
+/**
  * Model TaskReminder
  * 
  */
 export type TaskReminder = Prisma.TaskReminderModel
+/**
+ * Model OverloadWarning
+ * 
+ */
+export type OverloadWarning = Prisma.OverloadWarningModel
+/**
+ * Model ChatConversation
+ * 
+ */
+export type ChatConversation = Prisma.ChatConversationModel
+/**
+ * Model ChatMessage
+ * 
+ */
+export type ChatMessage = Prisma.ChatMessageModel
 /**
  * Model Analytics
  * 

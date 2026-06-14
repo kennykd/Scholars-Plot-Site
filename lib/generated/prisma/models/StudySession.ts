@@ -285,6 +285,8 @@ export type StudySessionWhereInput = {
   study_session_reminder_enabled?: Prisma.BoolFilter<"StudySession"> | boolean
   study_session_remind_at_minutes?: Prisma.IntNullableListFilter<"StudySession">
   study_session_user?: Prisma.StudySessionUserListRelationFilter
+  study_session_attachments?: Prisma.StudySessionAttachmentListRelationFilter
+  study_session_reminders?: Prisma.StudySessionReminderListRelationFilter
 }
 
 export type StudySessionOrderByWithRelationInput = {
@@ -301,6 +303,8 @@ export type StudySessionOrderByWithRelationInput = {
   study_session_reminder_enabled?: Prisma.SortOrder
   study_session_remind_at_minutes?: Prisma.SortOrder
   study_session_user?: Prisma.StudySessionUserOrderByRelationAggregateInput
+  study_session_attachments?: Prisma.StudySessionAttachmentOrderByRelationAggregateInput
+  study_session_reminders?: Prisma.StudySessionReminderOrderByRelationAggregateInput
 }
 
 export type StudySessionWhereUniqueInput = Prisma.AtLeast<{
@@ -320,6 +324,8 @@ export type StudySessionWhereUniqueInput = Prisma.AtLeast<{
   study_session_reminder_enabled?: Prisma.BoolFilter<"StudySession"> | boolean
   study_session_remind_at_minutes?: Prisma.IntNullableListFilter<"StudySession">
   study_session_user?: Prisma.StudySessionUserListRelationFilter
+  study_session_attachments?: Prisma.StudySessionAttachmentListRelationFilter
+  study_session_reminders?: Prisma.StudySessionReminderListRelationFilter
 }, "study_session_id">
 
 export type StudySessionOrderByWithAggregationInput = {
@@ -373,6 +379,8 @@ export type StudySessionCreateInput = {
   study_session_reminder_enabled?: boolean
   study_session_remind_at_minutes?: Prisma.StudySessionCreatestudy_session_remind_at_minutesInput | number[]
   study_session_user?: Prisma.StudySessionUserCreateNestedManyWithoutStudy_sessionInput
+  study_session_attachments?: Prisma.StudySessionAttachmentCreateNestedManyWithoutStudy_sessionInput
+  study_session_reminders?: Prisma.StudySessionReminderCreateNestedManyWithoutStudy_sessionInput
 }
 
 export type StudySessionUncheckedCreateInput = {
@@ -389,6 +397,8 @@ export type StudySessionUncheckedCreateInput = {
   study_session_reminder_enabled?: boolean
   study_session_remind_at_minutes?: Prisma.StudySessionCreatestudy_session_remind_at_minutesInput | number[]
   study_session_user?: Prisma.StudySessionUserUncheckedCreateNestedManyWithoutStudy_sessionInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedCreateNestedManyWithoutStudy_sessionInput
+  study_session_reminders?: Prisma.StudySessionReminderUncheckedCreateNestedManyWithoutStudy_sessionInput
 }
 
 export type StudySessionUpdateInput = {
@@ -404,6 +414,8 @@ export type StudySessionUpdateInput = {
   study_session_reminder_enabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   study_session_remind_at_minutes?: Prisma.StudySessionUpdatestudy_session_remind_at_minutesInput | number[]
   study_session_user?: Prisma.StudySessionUserUpdateManyWithoutStudy_sessionNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUpdateManyWithoutStudy_sessionNestedInput
+  study_session_reminders?: Prisma.StudySessionReminderUpdateManyWithoutStudy_sessionNestedInput
 }
 
 export type StudySessionUncheckedUpdateInput = {
@@ -420,6 +432,8 @@ export type StudySessionUncheckedUpdateInput = {
   study_session_reminder_enabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   study_session_remind_at_minutes?: Prisma.StudySessionUpdatestudy_session_remind_at_minutesInput | number[]
   study_session_user?: Prisma.StudySessionUserUncheckedUpdateManyWithoutStudy_sessionNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedUpdateManyWithoutStudy_sessionNestedInput
+  study_session_reminders?: Prisma.StudySessionReminderUncheckedUpdateManyWithoutStudy_sessionNestedInput
 }
 
 export type StudySessionCreateManyInput = {
@@ -542,13 +556,23 @@ export type StudySessionCreatestudy_session_remind_at_minutesInput = {
   set: number[]
 }
 
-export type BoolFieldUpdateOperationsInput = {
-  set?: boolean
-}
-
 export type StudySessionUpdatestudy_session_remind_at_minutesInput = {
   set?: number[]
   push?: number | number[]
+}
+
+export type StudySessionCreateNestedOneWithoutStudy_session_attachmentsInput = {
+  create?: Prisma.XOR<Prisma.StudySessionCreateWithoutStudy_session_attachmentsInput, Prisma.StudySessionUncheckedCreateWithoutStudy_session_attachmentsInput>
+  connectOrCreate?: Prisma.StudySessionCreateOrConnectWithoutStudy_session_attachmentsInput
+  connect?: Prisma.StudySessionWhereUniqueInput
+}
+
+export type StudySessionUpdateOneRequiredWithoutStudy_session_attachmentsNestedInput = {
+  create?: Prisma.XOR<Prisma.StudySessionCreateWithoutStudy_session_attachmentsInput, Prisma.StudySessionUncheckedCreateWithoutStudy_session_attachmentsInput>
+  connectOrCreate?: Prisma.StudySessionCreateOrConnectWithoutStudy_session_attachmentsInput
+  upsert?: Prisma.StudySessionUpsertWithoutStudy_session_attachmentsInput
+  connect?: Prisma.StudySessionWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.StudySessionUpdateToOneWithWhereWithoutStudy_session_attachmentsInput, Prisma.StudySessionUpdateWithoutStudy_session_attachmentsInput>, Prisma.StudySessionUncheckedUpdateWithoutStudy_session_attachmentsInput>
 }
 
 export type StudySessionCreateNestedOneWithoutStudy_session_userInput = {
@@ -565,6 +589,102 @@ export type StudySessionUpdateOneRequiredWithoutStudy_session_userNestedInput = 
   update?: Prisma.XOR<Prisma.XOR<Prisma.StudySessionUpdateToOneWithWhereWithoutStudy_session_userInput, Prisma.StudySessionUpdateWithoutStudy_session_userInput>, Prisma.StudySessionUncheckedUpdateWithoutStudy_session_userInput>
 }
 
+export type StudySessionCreateNestedOneWithoutStudy_session_remindersInput = {
+  create?: Prisma.XOR<Prisma.StudySessionCreateWithoutStudy_session_remindersInput, Prisma.StudySessionUncheckedCreateWithoutStudy_session_remindersInput>
+  connectOrCreate?: Prisma.StudySessionCreateOrConnectWithoutStudy_session_remindersInput
+  connect?: Prisma.StudySessionWhereUniqueInput
+}
+
+export type StudySessionUpdateOneRequiredWithoutStudy_session_remindersNestedInput = {
+  create?: Prisma.XOR<Prisma.StudySessionCreateWithoutStudy_session_remindersInput, Prisma.StudySessionUncheckedCreateWithoutStudy_session_remindersInput>
+  connectOrCreate?: Prisma.StudySessionCreateOrConnectWithoutStudy_session_remindersInput
+  upsert?: Prisma.StudySessionUpsertWithoutStudy_session_remindersInput
+  connect?: Prisma.StudySessionWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.StudySessionUpdateToOneWithWhereWithoutStudy_session_remindersInput, Prisma.StudySessionUpdateWithoutStudy_session_remindersInput>, Prisma.StudySessionUncheckedUpdateWithoutStudy_session_remindersInput>
+}
+
+export type StudySessionCreateWithoutStudy_session_attachmentsInput = {
+  study_session_name: string
+  study_session_description?: string | null
+  focus_minutes?: number
+  break_minutes?: number
+  total_pomodoros?: number
+  total_minutes?: number
+  study_session_scheduled_at: Date | string
+  study_session_created_at?: Date | string
+  checklist_json?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  study_session_reminder_enabled?: boolean
+  study_session_remind_at_minutes?: Prisma.StudySessionCreatestudy_session_remind_at_minutesInput | number[]
+  study_session_user?: Prisma.StudySessionUserCreateNestedManyWithoutStudy_sessionInput
+  study_session_reminders?: Prisma.StudySessionReminderCreateNestedManyWithoutStudy_sessionInput
+}
+
+export type StudySessionUncheckedCreateWithoutStudy_session_attachmentsInput = {
+  study_session_id?: number
+  study_session_name: string
+  study_session_description?: string | null
+  focus_minutes?: number
+  break_minutes?: number
+  total_pomodoros?: number
+  total_minutes?: number
+  study_session_scheduled_at: Date | string
+  study_session_created_at?: Date | string
+  checklist_json?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  study_session_reminder_enabled?: boolean
+  study_session_remind_at_minutes?: Prisma.StudySessionCreatestudy_session_remind_at_minutesInput | number[]
+  study_session_user?: Prisma.StudySessionUserUncheckedCreateNestedManyWithoutStudy_sessionInput
+  study_session_reminders?: Prisma.StudySessionReminderUncheckedCreateNestedManyWithoutStudy_sessionInput
+}
+
+export type StudySessionCreateOrConnectWithoutStudy_session_attachmentsInput = {
+  where: Prisma.StudySessionWhereUniqueInput
+  create: Prisma.XOR<Prisma.StudySessionCreateWithoutStudy_session_attachmentsInput, Prisma.StudySessionUncheckedCreateWithoutStudy_session_attachmentsInput>
+}
+
+export type StudySessionUpsertWithoutStudy_session_attachmentsInput = {
+  update: Prisma.XOR<Prisma.StudySessionUpdateWithoutStudy_session_attachmentsInput, Prisma.StudySessionUncheckedUpdateWithoutStudy_session_attachmentsInput>
+  create: Prisma.XOR<Prisma.StudySessionCreateWithoutStudy_session_attachmentsInput, Prisma.StudySessionUncheckedCreateWithoutStudy_session_attachmentsInput>
+  where?: Prisma.StudySessionWhereInput
+}
+
+export type StudySessionUpdateToOneWithWhereWithoutStudy_session_attachmentsInput = {
+  where?: Prisma.StudySessionWhereInput
+  data: Prisma.XOR<Prisma.StudySessionUpdateWithoutStudy_session_attachmentsInput, Prisma.StudySessionUncheckedUpdateWithoutStudy_session_attachmentsInput>
+}
+
+export type StudySessionUpdateWithoutStudy_session_attachmentsInput = {
+  study_session_name?: Prisma.StringFieldUpdateOperationsInput | string
+  study_session_description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  focus_minutes?: Prisma.IntFieldUpdateOperationsInput | number
+  break_minutes?: Prisma.IntFieldUpdateOperationsInput | number
+  total_pomodoros?: Prisma.IntFieldUpdateOperationsInput | number
+  total_minutes?: Prisma.IntFieldUpdateOperationsInput | number
+  study_session_scheduled_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  study_session_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  checklist_json?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  study_session_reminder_enabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  study_session_remind_at_minutes?: Prisma.StudySessionUpdatestudy_session_remind_at_minutesInput | number[]
+  study_session_user?: Prisma.StudySessionUserUpdateManyWithoutStudy_sessionNestedInput
+  study_session_reminders?: Prisma.StudySessionReminderUpdateManyWithoutStudy_sessionNestedInput
+}
+
+export type StudySessionUncheckedUpdateWithoutStudy_session_attachmentsInput = {
+  study_session_id?: Prisma.IntFieldUpdateOperationsInput | number
+  study_session_name?: Prisma.StringFieldUpdateOperationsInput | string
+  study_session_description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  focus_minutes?: Prisma.IntFieldUpdateOperationsInput | number
+  break_minutes?: Prisma.IntFieldUpdateOperationsInput | number
+  total_pomodoros?: Prisma.IntFieldUpdateOperationsInput | number
+  total_minutes?: Prisma.IntFieldUpdateOperationsInput | number
+  study_session_scheduled_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  study_session_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  checklist_json?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  study_session_reminder_enabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  study_session_remind_at_minutes?: Prisma.StudySessionUpdatestudy_session_remind_at_minutesInput | number[]
+  study_session_user?: Prisma.StudySessionUserUncheckedUpdateManyWithoutStudy_sessionNestedInput
+  study_session_reminders?: Prisma.StudySessionReminderUncheckedUpdateManyWithoutStudy_sessionNestedInput
+}
+
 export type StudySessionCreateWithoutStudy_session_userInput = {
   study_session_name: string
   study_session_description?: string | null
@@ -577,6 +697,8 @@ export type StudySessionCreateWithoutStudy_session_userInput = {
   checklist_json?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   study_session_reminder_enabled?: boolean
   study_session_remind_at_minutes?: Prisma.StudySessionCreatestudy_session_remind_at_minutesInput | number[]
+  study_session_attachments?: Prisma.StudySessionAttachmentCreateNestedManyWithoutStudy_sessionInput
+  study_session_reminders?: Prisma.StudySessionReminderCreateNestedManyWithoutStudy_sessionInput
 }
 
 export type StudySessionUncheckedCreateWithoutStudy_session_userInput = {
@@ -592,6 +714,8 @@ export type StudySessionUncheckedCreateWithoutStudy_session_userInput = {
   checklist_json?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   study_session_reminder_enabled?: boolean
   study_session_remind_at_minutes?: Prisma.StudySessionCreatestudy_session_remind_at_minutesInput | number[]
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedCreateNestedManyWithoutStudy_sessionInput
+  study_session_reminders?: Prisma.StudySessionReminderUncheckedCreateNestedManyWithoutStudy_sessionInput
 }
 
 export type StudySessionCreateOrConnectWithoutStudy_session_userInput = {
@@ -622,6 +746,8 @@ export type StudySessionUpdateWithoutStudy_session_userInput = {
   checklist_json?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   study_session_reminder_enabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   study_session_remind_at_minutes?: Prisma.StudySessionUpdatestudy_session_remind_at_minutesInput | number[]
+  study_session_attachments?: Prisma.StudySessionAttachmentUpdateManyWithoutStudy_sessionNestedInput
+  study_session_reminders?: Prisma.StudySessionReminderUpdateManyWithoutStudy_sessionNestedInput
 }
 
 export type StudySessionUncheckedUpdateWithoutStudy_session_userInput = {
@@ -637,6 +763,90 @@ export type StudySessionUncheckedUpdateWithoutStudy_session_userInput = {
   checklist_json?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   study_session_reminder_enabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   study_session_remind_at_minutes?: Prisma.StudySessionUpdatestudy_session_remind_at_minutesInput | number[]
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedUpdateManyWithoutStudy_sessionNestedInput
+  study_session_reminders?: Prisma.StudySessionReminderUncheckedUpdateManyWithoutStudy_sessionNestedInput
+}
+
+export type StudySessionCreateWithoutStudy_session_remindersInput = {
+  study_session_name: string
+  study_session_description?: string | null
+  focus_minutes?: number
+  break_minutes?: number
+  total_pomodoros?: number
+  total_minutes?: number
+  study_session_scheduled_at: Date | string
+  study_session_created_at?: Date | string
+  checklist_json?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  study_session_reminder_enabled?: boolean
+  study_session_remind_at_minutes?: Prisma.StudySessionCreatestudy_session_remind_at_minutesInput | number[]
+  study_session_user?: Prisma.StudySessionUserCreateNestedManyWithoutStudy_sessionInput
+  study_session_attachments?: Prisma.StudySessionAttachmentCreateNestedManyWithoutStudy_sessionInput
+}
+
+export type StudySessionUncheckedCreateWithoutStudy_session_remindersInput = {
+  study_session_id?: number
+  study_session_name: string
+  study_session_description?: string | null
+  focus_minutes?: number
+  break_minutes?: number
+  total_pomodoros?: number
+  total_minutes?: number
+  study_session_scheduled_at: Date | string
+  study_session_created_at?: Date | string
+  checklist_json?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  study_session_reminder_enabled?: boolean
+  study_session_remind_at_minutes?: Prisma.StudySessionCreatestudy_session_remind_at_minutesInput | number[]
+  study_session_user?: Prisma.StudySessionUserUncheckedCreateNestedManyWithoutStudy_sessionInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedCreateNestedManyWithoutStudy_sessionInput
+}
+
+export type StudySessionCreateOrConnectWithoutStudy_session_remindersInput = {
+  where: Prisma.StudySessionWhereUniqueInput
+  create: Prisma.XOR<Prisma.StudySessionCreateWithoutStudy_session_remindersInput, Prisma.StudySessionUncheckedCreateWithoutStudy_session_remindersInput>
+}
+
+export type StudySessionUpsertWithoutStudy_session_remindersInput = {
+  update: Prisma.XOR<Prisma.StudySessionUpdateWithoutStudy_session_remindersInput, Prisma.StudySessionUncheckedUpdateWithoutStudy_session_remindersInput>
+  create: Prisma.XOR<Prisma.StudySessionCreateWithoutStudy_session_remindersInput, Prisma.StudySessionUncheckedCreateWithoutStudy_session_remindersInput>
+  where?: Prisma.StudySessionWhereInput
+}
+
+export type StudySessionUpdateToOneWithWhereWithoutStudy_session_remindersInput = {
+  where?: Prisma.StudySessionWhereInput
+  data: Prisma.XOR<Prisma.StudySessionUpdateWithoutStudy_session_remindersInput, Prisma.StudySessionUncheckedUpdateWithoutStudy_session_remindersInput>
+}
+
+export type StudySessionUpdateWithoutStudy_session_remindersInput = {
+  study_session_name?: Prisma.StringFieldUpdateOperationsInput | string
+  study_session_description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  focus_minutes?: Prisma.IntFieldUpdateOperationsInput | number
+  break_minutes?: Prisma.IntFieldUpdateOperationsInput | number
+  total_pomodoros?: Prisma.IntFieldUpdateOperationsInput | number
+  total_minutes?: Prisma.IntFieldUpdateOperationsInput | number
+  study_session_scheduled_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  study_session_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  checklist_json?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  study_session_reminder_enabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  study_session_remind_at_minutes?: Prisma.StudySessionUpdatestudy_session_remind_at_minutesInput | number[]
+  study_session_user?: Prisma.StudySessionUserUpdateManyWithoutStudy_sessionNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUpdateManyWithoutStudy_sessionNestedInput
+}
+
+export type StudySessionUncheckedUpdateWithoutStudy_session_remindersInput = {
+  study_session_id?: Prisma.IntFieldUpdateOperationsInput | number
+  study_session_name?: Prisma.StringFieldUpdateOperationsInput | string
+  study_session_description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  focus_minutes?: Prisma.IntFieldUpdateOperationsInput | number
+  break_minutes?: Prisma.IntFieldUpdateOperationsInput | number
+  total_pomodoros?: Prisma.IntFieldUpdateOperationsInput | number
+  total_minutes?: Prisma.IntFieldUpdateOperationsInput | number
+  study_session_scheduled_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  study_session_created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  checklist_json?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  study_session_reminder_enabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  study_session_remind_at_minutes?: Prisma.StudySessionUpdatestudy_session_remind_at_minutesInput | number[]
+  study_session_user?: Prisma.StudySessionUserUncheckedUpdateManyWithoutStudy_sessionNestedInput
+  study_session_attachments?: Prisma.StudySessionAttachmentUncheckedUpdateManyWithoutStudy_sessionNestedInput
 }
 
 
@@ -646,10 +856,14 @@ export type StudySessionUncheckedUpdateWithoutStudy_session_userInput = {
 
 export type StudySessionCountOutputType = {
   study_session_user: number
+  study_session_attachments: number
+  study_session_reminders: number
 }
 
 export type StudySessionCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   study_session_user?: boolean | StudySessionCountOutputTypeCountStudy_session_userArgs
+  study_session_attachments?: boolean | StudySessionCountOutputTypeCountStudy_session_attachmentsArgs
+  study_session_reminders?: boolean | StudySessionCountOutputTypeCountStudy_session_remindersArgs
 }
 
 /**
@@ -669,6 +883,20 @@ export type StudySessionCountOutputTypeCountStudy_session_userArgs<ExtArgs exten
   where?: Prisma.StudySessionUserWhereInput
 }
 
+/**
+ * StudySessionCountOutputType without action
+ */
+export type StudySessionCountOutputTypeCountStudy_session_attachmentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.StudySessionAttachmentWhereInput
+}
+
+/**
+ * StudySessionCountOutputType without action
+ */
+export type StudySessionCountOutputTypeCountStudy_session_remindersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.StudySessionReminderWhereInput
+}
+
 
 export type StudySessionSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   study_session_id?: boolean
@@ -684,6 +912,8 @@ export type StudySessionSelect<ExtArgs extends runtime.Types.Extensions.Internal
   study_session_reminder_enabled?: boolean
   study_session_remind_at_minutes?: boolean
   study_session_user?: boolean | Prisma.StudySession$study_session_userArgs<ExtArgs>
+  study_session_attachments?: boolean | Prisma.StudySession$study_session_attachmentsArgs<ExtArgs>
+  study_session_reminders?: boolean | Prisma.StudySession$study_session_remindersArgs<ExtArgs>
   _count?: boolean | Prisma.StudySessionCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["studySession"]>
 
@@ -735,6 +965,8 @@ export type StudySessionSelectScalar = {
 export type StudySessionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"study_session_id" | "study_session_name" | "study_session_description" | "focus_minutes" | "break_minutes" | "total_pomodoros" | "total_minutes" | "study_session_scheduled_at" | "study_session_created_at" | "checklist_json" | "study_session_reminder_enabled" | "study_session_remind_at_minutes", ExtArgs["result"]["studySession"]>
 export type StudySessionInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   study_session_user?: boolean | Prisma.StudySession$study_session_userArgs<ExtArgs>
+  study_session_attachments?: boolean | Prisma.StudySession$study_session_attachmentsArgs<ExtArgs>
+  study_session_reminders?: boolean | Prisma.StudySession$study_session_remindersArgs<ExtArgs>
   _count?: boolean | Prisma.StudySessionCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type StudySessionIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -744,6 +976,8 @@ export type $StudySessionPayload<ExtArgs extends runtime.Types.Extensions.Intern
   name: "StudySession"
   objects: {
     study_session_user: Prisma.$StudySessionUserPayload<ExtArgs>[]
+    study_session_attachments: Prisma.$StudySessionAttachmentPayload<ExtArgs>[]
+    study_session_reminders: Prisma.$StudySessionReminderPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     study_session_id: number
@@ -1153,6 +1387,8 @@ readonly fields: StudySessionFieldRefs;
 export interface Prisma__StudySessionClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   study_session_user<T extends Prisma.StudySession$study_session_userArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.StudySession$study_session_userArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$StudySessionUserPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  study_session_attachments<T extends Prisma.StudySession$study_session_attachmentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.StudySession$study_session_attachmentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$StudySessionAttachmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  study_session_reminders<T extends Prisma.StudySession$study_session_remindersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.StudySession$study_session_remindersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$StudySessionReminderPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1603,6 +1839,54 @@ export type StudySession$study_session_userArgs<ExtArgs extends runtime.Types.Ex
   take?: number
   skip?: number
   distinct?: Prisma.StudySessionUserScalarFieldEnum | Prisma.StudySessionUserScalarFieldEnum[]
+}
+
+/**
+ * StudySession.study_session_attachments
+ */
+export type StudySession$study_session_attachmentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the StudySessionAttachment
+   */
+  select?: Prisma.StudySessionAttachmentSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the StudySessionAttachment
+   */
+  omit?: Prisma.StudySessionAttachmentOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.StudySessionAttachmentInclude<ExtArgs> | null
+  where?: Prisma.StudySessionAttachmentWhereInput
+  orderBy?: Prisma.StudySessionAttachmentOrderByWithRelationInput | Prisma.StudySessionAttachmentOrderByWithRelationInput[]
+  cursor?: Prisma.StudySessionAttachmentWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.StudySessionAttachmentScalarFieldEnum | Prisma.StudySessionAttachmentScalarFieldEnum[]
+}
+
+/**
+ * StudySession.study_session_reminders
+ */
+export type StudySession$study_session_remindersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the StudySessionReminder
+   */
+  select?: Prisma.StudySessionReminderSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the StudySessionReminder
+   */
+  omit?: Prisma.StudySessionReminderOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.StudySessionReminderInclude<ExtArgs> | null
+  where?: Prisma.StudySessionReminderWhereInput
+  orderBy?: Prisma.StudySessionReminderOrderByWithRelationInput | Prisma.StudySessionReminderOrderByWithRelationInput[]
+  cursor?: Prisma.StudySessionReminderWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.StudySessionReminderScalarFieldEnum | Prisma.StudySessionReminderScalarFieldEnum[]
 }
 
 /**

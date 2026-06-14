@@ -36,14 +36,15 @@ import {
 } from "@/components/ui/alert-dialog";
 
 import { StarRating } from "@/app/components/common/star-rating";
+import { AiSuggestionsButton } from "@/app/components/common/ai-suggestions-button";
 import { mockProjects } from "@/lib/mock-data";
 import {
   ProjectMember,
   ProjectRole,
-  ProjectTask,
   ProjectTaskStatus,
 } from "@/types";
 import { cn } from "@/lib/utils";
+import { AI_READABLE_ATTACHMENT_HELPER_TEXT } from "@/lib/ai/attachmentSupport";
 import {
   fetchProjects,
   createProjectApi,
@@ -77,6 +78,12 @@ type CurrentUser = {
 
 const STATUS_ORDER: ProjectTaskStatus[] = ["not-done", "pending", "done"];
 
+const normalizeProjectTaskStatus = (status: unknown): ProjectTaskStatus => {
+  return STATUS_ORDER.includes(status as ProjectTaskStatus)
+    ? (status as ProjectTaskStatus)
+    : "not-done";
+};
+
 const STATUS_META: Array<{
   key: ProjectTaskStatus;
   label: string;
@@ -108,7 +115,25 @@ const PRIORITY_STYLES: Record<string, string> = {
 const ROLE_STYLES: Record<ProjectRole, string> = {
   owner: "bg-accent/15 text-accent border-accent/30",
   moderator: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+  collaborator: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
   member: "bg-muted text-muted-foreground border-border",
+};
+
+const MAX_TASK_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+
+type TaskDraftPreview = {
+  draft: {
+    title: string;
+    description: string;
+    priority: number;
+    reasoning?: string;
+    skippedAttachments?: {
+      fileName: string;
+      fileType: string;
+      reason: string;
+    }[];
+  };
+  attachmentIds: number[];
 };
 
 const createMemberFromUser = (
@@ -122,12 +147,6 @@ const createMemberFromUser = (
     handle: user.email,
     role,
   };
-};
-
-const priorityFromRating = (value: number): string => {
-  if (value >= 4) return "high";
-  if (value >= 2.5) return "medium";
-  return "low";
 };
 
 export default function ProjectsPage() {
@@ -158,7 +177,10 @@ export default function ProjectsPage() {
   const [taskDescription, setTaskDescription] = useState("");
   const [taskPriorityRating, setTaskPriorityRating] = useState(2.5);
   const [taskReminder, setTaskReminder] = useState("none");
-  const [taskAttachment, setTaskAttachment] = useState<string | null>(null);
+  const [taskAttachment, setTaskAttachment] = useState<File | null>(null);
+  const [taskDraftPreview, setTaskDraftPreview] = useState<TaskDraftPreview | null>(null);
+  const [taskDraftAttachmentIds, setTaskDraftAttachmentIds] = useState<number[]>([]);
+  const [taskDraftLoading, setTaskDraftLoading] = useState(false);
 
   useEffect(() => {
     fetch("/api/users/me")
@@ -209,7 +231,7 @@ export default function ProjectsPage() {
             reminder: t.reminder || "none",
             priority:
               t.priority >= 4 ? "high" : t.priority >= 2.5 ? "medium" : "low",
-            status: (t.status as any) || ("not-done" as const),
+            status: normalizeProjectTaskStatus(t.status),
             assignedTo: undefined,
             createdAt: t.createdAt.toISOString(),
           })),
@@ -362,15 +384,77 @@ export default function ProjectsPage() {
     }
   };
 
+  const resetProjectTaskDraft = () => {
+    setTaskDraftPreview(null);
+    setTaskDraftAttachmentIds([]);
+  };
+
+  const acceptTaskAttachment = (file: File) => {
+    if (file.size > MAX_TASK_ATTACHMENT_BYTES) {
+      toast.error(`"${file.name}" exceeds 10MB and was skipped`);
+      return;
+    }
+    resetProjectTaskDraft();
+    setTaskAttachment(file);
+  };
+
   const handleTaskDrop = (e: React.DragEvent) => {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
-    if (file) setTaskAttachment(file.name);
+    if (file) acceptTaskAttachment(file);
   };
 
   const handleTaskFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) setTaskAttachment(file.name);
+    if (file) acceptTaskAttachment(file);
+    e.target.value = "";
+  };
+
+  const requestProjectTaskDraft = async () => {
+    if (!taskTitle.trim() && !taskDescription.trim() && !taskAttachment) {
+      toast.error("Add a title, description, or attachment before asking AI");
+      return;
+    }
+
+    setTaskDraftLoading(true);
+    try {
+      const formData = new FormData();
+      formData.set("title", taskTitle);
+      formData.set("description", taskDescription);
+      formData.set("priority", String(taskPriorityRating));
+      if (taskAttachment) {
+        formData.append("file", taskAttachment);
+      }
+
+      const response = await fetch("/api/ai/task-draft", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.message ?? "Could not generate AI suggestions");
+      }
+
+      setTaskDraftPreview({
+        draft: data.draft,
+        attachmentIds: data.attachmentIds ?? [],
+      });
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not generate AI suggestions",
+      );
+    } finally {
+      setTaskDraftLoading(false);
+    }
+  };
+
+  const applyProjectTaskDraft = () => {
+    if (!taskDraftPreview) return;
+    setTaskTitle(taskDraftPreview.draft.title);
+    setTaskDescription(taskDraftPreview.draft.description);
+    setTaskPriorityRating(taskDraftPreview.draft.priority);
+    setTaskDraftAttachmentIds(taskDraftPreview.attachmentIds);
+    toast.success("AI suggestions applied");
   };
 
   const handleCreateTask = async (e: React.FormEvent) => {
@@ -382,16 +466,33 @@ export default function ProjectsPage() {
     }
 
     try {
-      const priority = priorityFromRating(taskPriorityRating);
       const newTask = await createProjectTaskApi(
         activeProject.id,
         taskTitle.trim(),
-        priority,
+        taskPriorityRating,
         taskDescription.trim() || undefined,
         undefined,
-        taskAttachment || undefined,
+        taskDraftAttachmentIds,
         taskReminder as string,
       );
+
+      if (taskAttachment && taskDraftAttachmentIds.length === 0) {
+        const taskId = newTask.id.replace("proj-task-", "");
+        const formData = new FormData();
+        formData.append("file", taskAttachment);
+        const uploadResponse = await fetch(`/api/project/task/${taskId}/attachment`, {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!uploadResponse.ok) {
+          toast.warning("Task created, but the attachment could not be uploaded");
+        } else {
+          newTask.attachments = [taskAttachment.name];
+        }
+      } else if (taskAttachment) {
+        newTask.attachments = [taskAttachment.name];
+      }
 
       updateProject(activeProject.id, (project) => ({
         ...project,
@@ -403,6 +504,8 @@ export default function ProjectsPage() {
       setTaskPriorityRating(3);
       setTaskReminder("none");
       setTaskAttachment(null);
+      setTaskDraftPreview(null);
+      setTaskDraftAttachmentIds([]);
       setCreateTaskOpen(false);
       toast.success("Task created successfully");
     } catch (error) {
@@ -416,7 +519,7 @@ export default function ProjectsPage() {
     if (!activeProject) return;
 
     try {
-      const updatedTask = await updateProjectTaskApi(
+      await updateProjectTaskApi(
         taskId,
         undefined,
         undefined,
@@ -609,7 +712,11 @@ export default function ProjectsPage() {
                     <Label className="font-mono text-xs">Status</Label>
                     <Select
                       value={newProjectStatus}
-                      onValueChange={(v) => setNewProjectStatus(v as any)}
+                      onValueChange={(v) =>
+                        setNewProjectStatus(
+                          v as "active" | "completed" | "archived",
+                        )
+                      }
                     >
                       <SelectTrigger className="mt-1 w-full font-mono text-sm">
                         <SelectValue />
@@ -709,6 +816,9 @@ export default function ProjectsPage() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="member">Member</SelectItem>
+                          <SelectItem value="collaborator">
+                            Collaborator
+                          </SelectItem>
                           <SelectItem value="moderator">Moderator</SelectItem>
                         </SelectContent>
                       </Select>
@@ -817,15 +927,21 @@ export default function ProjectsPage() {
                     <Label className="font-mono text-xs tracking-wider">
                       ATTACHMENT
                     </Label>
+                    <p className="font-mono text-[10px] text-muted-foreground">
+                      {AI_READABLE_ATTACHMENT_HELPER_TEXT}
+                    </p>
                     {taskAttachment ? (
                       <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/30 px-3 py-2">
                         <Paperclip className="h-4 w-4 text-muted-foreground" />
                         <span className="text-sm flex-1 truncate">
-                          {taskAttachment}
+                          {taskAttachment.name}
                         </span>
                         <button
                           type="button"
-                          onClick={() => setTaskAttachment(null)}
+                          onClick={() => {
+                            resetProjectTaskDraft();
+                            setTaskAttachment(null);
+                          }}
                         >
                           <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
                         </button>
@@ -886,6 +1002,68 @@ export default function ProjectsPage() {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  <AiSuggestionsButton
+                    description="Get project task ideas from the title, description, and file."
+                    loading={taskDraftLoading}
+                    onClick={requestProjectTaskDraft}
+                  />
+
+                  {taskDraftPreview && (
+                    <div className="space-y-3 rounded-lg border border-accent/30 bg-accent/5 p-4">
+                      <div>
+                        <p className="font-mono text-xs tracking-wider text-muted-foreground">
+                          AI DRAFT
+                        </p>
+                        <h3 className="mt-1 text-base font-semibold">
+                          {taskDraftPreview.draft.title}
+                        </h3>
+                        <p className="mt-2 text-sm text-muted-foreground whitespace-pre-line">
+                          {taskDraftPreview.draft.description}
+                        </p>
+                      </div>
+                      <p className="font-mono text-xs text-muted-foreground">
+                        Priority: {Number(taskDraftPreview.draft.priority).toFixed(1)} / 5.0
+                      </p>
+                      {taskDraftPreview.draft.reasoning ? (
+                        <p className="text-sm text-muted-foreground">
+                          {taskDraftPreview.draft.reasoning}
+                        </p>
+                      ) : null}
+                      {taskDraftPreview.draft.skippedAttachments?.length ? (
+                        <div className="space-y-1 rounded-md border border-border/60 bg-background/60 p-3">
+                          <p className="font-mono text-[10px] tracking-wider text-muted-foreground">
+                            SKIPPED FILES
+                          </p>
+                          {taskDraftPreview.draft.skippedAttachments.map((attachment) => (
+                            <p
+                              key={`${attachment.fileName}-${attachment.reason}`}
+                              className="text-xs text-muted-foreground"
+                            >
+                              {attachment.fileName}: {attachment.reason}
+                            </p>
+                          ))}
+                        </div>
+                      ) : null}
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={applyProjectTaskDraft}
+                        >
+                          Apply suggestions
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setTaskDraftPreview(null)}
+                        >
+                          Dismiss
+                        </Button>
+                      </div>
+                    </div>
+                  )}
 
                   <DialogFooter>
                     <DialogClose asChild>

@@ -28,39 +28,43 @@ export type AggregateUserFormulaWeights = {
 
 export type UserFormulaWeightsAvgAggregateOutputType = {
   id: number | null
-  user_id: number | null
   w_impact: runtime.Decimal | null
   w_confidence: runtime.Decimal | null
   w_ease: runtime.Decimal | null
   w_urgency: runtime.Decimal | null
+  tasks_since_last: number | null
 }
 
 export type UserFormulaWeightsSumAggregateOutputType = {
   id: number | null
-  user_id: number | null
   w_impact: runtime.Decimal | null
   w_confidence: runtime.Decimal | null
   w_ease: runtime.Decimal | null
   w_urgency: runtime.Decimal | null
+  tasks_since_last: number | null
 }
 
 export type UserFormulaWeightsMinAggregateOutputType = {
   id: number | null
-  user_id: number | null
+  user_id: string | null
   w_impact: runtime.Decimal | null
   w_confidence: runtime.Decimal | null
   w_ease: runtime.Decimal | null
   w_urgency: runtime.Decimal | null
+  last_adapted_at: Date | null
+  tasks_since_last: number | null
   updated_at: Date | null
 }
 
 export type UserFormulaWeightsMaxAggregateOutputType = {
   id: number | null
-  user_id: number | null
+  user_id: string | null
   w_impact: runtime.Decimal | null
   w_confidence: runtime.Decimal | null
   w_ease: runtime.Decimal | null
   w_urgency: runtime.Decimal | null
+  last_adapted_at: Date | null
+  tasks_since_last: number | null
   updated_at: Date | null
 }
 
@@ -71,6 +75,8 @@ export type UserFormulaWeightsCountAggregateOutputType = {
   w_confidence: number
   w_ease: number
   w_urgency: number
+  last_adapted_at: number
+  tasks_since_last: number
   updated_at: number
   _all: number
 }
@@ -78,20 +84,20 @@ export type UserFormulaWeightsCountAggregateOutputType = {
 
 export type UserFormulaWeightsAvgAggregateInputType = {
   id?: true
-  user_id?: true
   w_impact?: true
   w_confidence?: true
   w_ease?: true
   w_urgency?: true
+  tasks_since_last?: true
 }
 
 export type UserFormulaWeightsSumAggregateInputType = {
   id?: true
-  user_id?: true
   w_impact?: true
   w_confidence?: true
   w_ease?: true
   w_urgency?: true
+  tasks_since_last?: true
 }
 
 export type UserFormulaWeightsMinAggregateInputType = {
@@ -101,6 +107,8 @@ export type UserFormulaWeightsMinAggregateInputType = {
   w_confidence?: true
   w_ease?: true
   w_urgency?: true
+  last_adapted_at?: true
+  tasks_since_last?: true
   updated_at?: true
 }
 
@@ -111,6 +119,8 @@ export type UserFormulaWeightsMaxAggregateInputType = {
   w_confidence?: true
   w_ease?: true
   w_urgency?: true
+  last_adapted_at?: true
+  tasks_since_last?: true
   updated_at?: true
 }
 
@@ -121,6 +131,8 @@ export type UserFormulaWeightsCountAggregateInputType = {
   w_confidence?: true
   w_ease?: true
   w_urgency?: true
+  last_adapted_at?: true
+  tasks_since_last?: true
   updated_at?: true
   _all?: true
 }
@@ -213,11 +225,13 @@ export type UserFormulaWeightsGroupByArgs<ExtArgs extends runtime.Types.Extensio
 
 export type UserFormulaWeightsGroupByOutputType = {
   id: number
-  user_id: number
+  user_id: string
   w_impact: runtime.Decimal
   w_confidence: runtime.Decimal
   w_ease: runtime.Decimal
   w_urgency: runtime.Decimal
+  last_adapted_at: Date | null
+  tasks_since_last: number
   updated_at: Date
   _count: UserFormulaWeightsCountAggregateOutputType | null
   _avg: UserFormulaWeightsAvgAggregateOutputType | null
@@ -246,12 +260,15 @@ export type UserFormulaWeightsWhereInput = {
   OR?: Prisma.UserFormulaWeightsWhereInput[]
   NOT?: Prisma.UserFormulaWeightsWhereInput | Prisma.UserFormulaWeightsWhereInput[]
   id?: Prisma.IntFilter<"UserFormulaWeights"> | number
-  user_id?: Prisma.IntFilter<"UserFormulaWeights"> | number
+  user_id?: Prisma.StringFilter<"UserFormulaWeights"> | string
   w_impact?: Prisma.DecimalFilter<"UserFormulaWeights"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   w_confidence?: Prisma.DecimalFilter<"UserFormulaWeights"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   w_ease?: Prisma.DecimalFilter<"UserFormulaWeights"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   w_urgency?: Prisma.DecimalFilter<"UserFormulaWeights"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  last_adapted_at?: Prisma.DateTimeNullableFilter<"UserFormulaWeights"> | Date | string | null
+  tasks_since_last?: Prisma.IntFilter<"UserFormulaWeights"> | number
   updated_at?: Prisma.DateTimeFilter<"UserFormulaWeights"> | Date | string
+  user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
 }
 
 export type UserFormulaWeightsOrderByWithRelationInput = {
@@ -261,12 +278,15 @@ export type UserFormulaWeightsOrderByWithRelationInput = {
   w_confidence?: Prisma.SortOrder
   w_ease?: Prisma.SortOrder
   w_urgency?: Prisma.SortOrder
+  last_adapted_at?: Prisma.SortOrderInput | Prisma.SortOrder
+  tasks_since_last?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
+  user?: Prisma.UserOrderByWithRelationInput
 }
 
 export type UserFormulaWeightsWhereUniqueInput = Prisma.AtLeast<{
   id?: number
-  user_id?: number
+  user_id?: string
   AND?: Prisma.UserFormulaWeightsWhereInput | Prisma.UserFormulaWeightsWhereInput[]
   OR?: Prisma.UserFormulaWeightsWhereInput[]
   NOT?: Prisma.UserFormulaWeightsWhereInput | Prisma.UserFormulaWeightsWhereInput[]
@@ -274,7 +294,10 @@ export type UserFormulaWeightsWhereUniqueInput = Prisma.AtLeast<{
   w_confidence?: Prisma.DecimalFilter<"UserFormulaWeights"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   w_ease?: Prisma.DecimalFilter<"UserFormulaWeights"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   w_urgency?: Prisma.DecimalFilter<"UserFormulaWeights"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  last_adapted_at?: Prisma.DateTimeNullableFilter<"UserFormulaWeights"> | Date | string | null
+  tasks_since_last?: Prisma.IntFilter<"UserFormulaWeights"> | number
   updated_at?: Prisma.DateTimeFilter<"UserFormulaWeights"> | Date | string
+  user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
 }, "id" | "user_id">
 
 export type UserFormulaWeightsOrderByWithAggregationInput = {
@@ -284,6 +307,8 @@ export type UserFormulaWeightsOrderByWithAggregationInput = {
   w_confidence?: Prisma.SortOrder
   w_ease?: Prisma.SortOrder
   w_urgency?: Prisma.SortOrder
+  last_adapted_at?: Prisma.SortOrderInput | Prisma.SortOrder
+  tasks_since_last?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
   _count?: Prisma.UserFormulaWeightsCountOrderByAggregateInput
   _avg?: Prisma.UserFormulaWeightsAvgOrderByAggregateInput
@@ -297,79 +322,99 @@ export type UserFormulaWeightsScalarWhereWithAggregatesInput = {
   OR?: Prisma.UserFormulaWeightsScalarWhereWithAggregatesInput[]
   NOT?: Prisma.UserFormulaWeightsScalarWhereWithAggregatesInput | Prisma.UserFormulaWeightsScalarWhereWithAggregatesInput[]
   id?: Prisma.IntWithAggregatesFilter<"UserFormulaWeights"> | number
-  user_id?: Prisma.IntWithAggregatesFilter<"UserFormulaWeights"> | number
+  user_id?: Prisma.StringWithAggregatesFilter<"UserFormulaWeights"> | string
   w_impact?: Prisma.DecimalWithAggregatesFilter<"UserFormulaWeights"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   w_confidence?: Prisma.DecimalWithAggregatesFilter<"UserFormulaWeights"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   w_ease?: Prisma.DecimalWithAggregatesFilter<"UserFormulaWeights"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   w_urgency?: Prisma.DecimalWithAggregatesFilter<"UserFormulaWeights"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  last_adapted_at?: Prisma.DateTimeNullableWithAggregatesFilter<"UserFormulaWeights"> | Date | string | null
+  tasks_since_last?: Prisma.IntWithAggregatesFilter<"UserFormulaWeights"> | number
   updated_at?: Prisma.DateTimeWithAggregatesFilter<"UserFormulaWeights"> | Date | string
 }
 
 export type UserFormulaWeightsCreateInput = {
-  user_id: number
   w_impact?: runtime.Decimal | runtime.DecimalJsLike | number | string
   w_confidence?: runtime.Decimal | runtime.DecimalJsLike | number | string
   w_ease?: runtime.Decimal | runtime.DecimalJsLike | number | string
   w_urgency?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  last_adapted_at?: Date | string | null
+  tasks_since_last?: number
   updated_at?: Date | string
+  user: Prisma.UserCreateNestedOneWithoutUser_formula_weightsInput
 }
 
 export type UserFormulaWeightsUncheckedCreateInput = {
   id?: number
-  user_id: number
+  user_id: string
   w_impact?: runtime.Decimal | runtime.DecimalJsLike | number | string
   w_confidence?: runtime.Decimal | runtime.DecimalJsLike | number | string
   w_ease?: runtime.Decimal | runtime.DecimalJsLike | number | string
   w_urgency?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  last_adapted_at?: Date | string | null
+  tasks_since_last?: number
   updated_at?: Date | string
 }
 
 export type UserFormulaWeightsUpdateInput = {
-  user_id?: Prisma.IntFieldUpdateOperationsInput | number
   w_impact?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   w_confidence?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   w_ease?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   w_urgency?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  last_adapted_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tasks_since_last?: Prisma.IntFieldUpdateOperationsInput | number
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  user?: Prisma.UserUpdateOneRequiredWithoutUser_formula_weightsNestedInput
 }
 
 export type UserFormulaWeightsUncheckedUpdateInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
-  user_id?: Prisma.IntFieldUpdateOperationsInput | number
+  user_id?: Prisma.StringFieldUpdateOperationsInput | string
   w_impact?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   w_confidence?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   w_ease?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   w_urgency?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  last_adapted_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tasks_since_last?: Prisma.IntFieldUpdateOperationsInput | number
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type UserFormulaWeightsCreateManyInput = {
   id?: number
-  user_id: number
+  user_id: string
   w_impact?: runtime.Decimal | runtime.DecimalJsLike | number | string
   w_confidence?: runtime.Decimal | runtime.DecimalJsLike | number | string
   w_ease?: runtime.Decimal | runtime.DecimalJsLike | number | string
   w_urgency?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  last_adapted_at?: Date | string | null
+  tasks_since_last?: number
   updated_at?: Date | string
 }
 
 export type UserFormulaWeightsUpdateManyMutationInput = {
-  user_id?: Prisma.IntFieldUpdateOperationsInput | number
   w_impact?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   w_confidence?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   w_ease?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   w_urgency?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  last_adapted_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tasks_since_last?: Prisma.IntFieldUpdateOperationsInput | number
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type UserFormulaWeightsUncheckedUpdateManyInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
-  user_id?: Prisma.IntFieldUpdateOperationsInput | number
+  user_id?: Prisma.StringFieldUpdateOperationsInput | string
   w_impact?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   w_confidence?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   w_ease?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   w_urgency?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  last_adapted_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tasks_since_last?: Prisma.IntFieldUpdateOperationsInput | number
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type UserFormulaWeightsNullableScalarRelationFilter = {
+  is?: Prisma.UserFormulaWeightsWhereInput | null
+  isNot?: Prisma.UserFormulaWeightsWhereInput | null
 }
 
 export type UserFormulaWeightsCountOrderByAggregateInput = {
@@ -379,16 +424,18 @@ export type UserFormulaWeightsCountOrderByAggregateInput = {
   w_confidence?: Prisma.SortOrder
   w_ease?: Prisma.SortOrder
   w_urgency?: Prisma.SortOrder
+  last_adapted_at?: Prisma.SortOrder
+  tasks_since_last?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
 }
 
 export type UserFormulaWeightsAvgOrderByAggregateInput = {
   id?: Prisma.SortOrder
-  user_id?: Prisma.SortOrder
   w_impact?: Prisma.SortOrder
   w_confidence?: Prisma.SortOrder
   w_ease?: Prisma.SortOrder
   w_urgency?: Prisma.SortOrder
+  tasks_since_last?: Prisma.SortOrder
 }
 
 export type UserFormulaWeightsMaxOrderByAggregateInput = {
@@ -398,6 +445,8 @@ export type UserFormulaWeightsMaxOrderByAggregateInput = {
   w_confidence?: Prisma.SortOrder
   w_ease?: Prisma.SortOrder
   w_urgency?: Prisma.SortOrder
+  last_adapted_at?: Prisma.SortOrder
+  tasks_since_last?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
 }
 
@@ -408,16 +457,58 @@ export type UserFormulaWeightsMinOrderByAggregateInput = {
   w_confidence?: Prisma.SortOrder
   w_ease?: Prisma.SortOrder
   w_urgency?: Prisma.SortOrder
+  last_adapted_at?: Prisma.SortOrder
+  tasks_since_last?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
 }
 
 export type UserFormulaWeightsSumOrderByAggregateInput = {
   id?: Prisma.SortOrder
-  user_id?: Prisma.SortOrder
   w_impact?: Prisma.SortOrder
   w_confidence?: Prisma.SortOrder
   w_ease?: Prisma.SortOrder
   w_urgency?: Prisma.SortOrder
+  tasks_since_last?: Prisma.SortOrder
+}
+
+export type UserFormulaWeightsCreateNestedOneWithoutUserInput = {
+  create?: Prisma.XOR<Prisma.UserFormulaWeightsCreateWithoutUserInput, Prisma.UserFormulaWeightsUncheckedCreateWithoutUserInput>
+  connectOrCreate?: Prisma.UserFormulaWeightsCreateOrConnectWithoutUserInput
+  connect?: Prisma.UserFormulaWeightsWhereUniqueInput
+}
+
+export type UserFormulaWeightsUncheckedCreateNestedOneWithoutUserInput = {
+  create?: Prisma.XOR<Prisma.UserFormulaWeightsCreateWithoutUserInput, Prisma.UserFormulaWeightsUncheckedCreateWithoutUserInput>
+  connectOrCreate?: Prisma.UserFormulaWeightsCreateOrConnectWithoutUserInput
+  connect?: Prisma.UserFormulaWeightsWhereUniqueInput
+}
+
+export type UserFormulaWeightsUpdateOneWithoutUserNestedInput = {
+  create?: Prisma.XOR<Prisma.UserFormulaWeightsCreateWithoutUserInput, Prisma.UserFormulaWeightsUncheckedCreateWithoutUserInput>
+  connectOrCreate?: Prisma.UserFormulaWeightsCreateOrConnectWithoutUserInput
+  upsert?: Prisma.UserFormulaWeightsUpsertWithoutUserInput
+  disconnect?: Prisma.UserFormulaWeightsWhereInput | boolean
+  delete?: Prisma.UserFormulaWeightsWhereInput | boolean
+  connect?: Prisma.UserFormulaWeightsWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserFormulaWeightsUpdateToOneWithWhereWithoutUserInput, Prisma.UserFormulaWeightsUpdateWithoutUserInput>, Prisma.UserFormulaWeightsUncheckedUpdateWithoutUserInput>
+}
+
+export type UserFormulaWeightsUncheckedUpdateOneWithoutUserNestedInput = {
+  create?: Prisma.XOR<Prisma.UserFormulaWeightsCreateWithoutUserInput, Prisma.UserFormulaWeightsUncheckedCreateWithoutUserInput>
+  connectOrCreate?: Prisma.UserFormulaWeightsCreateOrConnectWithoutUserInput
+  upsert?: Prisma.UserFormulaWeightsUpsertWithoutUserInput
+  disconnect?: Prisma.UserFormulaWeightsWhereInput | boolean
+  delete?: Prisma.UserFormulaWeightsWhereInput | boolean
+  connect?: Prisma.UserFormulaWeightsWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserFormulaWeightsUpdateToOneWithWhereWithoutUserInput, Prisma.UserFormulaWeightsUpdateWithoutUserInput>, Prisma.UserFormulaWeightsUncheckedUpdateWithoutUserInput>
+}
+
+export type DecimalFieldUpdateOperationsInput = {
+  set?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  increment?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  decrement?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  multiply?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  divide?: runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
 export type IntFieldUpdateOperationsInput = {
@@ -428,12 +519,62 @@ export type IntFieldUpdateOperationsInput = {
   divide?: number
 }
 
-export type DecimalFieldUpdateOperationsInput = {
-  set?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  increment?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  decrement?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  multiply?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  divide?: runtime.Decimal | runtime.DecimalJsLike | number | string
+export type UserFormulaWeightsCreateWithoutUserInput = {
+  w_impact?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  w_confidence?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  w_ease?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  w_urgency?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  last_adapted_at?: Date | string | null
+  tasks_since_last?: number
+  updated_at?: Date | string
+}
+
+export type UserFormulaWeightsUncheckedCreateWithoutUserInput = {
+  id?: number
+  w_impact?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  w_confidence?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  w_ease?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  w_urgency?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  last_adapted_at?: Date | string | null
+  tasks_since_last?: number
+  updated_at?: Date | string
+}
+
+export type UserFormulaWeightsCreateOrConnectWithoutUserInput = {
+  where: Prisma.UserFormulaWeightsWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserFormulaWeightsCreateWithoutUserInput, Prisma.UserFormulaWeightsUncheckedCreateWithoutUserInput>
+}
+
+export type UserFormulaWeightsUpsertWithoutUserInput = {
+  update: Prisma.XOR<Prisma.UserFormulaWeightsUpdateWithoutUserInput, Prisma.UserFormulaWeightsUncheckedUpdateWithoutUserInput>
+  create: Prisma.XOR<Prisma.UserFormulaWeightsCreateWithoutUserInput, Prisma.UserFormulaWeightsUncheckedCreateWithoutUserInput>
+  where?: Prisma.UserFormulaWeightsWhereInput
+}
+
+export type UserFormulaWeightsUpdateToOneWithWhereWithoutUserInput = {
+  where?: Prisma.UserFormulaWeightsWhereInput
+  data: Prisma.XOR<Prisma.UserFormulaWeightsUpdateWithoutUserInput, Prisma.UserFormulaWeightsUncheckedUpdateWithoutUserInput>
+}
+
+export type UserFormulaWeightsUpdateWithoutUserInput = {
+  w_impact?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  w_confidence?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  w_ease?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  w_urgency?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  last_adapted_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tasks_since_last?: Prisma.IntFieldUpdateOperationsInput | number
+  updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type UserFormulaWeightsUncheckedUpdateWithoutUserInput = {
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  w_impact?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  w_confidence?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  w_ease?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  w_urgency?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  last_adapted_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tasks_since_last?: Prisma.IntFieldUpdateOperationsInput | number
+  updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 
@@ -445,7 +586,10 @@ export type UserFormulaWeightsSelect<ExtArgs extends runtime.Types.Extensions.In
   w_confidence?: boolean
   w_ease?: boolean
   w_urgency?: boolean
+  last_adapted_at?: boolean
+  tasks_since_last?: boolean
   updated_at?: boolean
+  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["userFormulaWeights"]>
 
 export type UserFormulaWeightsSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -455,7 +599,10 @@ export type UserFormulaWeightsSelectCreateManyAndReturn<ExtArgs extends runtime.
   w_confidence?: boolean
   w_ease?: boolean
   w_urgency?: boolean
+  last_adapted_at?: boolean
+  tasks_since_last?: boolean
   updated_at?: boolean
+  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["userFormulaWeights"]>
 
 export type UserFormulaWeightsSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -465,7 +612,10 @@ export type UserFormulaWeightsSelectUpdateManyAndReturn<ExtArgs extends runtime.
   w_confidence?: boolean
   w_ease?: boolean
   w_urgency?: boolean
+  last_adapted_at?: boolean
+  tasks_since_last?: boolean
   updated_at?: boolean
+  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["userFormulaWeights"]>
 
 export type UserFormulaWeightsSelectScalar = {
@@ -475,21 +625,36 @@ export type UserFormulaWeightsSelectScalar = {
   w_confidence?: boolean
   w_ease?: boolean
   w_urgency?: boolean
+  last_adapted_at?: boolean
+  tasks_since_last?: boolean
   updated_at?: boolean
 }
 
-export type UserFormulaWeightsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "user_id" | "w_impact" | "w_confidence" | "w_ease" | "w_urgency" | "updated_at", ExtArgs["result"]["userFormulaWeights"]>
+export type UserFormulaWeightsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "user_id" | "w_impact" | "w_confidence" | "w_ease" | "w_urgency" | "last_adapted_at" | "tasks_since_last" | "updated_at", ExtArgs["result"]["userFormulaWeights"]>
+export type UserFormulaWeightsInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
+}
+export type UserFormulaWeightsIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
+}
+export type UserFormulaWeightsIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
+}
 
 export type $UserFormulaWeightsPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "UserFormulaWeights"
-  objects: {}
+  objects: {
+    user: Prisma.$UserPayload<ExtArgs>
+  }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: number
-    user_id: number
+    user_id: string
     w_impact: runtime.Decimal
     w_confidence: runtime.Decimal
     w_ease: runtime.Decimal
     w_urgency: runtime.Decimal
+    last_adapted_at: Date | null
+    tasks_since_last: number
     updated_at: Date
   }, ExtArgs["result"]["userFormulaWeights"]>
   composites: {}
@@ -885,6 +1050,7 @@ readonly fields: UserFormulaWeightsFieldRefs;
  */
 export interface Prisma__UserFormulaWeightsClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
+  user<T extends Prisma.UserDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UserDefaultArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -915,11 +1081,13 @@ export interface Prisma__UserFormulaWeightsClient<T, Null = never, ExtArgs exten
  */
 export interface UserFormulaWeightsFieldRefs {
   readonly id: Prisma.FieldRef<"UserFormulaWeights", 'Int'>
-  readonly user_id: Prisma.FieldRef<"UserFormulaWeights", 'Int'>
+  readonly user_id: Prisma.FieldRef<"UserFormulaWeights", 'String'>
   readonly w_impact: Prisma.FieldRef<"UserFormulaWeights", 'Decimal'>
   readonly w_confidence: Prisma.FieldRef<"UserFormulaWeights", 'Decimal'>
   readonly w_ease: Prisma.FieldRef<"UserFormulaWeights", 'Decimal'>
   readonly w_urgency: Prisma.FieldRef<"UserFormulaWeights", 'Decimal'>
+  readonly last_adapted_at: Prisma.FieldRef<"UserFormulaWeights", 'DateTime'>
+  readonly tasks_since_last: Prisma.FieldRef<"UserFormulaWeights", 'Int'>
   readonly updated_at: Prisma.FieldRef<"UserFormulaWeights", 'DateTime'>
 }
     
@@ -937,6 +1105,10 @@ export type UserFormulaWeightsFindUniqueArgs<ExtArgs extends runtime.Types.Exten
    * Omit specific fields from the UserFormulaWeights
    */
   omit?: Prisma.UserFormulaWeightsOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserFormulaWeightsInclude<ExtArgs> | null
   /**
    * Filter, which UserFormulaWeights to fetch.
    */
@@ -956,6 +1128,10 @@ export type UserFormulaWeightsFindUniqueOrThrowArgs<ExtArgs extends runtime.Type
    */
   omit?: Prisma.UserFormulaWeightsOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserFormulaWeightsInclude<ExtArgs> | null
+  /**
    * Filter, which UserFormulaWeights to fetch.
    */
   where: Prisma.UserFormulaWeightsWhereUniqueInput
@@ -973,6 +1149,10 @@ export type UserFormulaWeightsFindFirstArgs<ExtArgs extends runtime.Types.Extens
    * Omit specific fields from the UserFormulaWeights
    */
   omit?: Prisma.UserFormulaWeightsOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserFormulaWeightsInclude<ExtArgs> | null
   /**
    * Filter, which UserFormulaWeights to fetch.
    */
@@ -1022,6 +1202,10 @@ export type UserFormulaWeightsFindFirstOrThrowArgs<ExtArgs extends runtime.Types
    */
   omit?: Prisma.UserFormulaWeightsOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserFormulaWeightsInclude<ExtArgs> | null
+  /**
    * Filter, which UserFormulaWeights to fetch.
    */
   where?: Prisma.UserFormulaWeightsWhereInput
@@ -1070,6 +1254,10 @@ export type UserFormulaWeightsFindManyArgs<ExtArgs extends runtime.Types.Extensi
    */
   omit?: Prisma.UserFormulaWeightsOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserFormulaWeightsInclude<ExtArgs> | null
+  /**
    * Filter, which UserFormulaWeights to fetch.
    */
   where?: Prisma.UserFormulaWeightsWhereInput
@@ -1113,6 +1301,10 @@ export type UserFormulaWeightsCreateArgs<ExtArgs extends runtime.Types.Extension
    */
   omit?: Prisma.UserFormulaWeightsOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserFormulaWeightsInclude<ExtArgs> | null
+  /**
    * The data needed to create a UserFormulaWeights.
    */
   data: Prisma.XOR<Prisma.UserFormulaWeightsCreateInput, Prisma.UserFormulaWeightsUncheckedCreateInput>
@@ -1146,6 +1338,10 @@ export type UserFormulaWeightsCreateManyAndReturnArgs<ExtArgs extends runtime.Ty
    */
   data: Prisma.UserFormulaWeightsCreateManyInput | Prisma.UserFormulaWeightsCreateManyInput[]
   skipDuplicates?: boolean
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserFormulaWeightsIncludeCreateManyAndReturn<ExtArgs> | null
 }
 
 /**
@@ -1160,6 +1356,10 @@ export type UserFormulaWeightsUpdateArgs<ExtArgs extends runtime.Types.Extension
    * Omit specific fields from the UserFormulaWeights
    */
   omit?: Prisma.UserFormulaWeightsOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserFormulaWeightsInclude<ExtArgs> | null
   /**
    * The data needed to update a UserFormulaWeights.
    */
@@ -1212,6 +1412,10 @@ export type UserFormulaWeightsUpdateManyAndReturnArgs<ExtArgs extends runtime.Ty
    * Limit how many UserFormulaWeights to update.
    */
   limit?: number
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserFormulaWeightsIncludeUpdateManyAndReturn<ExtArgs> | null
 }
 
 /**
@@ -1226,6 +1430,10 @@ export type UserFormulaWeightsUpsertArgs<ExtArgs extends runtime.Types.Extension
    * Omit specific fields from the UserFormulaWeights
    */
   omit?: Prisma.UserFormulaWeightsOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserFormulaWeightsInclude<ExtArgs> | null
   /**
    * The filter to search for the UserFormulaWeights to update in case it exists.
    */
@@ -1252,6 +1460,10 @@ export type UserFormulaWeightsDeleteArgs<ExtArgs extends runtime.Types.Extension
    * Omit specific fields from the UserFormulaWeights
    */
   omit?: Prisma.UserFormulaWeightsOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserFormulaWeightsInclude<ExtArgs> | null
   /**
    * Filter which UserFormulaWeights to delete.
    */
@@ -1284,4 +1496,8 @@ export type UserFormulaWeightsDefaultArgs<ExtArgs extends runtime.Types.Extensio
    * Omit specific fields from the UserFormulaWeights
    */
   omit?: Prisma.UserFormulaWeightsOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserFormulaWeightsInclude<ExtArgs> | null
 }

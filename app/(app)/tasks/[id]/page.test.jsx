@@ -36,6 +36,10 @@ jest.mock("../../../components/tasks/task-complete-button", () => ({
   TaskCompleteButton: () => <button type="button">Mark Complete</button>,
 }));
 
+jest.mock("../../../components/tasks/task-attachment-delete-button", () => ({
+  TaskAttachmentDeleteButton: () => <button type="button">Remove attachment</button>,
+}));
+
 describe("TaskDetailPage study-session actions", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -67,5 +71,30 @@ describe("TaskDetailPage study-session actions", () => {
     expect(
       screen.queryByRole("link", { name: /plan study/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows the AI-readable helper text above task attachments", async () => {
+    listTaskAttachments.mockResolvedValue([
+      {
+        id: 7,
+        taskId: 42,
+        userId: "user-1",
+        fileName: "rubric.pdf",
+        fileKey: "uploads/rubric.pdf",
+        fileType: "application/pdf",
+        url: "https://example.com/rubric.pdf",
+        uploadedAt: "2099-03-01T00:00:00.000Z",
+      },
+    ]);
+
+    render(await TaskDetailPage({ params: Promise.resolve({ id: "42" }) }));
+
+    expect(
+      screen.getByText("AI can read: .pdf, .jpg, .jpeg, .png, .webp, .gif"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /rubric.pdf/i })).toHaveAttribute(
+      "href",
+      "https://example.com/rubric.pdf",
+    );
   });
 });

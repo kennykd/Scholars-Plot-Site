@@ -11,6 +11,10 @@ jest.mock("@/lib/firebase/auth", () => ({
   getSession: jest.fn(),
 }));
 
+jest.mock("@/lib/services/userService", () => ({
+  ensureUserRecordForSession: jest.fn(),
+}));
+
 jest.mock("@/lib/services/studySessionService", () => {
   class StudySessionServiceError extends Error {
     constructor(status, message) {
@@ -40,6 +44,7 @@ jest.mock("@/lib/services/taskService", () => {
 
 import { POST } from "./route";
 import { getSession } from "@/lib/firebase/auth";
+import { ensureUserRecordForSession } from "@/lib/services/userService";
 import { createStudySessionsForTask } from "@/lib/services/studySessionService";
 import { TaskServiceError } from "@/lib/services/taskService";
 
@@ -47,7 +52,9 @@ const validPlan = {
   client_plan_id: "plan-1",
   title: "Mechanical Physics",
   start_date: "2099-03-23",
-  repeat: "weekly",
+  repeat_enabled: true,
+  repeat_every: 1,
+  repeat_unit: "weeks",
   time: "15:00",
   focus_minutes: 25,
   break_minutes: 5,
@@ -65,6 +72,12 @@ function request(body) {
 describe("POST /api/study/batch", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    ensureUserRecordForSession.mockResolvedValue({
+      id: "user-1",
+      email: "student@example.com",
+      name: "Student",
+      image: null,
+    });
   });
 
   it("returns 401 when the user is not authenticated", async () => {
@@ -90,7 +103,12 @@ describe("POST /api/study/batch", () => {
   });
 
   it("returns task access errors from the service", async () => {
-    getSession.mockResolvedValue({ id: "user-1" });
+    getSession.mockResolvedValue({
+      id: "user-1",
+      email: "student@example.com",
+      name: "Student",
+      image: null,
+    });
     createStudySessionsForTask.mockRejectedValue(
       new TaskServiceError(403, "You do not have access to this task"),
     );
@@ -103,7 +121,12 @@ describe("POST /api/study/batch", () => {
   });
 
   it("creates linked sessions from plan rules for the authenticated user", async () => {
-    getSession.mockResolvedValue({ id: "user-1" });
+    getSession.mockResolvedValue({
+      id: "user-1",
+      email: "student@example.com",
+      name: "Student",
+      image: null,
+    });
     createStudySessionsForTask.mockResolvedValue({
       studySessions: [
         { study_session_id: 1, study_session_name: "Mechanical Physics" },
@@ -115,6 +138,15 @@ describe("POST /api/study/batch", () => {
     const body = await response.json();
 
     expect(response.status).toBe(201);
+    expect(ensureUserRecordForSession).toHaveBeenCalledWith({
+      id: "user-1",
+      email: "student@example.com",
+      name: "Student",
+      image: null,
+    });
+    expect(
+      ensureUserRecordForSession.mock.invocationCallOrder[0],
+    ).toBeLessThan(createStudySessionsForTask.mock.invocationCallOrder[0]);
     expect(createStudySessionsForTask).toHaveBeenCalledWith(
       "user-1",
       42,
@@ -122,7 +154,9 @@ describe("POST /api/study/batch", () => {
         expect.objectContaining({
           title: "Mechanical Physics",
           start_date: "2099-03-23",
-          repeat: "weekly",
+          repeat_enabled: true,
+          repeat_every: 1,
+          repeat_unit: "weeks",
         }),
       ],
       { reminderEnabled: false, reminders: [] },
@@ -132,7 +166,12 @@ describe("POST /api/study/batch", () => {
   });
 
   it("passes batch reminder settings to the study session service", async () => {
-    getSession.mockResolvedValue({ id: "user-1" });
+    getSession.mockResolvedValue({
+      id: "user-1",
+      email: "student@example.com",
+      name: "Student",
+      image: null,
+    });
     createStudySessionsForTask.mockResolvedValue({
       studySessions: [
         { study_session_id: 1, study_session_name: "Mechanical Physics" },
@@ -153,7 +192,7 @@ describe("POST /api/study/batch", () => {
     expect(createStudySessionsForTask).toHaveBeenCalledWith(
       "user-1",
       42,
-      [expect.objectContaining({ repeat: "weekly" })],
+      [expect.objectContaining({ repeat_enabled: true, repeat_every: 1, repeat_unit: "weeks" })],
       { reminderEnabled: true, reminders: [15, 5, 0] },
     );
   });

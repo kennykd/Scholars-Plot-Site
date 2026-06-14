@@ -42,13 +42,13 @@ export function ActiveStudySession({ sessions }: ActiveStudySessionProps) {
   const nextSession = activeSessions[0] ?? upcomingSessions[0];
 
   return (
-    <Card className="bg-card/80 backdrop-blur-sm border-0">
+    <Card className="bg-card/80 backdrop-blur-sm border-0 h-full">
       <CardHeader className="pb-4">
         <CardTitle className="font-display text-base font-bold tracking-wide">
           STUDY SESSIONS
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 flex-1 min-h-0 overflow-y-auto">
         {loading ? (
           <div className="space-y-3 text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-dashed border-muted-foreground/30 mx-auto">

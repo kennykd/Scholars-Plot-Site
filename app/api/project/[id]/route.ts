@@ -7,6 +7,8 @@ import {
   updateProjectById,
 } from '@/lib/services/projectService';
 import { getSession } from '@/lib/firebase/auth';
+import { ensureUserRecordForSession } from '@/lib/services/userService';
+import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services/prismaErrors';
 
 /**
  * @swagger
@@ -157,6 +159,8 @@ export async function DELETE(_: Request, context: RouteContext) {
       return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
     }
 
+    await ensureUserRecordForSession(session);
+
     const { id } = await context.params;
     const parsedProjectId = z.coerce.number().int().positive().safeParse(id);
 
@@ -172,7 +176,13 @@ export async function DELETE(_: Request, context: RouteContext) {
       return NextResponse.json({ message: error.message }, { status: error.status });
     }
 
-    return NextResponse.json({ message: 'Error deleting project', error }, { status: 500 });
+    if (isPrismaForeignKeyError(error)) {
+      console.error('[api/project/:id] Foreign key error while deleting project:', error);
+      return NextResponse.json({ message: foreignKeyRepairMessage() }, { status: 409 });
+    }
+
+    console.error('[api/project/:id] Error deleting project:', error);
+    return NextResponse.json({ message: 'Error deleting project' }, { status: 500 });
   }
 }
 
@@ -183,6 +193,8 @@ export async function PATCH(request: Request, context: RouteContext) {
     if (!session) {
       return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
     }
+
+    await ensureUserRecordForSession(session);
 
     const { id } = await context.params;
     const parsedProjectId = z.coerce.number().int().positive().safeParse(id);
@@ -223,6 +235,12 @@ export async function PATCH(request: Request, context: RouteContext) {
       return NextResponse.json({ message: error.message }, { status: error.status });
     }
 
-    return NextResponse.json({ message: 'Error updating project', error }, { status: 500 });
+    if (isPrismaForeignKeyError(error)) {
+      console.error('[api/project/:id] Foreign key error while updating project:', error);
+      return NextResponse.json({ message: foreignKeyRepairMessage() }, { status: 409 });
+    }
+
+    console.error('[api/project/:id] Error updating project:', error);
+    return NextResponse.json({ message: 'Error updating project' }, { status: 500 });
   }
 }

@@ -63,5 +63,8 @@ describe("StudySessionPage attachments", () => {
 
     expect(attachment).toHaveAttribute("href", "https://example.com/mechanics.pdf");
     expect(attachment).toHaveAttribute("target", "_blank");
+    expect(
+      screen.getByText("AI can read: .pdf, .jpg, .jpeg, .png, .webp, .gif"),
+    ).toBeInTheDocument();
   });
 });

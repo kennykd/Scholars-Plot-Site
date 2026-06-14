@@ -7,6 +7,8 @@ import {
 } from '@/lib/services/attachmentService';
 import { TaskServiceError } from '@/lib/services/taskService';
 import { getSession } from '@/lib/firebase/auth';
+import { ensureUserRecordForSession } from '@/lib/services/userService';
+import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services/prismaErrors';
 
 /**
  * @swagger
@@ -117,6 +119,8 @@ export async function POST(request: Request, context: RouteContext) {
       );
     }
 
+    await ensureUserRecordForSession(session);
+
     const buffer = Buffer.from(await file.arrayBuffer());
     const attachment = await addAttachmentToTask(parsedId.data, session.id, {
       name: file.name,
@@ -132,6 +136,12 @@ export async function POST(request: Request, context: RouteContext) {
     if (error instanceof AttachmentServiceError || error instanceof TaskServiceError) {
       return NextResponse.json({ message: error.message }, { status: error.status });
     }
-    return NextResponse.json({ message: 'Error uploading attachment', error }, { status: 500 });
+    if (isPrismaForeignKeyError(error)) {
+      console.error('[api/task/attachment] Foreign key error while uploading attachment:', error);
+      return NextResponse.json({ message: foreignKeyRepairMessage() }, { status: 409 });
+    }
+
+    console.error('[api/task/attachment] Error uploading attachment:', error);
+    return NextResponse.json({ message: 'Error uploading attachment' }, { status: 500 });
   }
 }

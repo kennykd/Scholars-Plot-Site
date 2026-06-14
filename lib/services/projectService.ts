@@ -8,7 +8,7 @@ import type {
   UpdateProjectTaskInput,
 } from '@/lib/validation/project';
 
-type ProjectUserRole = 'owner' | 'moderator' | 'member';
+type ProjectUserRole = 'owner' | 'moderator' | 'collaborator' | 'member';
 
 const projectManagerRoles: ProjectUserRole[] = ['owner', 'moderator'];
 
@@ -34,6 +34,31 @@ const taskInclude = {
 
 function isProjectManagerRole(role: ProjectUserRole) {
   return projectManagerRoles.includes(role);
+}
+
+async function requireUsersExist(userIds: string[], label = 'Project member') {
+  const uniqueIds = [...new Set(userIds.filter(Boolean))];
+
+  if (uniqueIds.length === 0) {
+    return;
+  }
+
+  const existingUsers = await prisma.user.findMany({
+    where: {
+      user_id: {
+        in: uniqueIds,
+      },
+    },
+    select: {
+      user_id: true,
+    },
+  });
+  const existingIds = new Set(existingUsers.map((user) => user.user_id));
+  const missingIds = uniqueIds.filter((userId) => !existingIds.has(userId));
+
+  if (missingIds.length > 0) {
+    throw new ProjectServiceError(400, `${label} does not exist: ${missingIds.join(', ')}`);
+  }
 }
 
 async function getProjectMemberRole(projectId: number, userId: string) {
@@ -96,7 +121,7 @@ async function requireProjectOwnerRole(projectId: number, userId: string) {
   return memberRole.project_user_role as ProjectUserRole;
 }
 
-async function requireProjectTaskAccess(taskId: number, userId: string) {
+export async function requireProjectTaskAccess(taskId: number, userId: string) {
   const task = await prisma.task.findUnique({
     where: { task_id: taskId },
     include: {
@@ -141,6 +166,20 @@ async function requireProjectTaskAccess(taskId: number, userId: string) {
   };
 }
 
+export async function requireProjectTaskAttachmentAccess(
+  taskId: number,
+  userId: string,
+  mode: 'view' | 'manage' = 'view',
+) {
+  const access = await requireProjectTaskAccess(taskId, userId);
+
+  if (mode === 'manage' && !access.isManager && !access.isAssigned) {
+    throw new ProjectServiceError(403, 'Members can only manage tasks assigned to them');
+  }
+
+  return access.task;
+}
+
 export async function getProjects(userId: string) {
   return prisma.project.findMany({
     where: {
@@ -166,6 +205,8 @@ export async function createProject(userId: string, data: CreateProjectInput) {
         user_id: member.id,
         project_user_role: member.role as ProjectUserRole,
       })) ?? [];
+
+  await requireUsersExist(additionalMembers.map((member) => member.user_id));
 
   return prisma.project.create({
     data: {
@@ -214,6 +255,16 @@ export async function updateProjectById(projectId: number, userId: string, data:
   if (data.members) {
     const ownerId = existingProject.project_user[0]?.user_id;
 
+    const membersToCreate = data.members
+      .filter((member) => member.id !== ownerId)
+      .map((member) => ({
+        project_id: projectId,
+        user_id: member.id,
+        project_user_role: member.role,
+      }));
+
+    await requireUsersExist(membersToCreate.map((member) => member.user_id));
+
     await prisma.projectUser.deleteMany({
       where: {
         project_id: projectId,
@@ -222,14 +273,6 @@ export async function updateProjectById(projectId: number, userId: string, data:
         },
       },
     });
-
-    const membersToCreate = data.members
-      .filter((member) => member.id !== ownerId)
-      .map((member) => ({
-        project_id: projectId,
-        user_id: member.id,
-        project_user_role: member.role,
-      }));
 
     if (membersToCreate.length > 0) {
       await prisma.projectUser.createMany({
@@ -268,6 +311,8 @@ export async function addProjectMember(projectId: number, userId: string, data: 
   if (existingMember) {
     throw new ProjectServiceError(409, 'Member already in project');
   }
+
+  await requireUsersExist([data.id]);
 
   return prisma.projectUser.create({
     data: {
@@ -364,26 +409,56 @@ export async function createProjectTask(userId: string, data: CreateProjectTaskI
     throw new ProjectServiceError(403, 'Members can only manage tasks assigned to them');
   }
 
-  const task = await prisma.task.create({
-    data: {
-      project_id: data.projectId,
-      task_name: data.title,
-      task_description: data.description,
-      task_priority: data.priority,
-      task_status: data.status,
-      task_deadline: new Date(Date.now() + 24 * 60 * 60 * 1000),
-    },
-    include: taskInclude,
-  });
-
   if (data.assignedTo) {
-    await prisma.taskUser.create({
-      data: {
-        task_id: task.task_id,
-        user_id: data.assignedTo,
-      },
-    });
+    await requireUsersExist([data.assignedTo], 'Assigned user');
   }
+
+  const task = await prisma.$transaction(async (tx) => {
+    const createdTask = await tx.task.create({
+      data: {
+        project_id: data.projectId,
+        task_name: data.title,
+        task_description: data.description,
+        task_priority: data.priority,
+        task_status: data.status,
+        task_deadline: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      },
+      include: taskInclude,
+    });
+
+    if (data.assignedTo) {
+      await tx.taskUser.create({
+        data: {
+          task_id: createdTask.task_id,
+          user_id: data.assignedTo,
+        },
+      });
+    }
+
+    if (data.attachmentIds?.length) {
+      const attachmentIds = [...new Set(data.attachmentIds)];
+      const attachments = await tx.attachment.findMany({
+        where: { attachment_id: { in: attachmentIds } },
+        select: { attachment_id: true, user_id: true, task_id: true },
+      });
+
+      if (
+        attachments.length !== attachmentIds.length ||
+        attachments.some(
+          (attachment) => attachment.user_id !== userId || attachment.task_id !== null,
+        )
+      ) {
+        throw new ProjectServiceError(400, 'Some draft attachments are unavailable');
+      }
+
+      await tx.attachment.updateMany({
+        where: { attachment_id: { in: attachmentIds } },
+        data: { task_id: createdTask.task_id },
+      });
+    }
+
+    return createdTask;
+  });
 
   return prisma.task.findUnique({
     where: { task_id: task.task_id },
@@ -421,6 +496,10 @@ export async function updateProjectTaskById(taskId: number, userId: string, data
   });
 
   if (data.assignedTo !== undefined) {
+    if (data.assignedTo) {
+      await requireUsersExist([data.assignedTo], 'Assigned user');
+    }
+
     await prisma.taskUser.deleteMany({
       where: {
         task_id: taskId,

@@ -456,10 +456,6 @@ export type TaskReminderUncheckedUpdateManyWithoutTaskNestedInput = {
   deleteMany?: Prisma.TaskReminderScalarWhereInput | Prisma.TaskReminderScalarWhereInput[]
 }
 
-export type EnumReminderIntervalTypeFieldUpdateOperationsInput = {
-  set?: $Enums.ReminderIntervalType
-}
-
 export type TaskReminderCreateWithoutTaskInput = {
   interval_type: $Enums.ReminderIntervalType
   interval_value?: number | null

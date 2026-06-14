@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { getSession } from '@/lib/firebase/auth';
 import { addProjectMemberSchema } from '../../../../../lib/validation/project';
 import { addProjectMember, ProjectServiceError } from '@/lib/services/projectService';
+import { ensureUserRecordForSession } from '@/lib/services/userService';
+import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services/prismaErrors';
 
 /**
  * @swagger
@@ -122,6 +124,8 @@ export async function POST(request: Request, context: RouteContext) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
+    await ensureUserRecordForSession(session);
+
     const { id } = await context.params;
     const parsedProjectId = z.coerce.number().int().positive().safeParse(id);
 
@@ -157,6 +161,12 @@ export async function POST(request: Request, context: RouteContext) {
       return NextResponse.json({ message: error.message }, { status: error.status });
     }
 
-    return NextResponse.json({ message: 'Error adding member', error }, { status: 500 });
+    if (isPrismaForeignKeyError(error)) {
+      console.error('[api/project/:id/member] Foreign key error while adding member:', error);
+      return NextResponse.json({ message: foreignKeyRepairMessage() }, { status: 409 });
+    }
+
+    console.error('[api/project/:id/member] Error adding member:', error);
+    return NextResponse.json({ message: 'Error adding member' }, { status: 500 });
   }
 }

@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { createProjectSchema } from '../../../lib/validation/project';
 import { createProject, getProjects, ProjectServiceError } from '@/lib/services/projectService';
 import { getSession } from '@/lib/firebase/auth';
+import { ensureUserRecordForSession } from '@/lib/services/userService';
+import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services/prismaErrors';
 
 /**
  * @swagger
@@ -207,6 +209,8 @@ export async function GET() {
       return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
     }
 
+    await ensureUserRecordForSession(session);
+
     const projects = await getProjects(session.id);
 
     return NextResponse.json(
@@ -218,7 +222,13 @@ export async function GET() {
       return NextResponse.json({ message: error.message }, { status: error.status });
     }
 
-    return NextResponse.json({ message: 'Error retrieving projects', error }, { status: 500 });
+    if (isPrismaForeignKeyError(error)) {
+      console.error('[api/project] Foreign key error while retrieving projects:', error);
+      return NextResponse.json({ message: foreignKeyRepairMessage() }, { status: 409 });
+    }
+
+    console.error('[api/project] Error retrieving projects:', error);
+    return NextResponse.json({ message: 'Error retrieving projects' }, { status: 500 });
   }
 }
 
@@ -247,6 +257,8 @@ export async function POST(request: Request) {
       );
     }
 
+    await ensureUserRecordForSession(session);
+
     const project = await createProject(session.id, parsed.data);
 
     return NextResponse.json(
@@ -258,6 +270,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: error.message }, { status: error.status });
     }
 
-    return NextResponse.json({ message: 'Error creating project', error }, { status: 500 });
+    if (isPrismaForeignKeyError(error)) {
+      console.error('[api/project] Foreign key error while creating project:', error);
+      return NextResponse.json({ message: foreignKeyRepairMessage() }, { status: 409 });
+    }
+
+    console.error('[api/project] Error creating project:', error);
+    return NextResponse.json({ message: 'Error creating project' }, { status: 500 });
   }
 }

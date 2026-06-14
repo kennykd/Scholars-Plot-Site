@@ -24,7 +24,7 @@ export default function LogoutButton() {
     try {
       setLoading(true);
 
-      const res = await fetch("/api/logout", {
+      const res = await fetch("/api/auth/logout", {
         method: "POST",
       });
 
@@ -35,7 +35,7 @@ export default function LogoutButton() {
       router.push("/login");
       router.refresh();
     } catch (error: unknown) {
-      toast.error((error as {message?: string})?.message || "Errors");
+      toast.error((error as { message?: string })?.message || "Errors");
     } finally {
       setLoading(false);
     }

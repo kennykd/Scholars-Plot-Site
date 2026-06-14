@@ -90,7 +90,7 @@ export default function LandingPage() {
           <div className="hidden lg:flex justify-center items-center">
             <div className="relative">
               {/* Main dashboard preview */}
-              <div className="w-[500px] h-[350px] bg-[#0f1a66]/80 rounded-lg border border-white/10 backdrop-blur-sm shadow-2xl transform rotate-[-5deg] hover:rotate-0 transition-transform duration-500">
+              <div className="w-125 h-87.5 bg-[#0f1a66]/80 rounded-lg border border-white/10 backdrop-blur-sm shadow-2xl transform rotate-[-5deg] hover:rotate-0 transition-transform duration-500">
                 <div className="p-6 h-full flex flex-col">
                   {/* Mock UI header */}
                   <div className="flex items-center justify-between mb-4">
@@ -149,7 +149,7 @@ export default function LandingPage() {
               </div>
 
               {/* Secondary floating card */}
-              <div className="absolute -bottom-4 -right-4 w-[280px] h-[180px] bg-white rounded-lg shadow-2xl transform rotate-[3deg] hover:rotate-0 transition-transform duration-500">
+              <div className="absolute -bottom-4 -right-4 w-70 h-45 bg-white rounded-lg shadow-2xl transform rotate-3 hover:rotate-0 transition-transform duration-500">
                 <div className="p-4 h-full">
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-6 h-6 rounded bg-[#FF4D2E] flex items-center justify-center">

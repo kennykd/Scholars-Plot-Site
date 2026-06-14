@@ -16,9 +16,7 @@ interface TodaysTasksProps {
 export function TodaysTasks({ tasks }: TodaysTasksProps) {
   const [completed, setCompleted] = useState<Set<number>>(new Set());
 
-  const sorted = [...tasks]
-    .sort((a, b) => b.priority - a.priority)
-    .slice(0, 6);
+  const sorted = [...tasks].sort((a, b) => b.priority - a.priority);
 
   const toggle = (id: number) => {
     setCompleted((prev) => {
@@ -37,13 +35,13 @@ export function TodaysTasks({ tasks }: TodaysTasksProps) {
   };
 
   return (
-    <Card className="bg-card/80 backdrop-blur-sm border-0">
+    <Card className="bg-card/80 backdrop-blur-sm border-0 h-full">
       <CardHeader className="pb-4">
         <CardTitle className="font-display text-base font-bold tracking-wide">
           TODAY&apos;S TASKS
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-3 flex-1 min-h-0 overflow-y-auto">
         {sorted.length === 0 ? (
           <p className="text-sm text-muted-foreground">No tasks yet.</p>
         ) : (

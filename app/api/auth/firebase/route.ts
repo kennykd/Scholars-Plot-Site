@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminAuth } from "@/lib/firebase/firebase-admin";
-import prisma from "@/lib/prisma";
-
+import { ensureUserRecordForSession } from "@/lib/services/userService";
 /**
  * @swagger
  * /api/auth/firebase:
@@ -109,26 +108,16 @@ try {
   // Prefer the name sent in the request body (manual registration), fall back to Firebase token name
   name = name || firebaseName;
 
-  // Upsert user to PostgreSQL database.
-  // If firebaseName or firebaseImage exist on the token, sync them to the DB.
-  // (THIS IS IMPORTANT) If they are absent, keep whatever is already stored — never overwrite with null.
-  const user = await prisma.user.upsert({
-    where: { user_email: decodedToken.email },
-    update: {
-      ...(name ? { user_name: name } : {}),
-      ...(firebaseImage ? { avatar_url: firebaseImage } : {}),
-      user_last_login: new Date(),
-    },
-    create: {
-      user_id: decodedToken.uid,
-      user_email: decodedToken.email,
-      user_name: name || "User",
-      avatar_url: firebaseImage || null,
-      user_last_login: new Date(),
-    },
+  // Keep the database user keyed by the Firebase UID used in session cookies.
+  // If an email-matched row has a different id, repair it before FK writes.
+  await ensureUserRecordForSession({
+    id: decodedToken.uid,
+    email: decodedToken.email,
+    name: name || null,
+    image: firebaseImage || null,
   });
 
-  /* 
+  /*
     createSessionCookie() exchanges the short-lived ID token (1 hr) for a
     dedicated server-issued session token (long-lived). Storing the
     raw ID token in the cookie instead would let an attacker replay it

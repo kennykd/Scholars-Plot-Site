@@ -36,6 +36,9 @@ export const createStudySchema = z.object({
   )
 });
 
+const legacyRepeatSchema = z.enum(['none', 'weekly', 'biweekly']);
+const repeatUnitSchema = z.enum(['days', 'weeks']);
+
 const studySessionPlanSchema = z.object({
   client_plan_id: z.string().min(1, 'Plan id is required'),
   title: z.string()
@@ -43,7 +46,12 @@ const studySessionPlanSchema = z.object({
     .max(100, 'Session topic cannot exceed 100 characters'),
   start_date: z.string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must use YYYY-MM-DD format'),
-  repeat: z.enum(['none', 'weekly', 'biweekly']).default('none'),
+  repeat: legacyRepeatSchema.optional(),
+  repeat_enabled: z.boolean().optional(),
+  repeat_every: z.coerce.number()
+    .int('Repeat interval must be a whole number')
+    .optional(),
+  repeat_unit: repeatUnitSchema.optional(),
   time: z.string()
     .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Session time must use HH:mm format'),
   focus_minutes: z.coerce.number()
@@ -57,7 +65,42 @@ const studySessionPlanSchema = z.object({
     .min(1, 'Total pomodoros must be at least 1'),
   notes: z.string().optional(),
   description_as_checklist: z.boolean().optional(),
-});
+})
+  .transform((plan) => {
+    const legacyRepeat = plan.repeat;
+    const repeatEnabled =
+      plan.repeat_enabled ?? (legacyRepeat ? legacyRepeat !== 'none' : false);
+    const repeatEvery =
+      plan.repeat_every ?? (legacyRepeat === 'biweekly' ? 2 : 1);
+    const repeatUnit =
+      plan.repeat_unit ?? (legacyRepeat === 'weekly' || legacyRepeat === 'biweekly' ? 'weeks' : 'weeks');
+
+    return {
+      ...plan,
+      repeat_enabled: repeatEnabled,
+      repeat_every: repeatEvery,
+      repeat_unit: repeatUnit,
+    };
+  })
+  .superRefine((plan, ctx) => {
+    if (!plan.repeat_enabled) return;
+
+    if (plan.repeat_unit === 'days' && (plan.repeat_every < 1 || plan.repeat_every > 30)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['repeat_every'],
+        message: 'Day repeat interval must be between 1 and 30',
+      });
+    }
+
+    if (plan.repeat_unit === 'weeks' && (plan.repeat_every < 1 || plan.repeat_every > 12)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['repeat_every'],
+        message: 'Week repeat interval must be between 1 and 12',
+      });
+    }
+  });
 
 export const createStudyBatchSchema = z.object({
   task_id: z.number().int().positive(),

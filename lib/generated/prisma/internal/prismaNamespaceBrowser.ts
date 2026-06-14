@@ -51,14 +51,20 @@ export const AnyNull = runtime.objectEnumValues.instances.AnyNull
 export const ModelName = {
   User: 'User',
   UserFormulaWeights: 'UserFormulaWeights',
+  UserAvailability: 'UserAvailability',
   Project: 'Project',
   ProjectUser: 'ProjectUser',
   Task: 'Task',
   TaskUser: 'TaskUser',
   Attachment: 'Attachment',
   StudySession: 'StudySession',
+  StudySessionAttachment: 'StudySessionAttachment',
   StudySessionUser: 'StudySessionUser',
+  StudySessionReminder: 'StudySessionReminder',
   TaskReminder: 'TaskReminder',
+  OverloadWarning: 'OverloadWarning',
+  ChatConversation: 'ChatConversation',
+  ChatMessage: 'ChatMessage',
   Analytics: 'Analytics'
 } as const
 
@@ -87,7 +93,9 @@ export const UserScalarFieldEnum = {
   user_role: 'user_role',
   push_subscription: 'push_subscription',
   user_last_login: 'user_last_login',
-  user_created_at: 'user_created_at'
+  user_created_at: 'user_created_at',
+  ai_behavior_profile: 'ai_behavior_profile',
+  ai_profile_updated_at: 'ai_profile_updated_at'
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
@@ -100,10 +108,24 @@ export const UserFormulaWeightsScalarFieldEnum = {
   w_confidence: 'w_confidence',
   w_ease: 'w_ease',
   w_urgency: 'w_urgency',
+  last_adapted_at: 'last_adapted_at',
+  tasks_since_last: 'tasks_since_last',
   updated_at: 'updated_at'
 } as const
 
 export type UserFormulaWeightsScalarFieldEnum = (typeof UserFormulaWeightsScalarFieldEnum)[keyof typeof UserFormulaWeightsScalarFieldEnum]
+
+
+export const UserAvailabilityScalarFieldEnum = {
+  id: 'id',
+  user_id: 'user_id',
+  day_of_week: 'day_of_week',
+  start_time: 'start_time',
+  end_time: 'end_time',
+  is_active: 'is_active'
+} as const
+
+export type UserAvailabilityScalarFieldEnum = (typeof UserAvailabilityScalarFieldEnum)[keyof typeof UserAvailabilityScalarFieldEnum]
 
 
 export const ProjectScalarFieldEnum = {
@@ -161,6 +183,7 @@ export type TaskUserScalarFieldEnum = (typeof TaskUserScalarFieldEnum)[keyof typ
 export const AttachmentScalarFieldEnum = {
   attachment_id: 'attachment_id',
   task_id: 'task_id',
+  user_id: 'user_id',
   file_name: 'file_name',
   file_path: 'file_path',
   file_type: 'file_type',
@@ -188,6 +211,16 @@ export const StudySessionScalarFieldEnum = {
 export type StudySessionScalarFieldEnum = (typeof StudySessionScalarFieldEnum)[keyof typeof StudySessionScalarFieldEnum]
 
 
+export const StudySessionAttachmentScalarFieldEnum = {
+  study_session_id: 'study_session_id',
+  attachment_id: 'attachment_id',
+  user_id: 'user_id',
+  linked_at: 'linked_at'
+} as const
+
+export type StudySessionAttachmentScalarFieldEnum = (typeof StudySessionAttachmentScalarFieldEnum)[keyof typeof StudySessionAttachmentScalarFieldEnum]
+
+
 export const StudySessionUserScalarFieldEnum = {
   study_session_id: 'study_session_id',
   user_id: 'user_id',
@@ -204,6 +237,19 @@ export const StudySessionUserScalarFieldEnum = {
 export type StudySessionUserScalarFieldEnum = (typeof StudySessionUserScalarFieldEnum)[keyof typeof StudySessionUserScalarFieldEnum]
 
 
+export const StudySessionReminderScalarFieldEnum = {
+  reminder_id: 'reminder_id',
+  study_session_id: 'study_session_id',
+  interval_type: 'interval_type',
+  interval_value: 'interval_value',
+  remind_at: 'remind_at',
+  is_active: 'is_active',
+  reminder_created_at: 'reminder_created_at'
+} as const
+
+export type StudySessionReminderScalarFieldEnum = (typeof StudySessionReminderScalarFieldEnum)[keyof typeof StudySessionReminderScalarFieldEnum]
+
+
 export const TaskReminderScalarFieldEnum = {
   reminder_id: 'reminder_id',
   task_id: 'task_id',
@@ -215,6 +261,42 @@ export const TaskReminderScalarFieldEnum = {
 } as const
 
 export type TaskReminderScalarFieldEnum = (typeof TaskReminderScalarFieldEnum)[keyof typeof TaskReminderScalarFieldEnum]
+
+
+export const OverloadWarningScalarFieldEnum = {
+  id: 'id',
+  user_id: 'user_id',
+  week_start: 'week_start',
+  warnings: 'warnings',
+  detected_at: 'detected_at',
+  is_read: 'is_read'
+} as const
+
+export type OverloadWarningScalarFieldEnum = (typeof OverloadWarningScalarFieldEnum)[keyof typeof OverloadWarningScalarFieldEnum]
+
+
+export const ChatConversationScalarFieldEnum = {
+  id: 'id',
+  user_id: 'user_id',
+  title: 'title',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+} as const
+
+export type ChatConversationScalarFieldEnum = (typeof ChatConversationScalarFieldEnum)[keyof typeof ChatConversationScalarFieldEnum]
+
+
+export const ChatMessageScalarFieldEnum = {
+  id: 'id',
+  conversation_id: 'conversation_id',
+  role: 'role',
+  text_content: 'text_content',
+  structured_json: 'structured_json',
+  action_status: 'action_status',
+  created_at: 'created_at'
+} as const
+
+export type ChatMessageScalarFieldEnum = (typeof ChatMessageScalarFieldEnum)[keyof typeof ChatMessageScalarFieldEnum]
 
 
 export const AnalyticsScalarFieldEnum = {
@@ -248,20 +330,19 @@ export const NullableJsonNullValueInput = {
 export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
 
 
+export const JsonNullValueInput = {
+  JsonNull: JsonNull
+} as const
+
+export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
+
+
 export const QueryMode = {
   default: 'default',
   insensitive: 'insensitive'
 } as const
 
 export type QueryMode = (typeof QueryMode)[keyof typeof QueryMode]
-
-
-export const NullsOrder = {
-  first: 'first',
-  last: 'last'
-} as const
-
-export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
 
 
 export const JsonNullValueFilter = {
@@ -271,4 +352,12 @@ export const JsonNullValueFilter = {
 } as const
 
 export type JsonNullValueFilter = (typeof JsonNullValueFilter)[keyof typeof JsonNullValueFilter]
+
+
+export const NullsOrder = {
+  first: 'first',
+  last: 'last'
+} as const
+
+export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
 
