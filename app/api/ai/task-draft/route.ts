@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSession } from '@/lib/firebase/auth';
 import { addDraftAttachmentForUser, AttachmentServiceError } from '@/lib/services/attachmentService';
-import { generateTaskDraft } from '@/lib/services/aiDraftService';
+import { AiDraftServiceError, generateTaskDraft } from '@/lib/services/aiDraftService';
 import { ensureUserRecordForSession } from '@/lib/services/userService';
 import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services/prismaErrors';
 
@@ -99,6 +99,13 @@ export async function POST(request: Request) {
       attachmentIds: attachments.map((attachment) => attachment.id),
     });
   } catch (error) {
+    if (error instanceof AiDraftServiceError) {
+      return NextResponse.json(
+        { code: error.code, message: error.message },
+        { status: error.code === 'AI_TIMEOUT' ? 504 : 400 },
+      );
+    }
+
     if (error instanceof AttachmentServiceError) {
       return NextResponse.json({ message: error.message }, { status: error.status });
     }

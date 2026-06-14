@@ -28,6 +28,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { ArrowLeft, CalendarIcon, Paperclip, X } from "lucide-react";
 import { cn, openNativePicker } from "@/lib/utils";
+import { AI_READABLE_ATTACHMENT_HELPER_TEXT } from "@/lib/ai/attachmentSupport";
 
 type ReminderOption = "none" | "daily" | "every-3-days" | "weekly" | "biweekly";
 
@@ -373,6 +374,9 @@ export default function TaskForm() {
               <Label className="font-mono text-xs tracking-wider">
                 ATTACHMENTS
               </Label>
+              <p className="font-mono text-[10px] text-muted-foreground">
+                {AI_READABLE_ATTACHMENT_HELPER_TEXT}
+              </p>
               {files.length > 0 && (
                 <ul className="space-y-1.5">
                   {files.map((f, i) => (

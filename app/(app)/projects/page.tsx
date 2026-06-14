@@ -44,6 +44,7 @@ import {
   ProjectTaskStatus,
 } from "@/types";
 import { cn } from "@/lib/utils";
+import { AI_READABLE_ATTACHMENT_HELPER_TEXT } from "@/lib/ai/attachmentSupport";
 import {
   fetchProjects,
   createProjectApi,
@@ -926,6 +927,9 @@ export default function ProjectsPage() {
                     <Label className="font-mono text-xs tracking-wider">
                       ATTACHMENT
                     </Label>
+                    <p className="font-mono text-[10px] text-muted-foreground">
+                      {AI_READABLE_ATTACHMENT_HELPER_TEXT}
+                    </p>
                     {taskAttachment ? (
                       <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/30 px-3 py-2">
                         <Paperclip className="h-4 w-4 text-muted-foreground" />

@@ -14,6 +14,7 @@ import { Paperclip, Timer } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { StudySession, Phase } from "@/types";
 import { useRouter } from "next/navigation";
+import { AI_READABLE_ATTACHMENT_HELPER_TEXT } from "@/lib/ai/attachmentSupport";
 
 type ApiStudyAttachmentLink = {
   attachment?: {
@@ -754,6 +755,9 @@ export default function StudySessionPage() {
               <CardTitle className="font-display text-base font-bold tracking-wide">
                 ATTACHMENTS
               </CardTitle>
+              <p className="font-mono text-[10px] text-muted-foreground">
+                {AI_READABLE_ATTACHMENT_HELPER_TEXT}
+              </p>
             </CardHeader>
             <CardContent className="space-y-2">
               {session.attachments.length ? (

@@ -59,6 +59,9 @@ describe("StudyNewPage", () => {
     expect(
       screen.getByRole("button", { name: /create session/i }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText("AI can read: .pdf, .jpg, .jpeg, .png, .webp, .gif"),
+    ).toBeInTheDocument();
     expect(screen.getByText("POMODOROS")).toBeInTheDocument();
     expect(
       screen.queryByText(/How many Pomodoro sessions/i),
@@ -342,6 +345,9 @@ describe("StudyNewPage", () => {
     render(<StudyNewPage />);
 
     expect(await screen.findByText("Physics Final")).toBeInTheDocument();
+    expect(
+      screen.getByText("AI can read: .pdf, .jpg, .jpeg, .png, .webp, .gif"),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /ai suggestions/i }));
 
     expect(await screen.findByText(/ai mechanics review/i)).toBeInTheDocument();
@@ -355,5 +361,52 @@ describe("StudyNewPage", () => {
     expect(
       screen.getByPlaceholderText(/optional notes for this session/i),
     ).toHaveValue("Review force diagrams and formula sheets.");
+  });
+
+  it("shows the specific study-track AI error message from the route", async () => {
+    mockSearchParams = new URLSearchParams("taskId=42");
+    global.fetch = jest.fn(async (url) => {
+      if (url === "/api/task/42") {
+        return {
+          ok: true,
+          json: async () => ({
+            task: {
+              id: 42,
+              title: "Physics Final",
+              description: "Mechanics and medical physics",
+              deadline: "2099-03-31T23:59:00.000Z",
+              priority: 4,
+              status: "Pending",
+              createdAt: "2099-03-01T00:00:00.000Z",
+              completedAt: null,
+            },
+          }),
+        };
+      }
+
+      if (url === "/api/ai/study-track-draft") {
+        return {
+          ok: false,
+          json: async () => ({
+            code: "AI_TIMEOUT",
+            message:
+              "AI suggestions took too long to generate. Try again with fewer or smaller attachments.",
+          }),
+        };
+      }
+
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+
+    render(<StudyNewPage />);
+
+    expect(await screen.findByText("Physics Final")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /ai suggestions/i }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        "AI suggestions took too long to generate. Try again with fewer or smaller attachments.",
+      );
+    });
   });
 });

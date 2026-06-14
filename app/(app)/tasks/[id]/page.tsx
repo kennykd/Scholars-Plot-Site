@@ -20,6 +20,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { ArrowLeft, BookOpen, Paperclip } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { taskStatusColors, taskStatusLabels } from "@/lib/tasks/task-status";
+import { AI_READABLE_ATTACHMENT_HELPER_TEXT } from "@/lib/ai/attachmentSupport";
 
 interface LinkedStudySession {
   id: number;
@@ -169,6 +170,9 @@ export default async function TaskDetailPage({
             <div>
               <p className="font-mono text-xs text-muted-foreground tracking-wider mb-2">
                 ATTACHMENTS
+              </p>
+              <p className="font-mono text-[10px] text-muted-foreground mb-2">
+                {AI_READABLE_ATTACHMENT_HELPER_TEXT}
               </p>
               <ul className="space-y-1.5">
                 {attachments.map((att) => (

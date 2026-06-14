@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSession } from '@/lib/firebase/auth';
-import { generateStudyTrackDraft } from '@/lib/services/aiDraftService';
+import { AiDraftServiceError, generateStudyTrackDraft } from '@/lib/services/aiDraftService';
 import { listTaskAttachments, AttachmentServiceError } from '@/lib/services/attachmentService';
 import { getTaskById, TaskServiceError } from '@/lib/services/taskService';
 import {
@@ -71,6 +71,13 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ draft });
   } catch (error) {
+    if (error instanceof AiDraftServiceError) {
+      return NextResponse.json(
+        { code: error.code, message: error.message },
+        { status: error.code === 'AI_TIMEOUT' ? 504 : 400 },
+      );
+    }
+
     if (error instanceof TaskServiceError || error instanceof AttachmentServiceError) {
       return NextResponse.json({ message: error.message }, { status: error.status });
     }

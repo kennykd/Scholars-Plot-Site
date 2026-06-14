@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/select";
 import { format } from "date-fns";
 import { StudyReminderOffset, StudyReminderValueUnit, type Task } from "@/types";
+import { AI_READABLE_ATTACHMENT_HELPER_TEXT } from "@/lib/ai/attachmentSupport";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
@@ -842,6 +843,9 @@ export default function StudyNewPage() {
                     <Label className="font-mono text-xs tracking-wider">
                       SESSION ATTACHMENTS
                     </Label>
+                    <p className="font-mono text-[10px] text-muted-foreground">
+                      {AI_READABLE_ATTACHMENT_HELPER_TEXT}
+                    </p>
                     {track.attachments.length > 0 && (
                       <div className="space-y-2">
                         {track.attachments.map((file, fileIndex) => (
@@ -1280,6 +1284,9 @@ export default function StudyNewPage() {
               <Label className="font-mono text-xs tracking-wider">
                 ATTACHMENTS
               </Label>
+              <p className="font-mono text-[10px] text-muted-foreground">
+                {AI_READABLE_ATTACHMENT_HELPER_TEXT}
+              </p>
               {attachments.length ? (
                 <div className="space-y-2">
                   {attachments.map((file, index) => (
