@@ -107,7 +107,7 @@ export function serializeProject(apiProject: ApiProject): StoredProject {
       name: pu.user?.user_name ?? pu.user_id,
       email: pu.user?.user_email,
       role: pu.project_user_role as ProjectRole,
-    })),  
+    })),
     tasks,
     createdAt: apiProject.project_created_at,
   };
@@ -317,12 +317,7 @@ export async function addProjectMemberApi(
  * Create a task in a project
  */
 export async function createProjectTaskApi(
-  projectId: string,
-  title: string,
-  priority: number,
-  description?: string,
-  assignedTo?: string,
-  attachmentIds?: number[],
+  projectId: string, title: string, priority: number, description?: string, assignedTo?: string, attachmentIds?: number[], reminder?: string,
 ): Promise<StoredProjectTask> {
   const projectNumId = projectId.replace("project-", "");
   const res = await fetch("/api/project/task", {
@@ -336,6 +331,7 @@ export async function createProjectTaskApi(
       status: "Pending",
       assignedTo,
       ...(attachmentIds?.length ? { attachmentIds } : {}),
+      ...(reminder ? { reminder } : {}),
     }),
   });
 

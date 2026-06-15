@@ -96,9 +96,9 @@ export function Sidebar({ user }: { user: SidebarUser }) {
   return (
     <aside
       className={cn(
-        "sticky top-0 hidden max-h-dvh min-h-dvh shrink-0 flex-col self-start transition-all duration-150 ease-in-out lg:flex",
+        "hidden lg:flex flex-col h-dvh shrink-0 transition-all duration-150 ease-in-out",
         "bg-sidebar",
-        collapsed ? "w-20" : "w-72",
+        collapsed ? "w-20" : "w-72"
       )}
     >
       {/* User avatar section - fixed at top */}
