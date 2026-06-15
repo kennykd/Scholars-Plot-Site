@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { UpcomingDeadlines } from "./upcoming-deadlines";
+import { UpcomingDeadlines } from "@/app/components/dashboard/upcoming-deadlines";
 import type { Task } from "@/types";
 
 function makeTask(overrides: Partial<Task>): Task {

@@ -46,7 +46,7 @@ jest.mock("@/lib/services/aiService", () => {
   };
 });
 
-import { POST } from "./route";
+import { POST } from "@/app/api/ai/task-draft/route";
 import { getSession } from "@/lib/firebase/auth";
 import { addDraftAttachmentForUser } from "@/lib/services/attachmentService";
 import {

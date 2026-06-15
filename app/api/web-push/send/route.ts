@@ -1,63 +1,118 @@
-import webpush from 'web-push'
-import { NextResponse } from 'next/server'
-import { getSession } from '@/lib/firebase/auth';
-import { getUserPushSubscription } from '@/lib/services/webPushService';
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { getSession } from "@/lib/firebase/auth";
+import {
+  clearUserPushSubscription,
+  getUserPushSubscription,
+  sendWebPushNotification,
+  WebPushConfigurationError,
+} from "@/lib/services/webPushService";
 
-// TODO: Make sure this nofication enpoint is secured
+const sendNotificationSchema = z.object({
+  title: z.string().trim().min(1).max(120),
+  body: z.string().trim().min(1).max(500),
+  url: z.string().trim().startsWith("/").max(300).default("/"),
+  tag: z.string().trim().min(1).max(200).optional(),
+});
+
+function getPushStatusCode(error: unknown) {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "statusCode" in error &&
+    typeof (error as { statusCode?: unknown }).statusCode === "number"
+  ) {
+    return (error as { statusCode: number }).statusCode;
+  }
+
+  return null;
+}
+
 export async function POST(request: Request) {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    let body: unknown;
     try {
-        // Authenticate the user
-        const session = await getSession();
-        if (!session) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
-
-        // Set VAPID details for web-push library
-        webpush.setVapidDetails(
-            process.env.VAPID_SUBJECT || 'mailto:example@domain.com',
-            process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-            process.env.VAPID_PRIVATE_KEY!
-        );
-
-        const { userID, title, body, url } = await request.json();
-        
-        // Validate input
-        if (!userID || !title || !body) {
-            return NextResponse.json({ error: 'Missing required fields: userID, title, body' }, { status: 400 });
-        }
-
-        const user = await getUserPushSubscription(userID)
-
-        // Check if user exists
-        if (!user) {
-            return NextResponse.json({ error: 'User not found' }, { status: 404 });
-        }
-
-        // Check if user is subscribed to the push notification
-        if (!user?.push_subscription) {
-            return NextResponse.json({ error: 'User is not subscribed to push notifications'}, { status: 404 })
-        };
-
-        // Takes the subscription JSON from the database
-        const subscription = JSON.parse(user?.push_subscription!);
-
-        // Send the notification as a string to the user
-        // Also takes metadata which is the url or route the notification object is going to point to
-        await webpush.sendNotification(
-            subscription,
-            JSON.stringify({
-                title, 
-                body,
-                data: {
-                    url: url || "/" // defaults to the home directory if no url is found
-                }
-            })
-        );
-
-        // Return a sucess message of sending the notification
-        return NextResponse.json({ message: "Successfully sent notification to the user!" }, { status: 200 });
-    } catch (error) {
-        console.error("Failed to send notification:", error);
-        return NextResponse.json({ error: `Failed to send notification: ${error instanceof Error ? error.message : String(error)}` }, { status: 500 })
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
     }
+
+    const parsed = sendNotificationSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        {
+          error: "Validation failed",
+          details: z.flattenError(parsed.error).fieldErrors,
+        },
+        { status: 400 },
+      );
+    }
+
+    const user = await getUserPushSubscription(session.id);
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    if (!user.push_subscription) {
+      return NextResponse.json(
+        { error: "User is not subscribed to push notifications" },
+        { status: 404 },
+      );
+    }
+
+    let subscription;
+    try {
+      subscription = JSON.parse(user.push_subscription);
+    } catch {
+      await clearUserPushSubscription(session.id);
+      return NextResponse.json(
+        { error: "Stored push subscription is invalid" },
+        { status: 410 },
+      );
+    }
+
+    const payload = {
+      title: parsed.data.title,
+      body: parsed.data.body,
+      tag: parsed.data.tag ?? parsed.data.url,
+      data: {
+        url: parsed.data.url,
+      },
+    };
+
+    await sendWebPushNotification(subscription, payload);
+
+    return NextResponse.json(
+      { message: "Successfully sent notification to the user!" },
+      { status: 200 },
+    );
+  } catch (error) {
+    if (error instanceof WebPushConfigurationError) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    const statusCode = getPushStatusCode(error);
+    if (statusCode === 404 || statusCode === 410) {
+      await clearUserPushSubscription(session.id);
+      return NextResponse.json(
+        { error: "Stored push subscription is no longer valid" },
+        { status: 410 },
+      );
+    }
+
+    console.error("Failed to send notification:", error);
+    return NextResponse.json(
+      {
+        error: `Failed to send notification: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      },
+      { status: 500 },
+    );
+  }
 }

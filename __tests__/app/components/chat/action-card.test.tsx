@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { ActionCard } from "./action-card";
+import { ActionCard } from "@/app/components/chat/action-card";
 
 jest.mock("sonner", () => ({
   toast: {

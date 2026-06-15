@@ -24,7 +24,7 @@ jest.mock("@/lib/services/chatService", () => ({
   setConversationTitle: jest.fn(),
 }));
 
-import { GET, POST } from "./route";
+import { GET, POST } from "@/app/api/chat/route";
 import { getSession } from "@/lib/firebase/auth";
 import { runChatAgent } from "@/lib/ai/chatAgent";
 import {

@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { ChatbotDemo } from "./chatbot";
+import { ChatbotDemo } from "@/components/ai/chatbot";
 import { useAuth } from "@/lib/firebase/auth-context";
 import type { ReactNode } from "react";
 
@@ -54,7 +54,7 @@ jest.mock(
   { virtual: true },
 );
 
-jest.mock("../../app/components/chat/action-card", () => ({
+jest.mock("@/app/components/chat/action-card", () => ({
   ActionCard: ({
     actionType,
     initialStatus,

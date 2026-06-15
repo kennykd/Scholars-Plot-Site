@@ -24,7 +24,7 @@ jest.mock("@/lib/services/chatService", () => ({
   updateMessageActionStatus: jest.fn(),
 }));
 
-import { DELETE, GET, PATCH } from "./route";
+import { DELETE, GET, PATCH } from "@/app/api/chat/[conversationId]/route";
 import { getSession } from "@/lib/firebase/auth";
 import {
   deleteConversation,

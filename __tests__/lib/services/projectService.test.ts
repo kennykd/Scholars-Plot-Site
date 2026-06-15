@@ -2,6 +2,7 @@ import prisma from "@/lib/prisma";
 import { getAnalyticsByUserId, updateAnalyticsByUserId } from "@/lib/services/analyticService";
 import {
   addProjectMember,
+  createProjectInvite,
   createProject,
   ProjectServiceError,
   updateProjectTaskById,
@@ -18,7 +19,11 @@ jest.mock("@/lib/prisma", () => ({
       create: jest.fn(),
       findUnique: jest.fn(),
     },
+    projectInvite: {
+      upsert: jest.fn(),
+    },
     user: {
+      findUnique: jest.fn(),
       findMany: jest.fn(),
     },
     task: {
@@ -44,6 +49,82 @@ const projectInput = {
   priority: 3,
   project_status: "active" as const,
 };
+
+describe("projectService invites", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("creates a pending invite for a target user id", async () => {
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      user_id: "student-2",
+      user_email: "student2@example.com",
+    });
+    (prisma.projectUser.findUnique as jest.Mock)
+      .mockResolvedValueOnce({ project_user_role: "owner" })
+      .mockResolvedValueOnce(null);
+    (prisma.projectInvite.upsert as jest.Mock).mockResolvedValue({
+      invite_id: 88,
+      project_id: 12,
+      invited_user: "student-2",
+      invited_by: "owner-1",
+      status: "pending",
+    });
+
+    await createProjectInvite(12, "owner-1", {
+      targetUserId: "student-2",
+    });
+
+    expect(prisma.user.findUnique).toHaveBeenCalledWith({
+      where: { user_id: "student-2" },
+    });
+    expect(prisma.projectInvite.upsert).toHaveBeenCalledWith({
+      where: {
+        project_id_invited_user: {
+          project_id: 12,
+          invited_user: "student-2",
+        },
+      },
+      update: {
+        invited_by: "owner-1",
+        status: "pending",
+        created_at: expect.any(Date),
+        responded_at: null,
+      },
+      create: {
+        project_id: 12,
+        invited_user: "student-2",
+        invited_by: "owner-1",
+        status: "pending",
+      },
+    });
+  });
+
+  it("falls back to target email for backwards compatible invites", async () => {
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      user_id: "student-3",
+      user_email: "student3@example.com",
+    });
+    (prisma.projectUser.findUnique as jest.Mock)
+      .mockResolvedValueOnce({ project_user_role: "owner" })
+      .mockResolvedValueOnce(null);
+    (prisma.projectInvite.upsert as jest.Mock).mockResolvedValue({
+      invite_id: 89,
+      project_id: 12,
+      invited_user: "student-3",
+      invited_by: "owner-1",
+      status: "pending",
+    });
+
+    await createProjectInvite(12, "owner-1", {
+      targetUserEmail: "student3@example.com",
+    });
+
+    expect(prisma.user.findUnique).toHaveBeenCalledWith({
+      where: { user_email: "student3@example.com" },
+    });
+  });
+});
 
 describe("projectService user validation", () => {
   beforeEach(() => {

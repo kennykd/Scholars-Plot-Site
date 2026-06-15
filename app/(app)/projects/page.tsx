@@ -525,6 +525,7 @@ export default function ProjectsPage() {
 
       console.log("INVITE PAYLOAD:", {
         projectId: activeProject.id,
+        targetUserId: userId,
         targetUserEmail: email,
       });
 
@@ -532,8 +533,9 @@ export default function ProjectsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          projectId: Number(activeProject.id),
+          projectId: activeProject.id,
           targetUserId: userId,
+          targetUserEmail: email,
         }),
       });
 
@@ -545,9 +547,9 @@ export default function ProjectsPage() {
 
       toast.success("Invitation sent successfully!");
       setInviteMemberQuery("");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Invite Error Details:", err);
-      toast.error(err?.message || "Something went wrong.");
+      toast.error(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setInvitingMemberId(null);
     }

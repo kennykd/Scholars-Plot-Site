@@ -3,6 +3,17 @@ import { getSession } from "@/lib/firebase/auth";
 import { ensureUserRecordForSession } from "@/lib/services/userService";
 import { respondToInvite } from "@/lib/services/projectService";
 
+function isServiceError(error: unknown): error is { status: number; message: string } {
+    return (
+        typeof error === "object" &&
+        error !== null &&
+        "status" in error &&
+        typeof (error as { status: unknown }).status === "number" &&
+        "message" in error &&
+        typeof (error as { message: unknown }).message === "string"
+    );
+}
+
 // Handle accepting or declining an invitation to the project
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -49,9 +60,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                 invite: result,
             });
         }
-    } catch (error: any) {
+    } catch (error: unknown) {
         // If service helper find error or wrong user it throw status, we catch here
-        if (error.status) {
+        if (isServiceError(error)) {
             return NextResponse.json({ message: error.message }, { status: error.status });
         }
         console.error("Error processing invitation response:", error);

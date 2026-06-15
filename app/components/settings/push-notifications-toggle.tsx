@@ -24,6 +24,23 @@ async function refreshServiceWorkerRegistration() {
   return navigator.serviceWorker.ready;
 }
 
+async function getServiceWorkerRegistration() {
+  const existingRegistration =
+    await navigator.serviceWorker.getRegistration("/");
+  if (existingRegistration) return existingRegistration;
+
+  await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+  return navigator.serviceWorker.ready;
+}
+
+function getClientVapidKey() {
+  return (
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
+    (window as Window & { __NEXT_PUBLIC_VAPID_PUBLIC_KEY?: string })
+      .__NEXT_PUBLIC_VAPID_PUBLIC_KEY
+  );
+}
+
 export default function PushNotificationsToggle() {
   const [isSupported, setIsSupported] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -42,12 +59,7 @@ export default function PushNotificationsToggle() {
     if (!isSupported) return;
     const ensureRegistrationAndCheck = async () => {
       try {
-        // register service worker if missing — registration at root path
-        if (navigator.serviceWorker)
-          await navigator.serviceWorker
-            .register("/sw.js")
-            .catch(() => undefined);
-        const reg = await navigator.serviceWorker.ready;
+        const reg = await getServiceWorkerRegistration();
         const sub = await reg.pushManager.getSubscription();
         setIsSubscribed(!!sub);
       } catch (err) {
@@ -79,45 +91,39 @@ export default function PushNotificationsToggle() {
         }
       }
 
-      const vapidKey =
-        typeof window !== "undefined"
-          ? process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
-            (window as any).__NEXT_PUBLIC_VAPID_PUBLIC_KEY
-          : undefined;
+      const vapidKey = getClientVapidKey();
       if (!vapidKey) {
-        console.log("Push public key not configured on the client.");
+        setMessage("Push notifications are not configured for this app.");
         return;
       }
 
-      const reg = await navigator.serviceWorker.ready;
+      const reg = await getServiceWorkerRegistration();
       if (!reg) throw new Error("Service worker not ready");
 
       const applicationServerKey = urlBase64ToUint8Array(vapidKey);
+      let subscription = await reg.pushManager.getSubscription();
 
-      const existingSubscription = await reg.pushManager.getSubscription();
-      if (existingSubscription) {
-        await existingSubscription.unsubscribe().catch(() => undefined);
+      if (!subscription) {
+        try {
+          subscription = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey,
+          });
+        } catch (firstError) {
+          console.warn(
+            "Subscribe failed on current registration, refreshing SW once:",
+            firstError,
+          );
+          const refreshedRegistration = await refreshServiceWorkerRegistration();
+          subscription =
+            (await refreshedRegistration.pushManager.getSubscription()) ??
+            (await refreshedRegistration.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey,
+            }));
+        }
       }
 
-      let subscription;
-      try {
-        subscription = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey,
-        });
-      } catch (firstError) {
-        console.warn(
-          "Subscribe failed on current registration, refreshing SW once:",
-          firstError,
-        );
-        const refreshedRegistration = await refreshServiceWorkerRegistration();
-        subscription = await refreshedRegistration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey,
-        });
-      }
-
-      // Send subscription to server (server must validate session)
       const resp = await fetch("/api/web-push/subscribe", {
         method: "POST",
         credentials: "same-origin",
@@ -138,6 +144,11 @@ export default function PushNotificationsToggle() {
       console.log("Subscribed to push notifications.");
     } catch (error) {
       console.error("Subscribe error:", error);
+      setMessage(
+        error instanceof Error
+          ? `${error.name}: ${error.message}`
+          : "Failed to subscribe. Check console for details and try again.",
+      );
     } finally {
       setLoading(false);
     }

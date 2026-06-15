@@ -31,7 +31,7 @@ jest.mock("@/lib/services/attachmentService", () => {
   };
 });
 
-import { POST } from "./route";
+import { POST } from "@/app/api/project/task/[id]/attachment/route";
 import { getSession } from "@/lib/firebase/auth";
 import { ensureUserRecordForSession } from "@/lib/services/userService";
 import { addAttachmentToProjectTask } from "@/lib/services/attachmentService";

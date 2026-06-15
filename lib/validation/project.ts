@@ -108,9 +108,28 @@ export const updateProjectMemberSchema = z.object({
   role: z.enum(['owner', 'moderator', 'collaborator', 'member']),
 });
 
+export const createProjectInviteSchema = z.object({
+  projectId: z.preprocess((value) => {
+    if (typeof value === 'string') {
+      return value.replace(/^project-/, '');
+    }
+
+    return value;
+  }, z.coerce.number().int().positive('Project ID is required')),
+  targetUserId: z.string().trim().min(1).optional(),
+  targetUserEmail: z.string().trim().email().optional(),
+}).refine(
+  (data) => Boolean(data.targetUserId || data.targetUserEmail),
+  {
+    message: 'Target user is required',
+    path: ['targetUserId'],
+  },
+);
+
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
 export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;
 export type CreateProjectTaskInput = z.infer<typeof createProjectTaskSchema>;
 export type UpdateProjectTaskInput = z.infer<typeof updateProjectTaskSchema>;
 export type AddProjectMemberInput = z.infer<typeof addProjectMemberSchema>;
 export type UpdateProjectMemberInput = z.infer<typeof updateProjectMemberSchema>;
+export type CreateProjectInviteInput = z.infer<typeof createProjectInviteSchema>;

@@ -7,6 +7,7 @@ import {
 import type { TaskStatus } from '@/types';
 import type {
   AddProjectMemberInput,
+  CreateProjectInviteInput,
   CreateProjectInput,
   CreateProjectTaskInput,
   UpdateProjectInput,
@@ -621,11 +622,25 @@ export async function getPendingInvitesForUser(userId: string) {
   });
 }
 
-export async function createProjectInvite(projectId: number, senderUserId: string, targetUserEmail: string) {
-  // 1. Find target user by email 
-  const targetUser = await prisma.user.findUnique({
-    where: { user_email: targetUserEmail },
-  });
+export async function createProjectInvite(
+  projectId: number,
+  senderUserId: string,
+  target: CreateProjectInviteInput | string,
+) {
+  const targetUserId = typeof target === "string" ? undefined : target.targetUserId;
+  const targetUserEmail = typeof target === "string" ? target : target.targetUserEmail;
+
+  let targetUser = targetUserId
+    ? await prisma.user.findUnique({
+      where: { user_id: targetUserId },
+    })
+    : null;
+
+  if (!targetUser && targetUserEmail) {
+    targetUser = await prisma.user.findUnique({
+      where: { user_email: targetUserEmail },
+    });
+  }
 
   if (!targetUser) {
     throw { status: 404, message: "User not found" };

@@ -9,7 +9,7 @@ import {
   isTomorrow,
   parseISO,
 } from "date-fns";
-import { Bell, ChevronRight, Timer } from "lucide-react";
+import { ChevronRight, Timer } from "lucide-react";
 import type { StudySession } from "@/types";
 import { useAuth } from "@/lib/firebase/auth-context";
 import {
@@ -68,6 +68,35 @@ const STATUS_ORDER: Record<StudySectionType, number> = {
   completed: 2,
   expired: 3,
 };
+
+const SENT_REMINDERS_STORAGE_KEY = "scholars-plot:sent-study-reminders";
+
+function readStoredReminderKeys() {
+  if (typeof window === "undefined") return new Set<string>();
+
+  try {
+    const raw = window.localStorage.getItem(SENT_REMINDERS_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return new Set<string>(Array.isArray(parsed) ? parsed.filter(Boolean) : []);
+  } catch {
+    return new Set<string>();
+  }
+}
+
+function persistReminderKeys(keys: Set<string>) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(
+    SENT_REMINDERS_STORAGE_KEY,
+    JSON.stringify([...keys]),
+  );
+}
+
+function getReminderKey(
+  studySession: StudySession,
+  thresholdSeconds: number,
+) {
+  return `${studySession.id}:${studySession.scheduledAt}:${thresholdSeconds}`;
+}
 
 function getStatusBadge(sectionType: StudySectionType, session: StudySession) {
   if (sectionType === "in-progress") {
@@ -249,7 +278,11 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
     });
   }, [allRows, filter, sortMode]);
 
-  const sentReminders = useRef<Record<string, number[]>>({});
+  const sentReminders = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    sentReminders.current = readStoredReminderKeys();
+  }, []);
 
   const notifyUpcomingSoon = useCallback(async () => {
     const userID = userIDRef.current;
@@ -274,8 +307,11 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
 
       for (const threshold of thresholds) {
         if (secondsAway <= threshold && secondsAway > threshold - 60) {
-          const sentForSession = sentReminders.current[studySession.id] || [];
-          if (sentForSession.includes(threshold)) continue;
+          const reminderKey = getReminderKey(studySession, threshold);
+          if (sentReminders.current.has(reminderKey)) continue;
+
+          sentReminders.current.add(reminderKey);
+          persistReminderKeys(sentReminders.current);
 
           const minutesLabel = threshold / 60;
           const title = `Study session: ${studySession.title}`;
@@ -288,17 +324,12 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              userID,
               title,
               body,
               url: `/study/${studySession.id}`,
+              tag: `study-reminder:${reminderKey}`,
             }),
           });
-
-          sentReminders.current[studySession.id] = [
-            ...(sentReminders.current[studySession.id] || []),
-            threshold,
-          ];
         }
       }
     }

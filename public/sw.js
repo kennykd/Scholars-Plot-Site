@@ -1,9 +1,7 @@
 self.addEventListener('push', function (event) {
-  console.log('Push event received:', event);
   let data = {};
   try {
     data = event.data ? event.data.json() : {};
-    console.log('Parsed push data:', data);
   } catch (e) {
     console.error('Error parsing push data:', e);
     data = { body: event.data?.text() };
@@ -13,14 +11,34 @@ self.addEventListener('push', function (event) {
   const options = {
     body: data.body || '',
     icon: data.icon || '/favicon.ico',
+    tag: data.tag || data.data?.url || title,
+    renotify: false,
     data: data.data || {},
   };
 
-  console.log('Showing notification:', title, options);
+  const broadcastPayload = {
+    title,
+    body: options.body,
+    tag: options.tag,
+    data: options.data,
+  };
+
   event.waitUntil(
-    self.registration.showNotification(title, options).catch(err => {
-      console.error('Failed to show notification:', err);
-    })
+    Promise.all([
+      self.registration.showNotification(title, options).catch(err => {
+        console.error('Failed to show notification:', err);
+      }),
+      clients
+        .matchAll({ type: 'window', includeUncontrolled: true })
+        .then((windowClients) => {
+          windowClients.forEach((client) => {
+            client.postMessage({
+              type: 'WEB_PUSH_NOTIFICATION_RECEIVED',
+              notification: broadcastPayload,
+            });
+          });
+        }),
+    ])
   );
 });
 
