@@ -1,30 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { runChatAgent } from "@/lib/ai/chatAgent";
+import { getSession } from "@/lib/firebase/auth";
 import {
   buildChatContext,
   createConversation,
-  getConversationHistory,
+  getConversation,
   listConversations,
   saveMessagePair,
   setConversationTitle,
 } from "@/lib/services/chatService";
 
-// ─── Schemas ──────────────────────────────────────────────────────────────────
-
 const PostSchema = z.object({
-  user_id: z.string().min(1),
   message: z.string().min(1).max(2000),
   conversation_id: z.number().int().positive().optional(),
 });
 
-const GetSchema = z.object({
-  user_id: z.string().min(1),
-});
-
-// ─── POST /api/chat — Send a message ─────────────────────────────────────────
+type ChatHistory = NonNullable<
+  Awaited<ReturnType<typeof getConversation>>
+>["messages"];
 
 export async function POST(req: NextRequest) {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+  }
+
   let body: unknown;
   try {
     body = await req.json();
@@ -36,49 +37,51 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Validation failed.", details: parsed.error.flatten() },
-      { status: 422 }
+      { status: 422 },
     );
   }
 
-  const { user_id, message, conversation_id } = parsed.data;
+  const { message, conversation_id } = parsed.data;
+  const userId = session.id;
 
   try {
-    // Resolve or create conversation
-    let convId = conversation_id;
+    let conversationId = conversation_id;
     let isNewConversation = false;
+    let history: ChatHistory = [];
 
-    if (!convId) {
-      const newConv = await createConversation(user_id);
-      convId = newConv.id;
+    if (!conversationId) {
+      const newConversation = await createConversation(userId);
+      conversationId = newConversation.id;
       isNewConversation = true;
+    } else {
+      const conversation = await getConversation(conversationId, userId);
+      if (!conversation) {
+        return NextResponse.json(
+          { error: "Conversation not found." },
+          { status: 404 },
+        );
+      }
+      history = conversation.messages;
     }
 
-    // Fetch history and context in parallel
-    const [history, context] = await Promise.all([
-      getConversationHistory(convId),
-      buildChatContext(user_id),
-    ]);
-
-    // Run the agent
+    const context = await buildChatContext(userId);
     const result = await runChatAgent(message, history, context);
 
-    // Persist both messages
     const { userMessage, assistantMessage } = await saveMessagePair(
-      convId,
+      conversationId,
       message,
       result.rawResponse,
-      result.action
+      result.action,
     );
 
-    // Auto-title new conversations from the first user message
     if (isNewConversation) {
-      await setConversationTitle(convId, message).catch(() => {
-        // Non-critical — don't fail the request if title update fails
+      await setConversationTitle(conversationId, message).catch(() => {
+        // Title updates are best-effort and should not fail the chat turn.
       });
     }
 
     return NextResponse.json({
-      conversation_id: convId,
+      conversation_id: conversationId,
       user_message_id: userMessage.id,
       assistant_message_id: assistantMessage.id,
       text: result.text,
@@ -88,35 +91,25 @@ export async function POST(req: NextRequest) {
     console.error("[POST /api/chat] error:", err);
     return NextResponse.json(
       { error: "Failed to process message." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
-// ─── GET /api/chat — List conversations for a user ───────────────────────────
-
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-
-  const parsed = GetSchema.safeParse({
-    user_id: searchParams.get("user_id"),
-  });
-
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Validation failed.", details: parsed.error.flatten() },
-      { status: 422 }
-    );
+export async function GET(_req: NextRequest) {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
   }
 
   try {
-    const conversations = await listConversations(parsed.data.user_id);
+    const conversations = await listConversations(session.id);
     return NextResponse.json({ conversations });
   } catch (err) {
     console.error("[GET /api/chat] error:", err);
     return NextResponse.json(
       { error: "Failed to fetch conversations." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
