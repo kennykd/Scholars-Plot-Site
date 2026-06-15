@@ -722,7 +722,7 @@ export function ChatbotDemo() {
       setStatus("ready");
     } catch {
       setStatus("error");
-      toast.error("Couldn't reach the study assistant", {
+      toast.error("Couldn't reach Ploty... :(", {
         description: "Please check your connection and try again.",
       });
     }

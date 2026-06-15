@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { AIResponse } from '../../../types/index';
-import { aiRequestSchema } from '../../../lib/validation/ai';
 import { runTaskAnalysis } from '@/lib/services/aiService';
 import { requireTaskAccess, TaskServiceError } from '@/lib/services/taskService';
 import { getSession } from '@/lib/firebase/auth';
