@@ -59,7 +59,6 @@ export function NotificationPanel({ collapsed = false }: NotificationPanelProps)
             })
             .catch(() => { });
 
-        // placeholder — swap for your real notifications endpoint later
         setNotifications([]);
     }, [open]);
 

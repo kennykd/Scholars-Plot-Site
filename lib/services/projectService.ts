@@ -346,8 +346,9 @@ export async function addProjectMember(projectId: number, userId: string, data: 
         select: {
           user_name: true,
           user_email: true,
+        }
       }
-    }},
+    },
   });
 }
 
@@ -593,4 +594,153 @@ export async function deleteProjectTaskById(taskId: number, userId: string) {
   await prisma.task.delete({
     where: { task_id: taskId },
   });
+}
+
+// INVITIATION LOGICS
+export async function getPendingInvitesForUser(userId: string) {
+  return await prisma.projectInvite.findMany({
+    where: {
+      invited_user: userId,
+      status: "pending",
+    },
+    include: {
+      project: {
+        select: {
+          project_name: true,
+        },
+      },
+      inviter: {
+        select: {
+          user_name: true,
+        },
+      },
+    },
+    orderBy: {
+      created_at: "desc",
+    },
+  });
+}
+
+export async function createProjectInvite(projectId: number, senderUserId: string, targetUserEmail: string) {
+  // 1. Find target user by email 
+  const targetUser = await prisma.user.findUnique({
+    where: { user_email: targetUserEmail },
+  });
+
+  if (!targetUser) {
+    throw { status: 404, message: "User not found" };
+  }
+
+  // 2. Verify sender is authorized (must be an owner)
+  const senderRole = await prisma.projectUser.findUnique({
+    where: {
+      project_id_user_id: {
+        project_id: projectId,
+        user_id: senderUserId,
+      },
+    },
+  });
+
+  if (!senderRole || senderRole.project_user_role !== "owner") {
+    throw { status: 403, message: "Forbidden: Insufficient privileges" };
+  }
+
+  // 3. Check if target user is already part of the project
+  const existingMember = await prisma.projectUser.findUnique({
+    where: {
+      project_id_user_id: {
+        project_id: projectId,
+        user_id: targetUser.user_id,
+      },
+    },
+  });
+
+  if (existingMember) {
+    throw { status: 409, message: "User is already a member of this project" };
+  }
+
+  // 4. Upsert invite payload (using your exact schema constraints)
+  return await prisma.projectInvite.upsert({
+    where: {
+      project_id_invited_user: {
+        project_id: projectId,
+        invited_user: targetUser.user_id,
+      },
+    },
+    update: {
+      invited_by: senderUserId,
+      status: "pending",
+      created_at: new Date(),
+      responded_at: null,
+    },
+    create: {
+      project_id: projectId,
+      invited_user: targetUser.user_id,
+      invited_by: senderUserId,
+      status: "pending",
+    },
+  });
+}
+
+export async function respondToInvite(inviteId: number, userId: string, action: "accepted" | "declined") {
+  // 1. Locate the invitation
+  const invite = await prisma.projectInvite.findUnique({
+    where: { invite_id: inviteId },
+  });
+
+  if (!invite) {
+    throw { status: 404, message: "Invitation not found" };
+  }
+
+  // 2. Ensure targeted safety check (user_id instead of id)
+  if (invite.invited_user !== userId) {
+    throw { status: 403, message: "Forbidden: Insufficient privileges" };
+  }
+
+  if (invite.status !== "pending") {
+    throw { status: 400, message: `Invitation has already been ${invite.status}` };
+  }
+
+  // 3. Process transactional state change
+  if (action === "accepted") {
+    return await prisma.$transaction(async (tx) => {
+      const updatedInvite = await tx.projectInvite.update({
+        where: { invite_id: inviteId },
+        data: {
+          status: "accepted",
+          responded_at: new Date(),
+        },
+      });
+
+      const existingMember = await tx.projectUser.findUnique({
+        where: {
+          project_id_user_id: {
+            project_id: invite.project_id,
+            user_id: userId,
+          },
+        },
+      });
+
+      if (!existingMember) {
+        await tx.projectUser.create({
+          data: {
+            project_id: invite.project_id,
+            user_id: userId,
+            project_user_role: "member", // Enum type from your schema
+          },
+        });
+      }
+
+      return updatedInvite;
+    });
+  } else {
+    // Declined path
+    return await prisma.projectInvite.update({
+      where: { invite_id: inviteId },
+      data: {
+        status: "declined",
+        responded_at: new Date(),
+      },
+    });
+  }
 }
