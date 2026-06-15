@@ -1,6 +1,7 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Sidebar } from "@/app/components/layout/sidebar";
+import { signOut } from "firebase/auth";
 import { usePathname, useRouter } from "next/navigation";
 
 jest.mock("next/navigation", () => ({
@@ -13,6 +14,14 @@ jest.mock("sonner", () => ({
     success: jest.fn(),
     error: jest.fn(),
   },
+}));
+
+jest.mock("@/lib/firebase/firebase", () => ({
+  auth: {},
+}));
+
+jest.mock("firebase/auth", () => ({
+  signOut: jest.fn(),
 }));
 
 const user = {
@@ -28,6 +37,8 @@ describe("Sidebar", () => {
     localStorage.clear();
     usePathname.mockReturnValue("/study");
     useRouter.mockReturnValue({ push: jest.fn(), refresh: jest.fn() });
+    global.fetch = jest.fn().mockResolvedValue({ ok: true });
+    signOut.mockResolvedValue(undefined);
   });
 
   it("keeps collapsed navigation accessible without showing hover popups", async () => {
@@ -42,5 +53,21 @@ describe("Sidebar", () => {
     await userEventSetup.hover(dashboardLink);
 
     expect(screen.queryByText("Dashboard")).not.toBeInTheDocument();
+  });
+
+  it("signs out of Firebase client auth when logging out", async () => {
+    const userEventSetup = userEvent.setup();
+
+    render(<Sidebar user={user} />);
+
+    await userEventSetup.click(screen.getByRole("button", { name: /logout/i }));
+    await userEventSetup.click(screen.getByRole("button", { name: /yes, logout/i }));
+
+    await waitFor(() => {
+      expect(signOut).toHaveBeenCalledWith({});
+    });
+    expect(global.fetch).toHaveBeenCalledWith("/api/auth/logout", {
+      method: "POST",
+    });
   });
 });

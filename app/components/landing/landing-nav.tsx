@@ -12,7 +12,6 @@ const LINKS = [
   { href: "#timer", label: "Timer" },
   { href: "#ai", label: "AI" },
   { href: "#analytics", label: "Analytics" },
-  { href: "#contact", label: "Contact" },
 ];
 
 export function LandingNav() {

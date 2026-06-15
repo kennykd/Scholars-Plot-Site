@@ -42,6 +42,7 @@ export default function RegisterPage() {
     try {
       setLoading(true);
       const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
       const result = await signInWithPopup(auth, provider);
       const idToken = await result.user.getIdToken();
       await createSession(idToken, displayName);

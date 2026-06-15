@@ -41,7 +41,7 @@ export function Hero() {
             <Button
               asChild
               size="lg"
-              className="group bg-[#FF4D2E] px-8 py-6 text-base font-semibold text-white hover:bg-[#e04327]"
+              className="group flex-1 bg-[#FF4D2E] px-8 py-6 text-base font-semibold text-white hover:bg-[#e04327]"
             >
               <Link href="/login">
                 Start Building

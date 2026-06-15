@@ -1,7 +1,11 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import RegisterPage from "@/app/(auth)/register/page";
-import { createUserWithEmailAndPassword, signInWithPopup } from "firebase/auth";
+import {
+  createUserWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
+} from "firebase/auth";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
@@ -26,6 +30,10 @@ describe("RegisterPage", () => {
       push: jest.fn(),
       refresh: jest.fn(),
     });
+
+    GoogleAuthProvider.mockImplementation(() => ({
+      setCustomParameters: jest.fn(),
+    }));
   });
 
   it("should render all form elements", () => {
@@ -314,6 +322,30 @@ describe("RegisterPage", () => {
     expect(toast.success).toHaveBeenCalledWith("Account created! Welcome 🎉");
     expect(mockPush).toHaveBeenCalledWith("/dashboard");
     expect(mockRefresh).toHaveBeenCalled();
+  });
+
+  it("should force Google account selection when using Google sign-up", async () => {
+    const user = userEvent.setup();
+    const setCustomParameters = jest.fn();
+    GoogleAuthProvider.mockImplementation(() => ({ setCustomParameters }));
+    const mockUser = {
+      getIdToken: jest.fn().mockResolvedValue("fake-google-token"),
+    };
+    signInWithPopup.mockResolvedValue({ user: mockUser });
+    global.fetch.mockResolvedValue({ ok: true });
+
+    render(<RegisterPage />);
+
+    await user.click(
+      screen.getByRole("button", { name: /continue with google/i }),
+    );
+
+    await waitFor(() => {
+      expect(signInWithPopup).toHaveBeenCalled();
+    });
+    expect(setCustomParameters).toHaveBeenCalledWith({
+      prompt: "select_account",
+    });
   });
 
   it("should handle Google popup cancellation", async () => {

@@ -1,7 +1,11 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import LoginPage from "@/app/(auth)/login/page";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import {
+  GoogleAuthProvider,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+} from "firebase/auth";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
@@ -28,6 +32,10 @@ describe("LoginPage", () => {
       push: jest.fn(),
       refresh: jest.fn(),
     });
+
+    GoogleAuthProvider.mockImplementation(() => ({
+      setCustomParameters: jest.fn(),
+    }));
   });
 
   it("should render all form elements", () => {
@@ -132,6 +140,30 @@ describe("LoginPage", () => {
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith("User not found");
+    });
+  });
+
+  it("should force Google account selection when using Google login", async () => {
+    const user = userEvent.setup();
+    const setCustomParameters = jest.fn();
+    GoogleAuthProvider.mockImplementation(() => ({ setCustomParameters }));
+    const mockUser = {
+      getIdToken: jest.fn().mockResolvedValue("fake-google-token"),
+    };
+    signInWithPopup.mockResolvedValue({ user: mockUser });
+    global.fetch.mockResolvedValue({ ok: true });
+
+    render(<LoginPage />);
+
+    await user.click(
+      screen.getByRole("button", { name: /continue with google/i }),
+    );
+
+    await waitFor(() => {
+      expect(signInWithPopup).toHaveBeenCalled();
+    });
+    expect(setCustomParameters).toHaveBeenCalledWith({
+      prompt: "select_account",
     });
   });
 });

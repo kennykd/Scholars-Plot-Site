@@ -46,17 +46,7 @@ export function LandingFooter() {
                 <ArrowRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Link>
             </Button>
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="border-white/25 bg-white/5 px-8 py-6 text-base font-semibold text-white hover:bg-white/10 hover:text-white"
-            >
-              <a href="mailto:hello@scholarsplot.site">
-                <Mail className="mr-1 h-4 w-4" />
-                Email the crew
-              </a>
-            </Button>
+         
           </div>
         </motion.div>
       </section>

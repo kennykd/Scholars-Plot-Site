@@ -9,8 +9,17 @@ import { Button } from "@/components/ui/button"; // Imported to match your butto
 import { StarRating } from "@/app/components/common/star-rating";
 import type { Task } from "@/types";
 import { cn } from "@/lib/utils";
-import { format, isToday, isTomorrow, isPast } from "date-fns";
-import { Plus, ClipboardList } from "lucide-react"; // UI icons for actions and layout empty-state
+import {
+  addDays,
+  endOfDay,
+  format,
+  isPast,
+  isToday,
+  isTomorrow,
+  isWithinInterval,
+  startOfDay,
+} from "date-fns";
+import { Plus } from "lucide-react"; // UI icons for actions and layout empty-state
 
 interface TodaysTasksProps {
   tasks: Task[];
@@ -19,7 +28,26 @@ interface TodaysTasksProps {
 export function TodaysTasks({ tasks }: TodaysTasksProps) {
   const [completed, setCompleted] = useState<Set<number>>(new Set());
 
-  const sorted = [...tasks].sort((a, b) => b.priority - a.priority);
+  const today = new Date();
+  const dueThisWeekWindow = {
+    start: startOfDay(today),
+    end: endOfDay(addDays(today, 7)),
+  };
+
+  const sorted = [...tasks]
+    .filter((task) => {
+      const deadlineDate = new Date(task.deadline);
+      return (
+        task.status !== "Completed" &&
+        isWithinInterval(deadlineDate, dueThisWeekWindow)
+      );
+    })
+    .sort((a, b) => {
+      const deadlineDelta =
+        new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+      if (deadlineDelta !== 0) return deadlineDelta;
+      return b.priority - a.priority;
+    });
 
   const toggle = (id: number) => {
     setCompleted((prev) => {
@@ -58,10 +86,10 @@ export function TodaysTasks({ tasks }: TodaysTasksProps) {
           /* Custom centered layout container: Placed right over "No tasks yet" */
           <div className="flex flex-col items-center justify-center py-10 px-4 text-center border border-dashed border-border/60 rounded-xl bg-background/20 my-auto">
             <h3 className="font-display font-bold text-sm tracking-wide text-foreground mb-1">
-              NO TASKS YET
+              NO TASKS DUE THIS WEEK
             </h3>
             <p className="text-xs text-muted-foreground max-w-xs mb-5 leading-relaxed font-mono">
-              Start by creating your first task to get organized and stay on track!
+              Nothing assigned to you is due in the next seven days.
             </p>
 
             {/* Tactical Dark Orange Action Button */}

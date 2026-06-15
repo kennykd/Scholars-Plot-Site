@@ -3,10 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { Task } from "@/types";
 import {
-  addDays,
-  endOfDay,
   formatDistanceToNow,
-  isWithinInterval,
   startOfDay,
 } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -15,12 +12,17 @@ interface UpcomingDeadlinesProps {
   tasks: Task[];
 }
 
+const UPCOMING_DEADLINE_LIMIT = 5;
+
+function getTaskHref(task: Task) {
+  return task.projectId
+    ? `/projects?projectId=project-${task.projectId}`
+    : `/tasks/${task.id}`;
+}
+
 export function UpcomingDeadlines({ tasks }: UpcomingDeadlinesProps) {
   const today = new Date();
-  const deadlineWindow = {
-    start: startOfDay(today),
-    end: endOfDay(addDays(today, 7)),
-  };
+  const todayStart = startOfDay(today);
 
   const upcoming = [...tasks]
     .filter((task) => {
@@ -28,13 +30,14 @@ export function UpcomingDeadlines({ tasks }: UpcomingDeadlinesProps) {
 
       return (
         task.status !== "Completed" &&
-        isWithinInterval(deadlineDate, deadlineWindow)
+        deadlineDate >= todayStart
       );
     })
     .sort(
       (a, b) =>
         new Date(a.deadline).getTime() - new Date(b.deadline).getTime(),
-    );
+    )
+    .slice(0, UPCOMING_DEADLINE_LIMIT);
 
   return (
     <Card className="h-full w-full bg-card/80 backdrop-blur-sm border-0">
@@ -53,7 +56,7 @@ export function UpcomingDeadlines({ tasks }: UpcomingDeadlinesProps) {
             return (
               <Link
                 key={task.id}
-                href={`/tasks/${task.id}`}
+                href={getTaskHref(task)}
                 className={cn(
                   "flex items-center justify-between rounded-lg px-4 py-3 border-l-4 bg-background/40",
                   "hover:bg-background/60 transition-colors",
