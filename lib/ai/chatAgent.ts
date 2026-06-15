@@ -1,4 +1,4 @@
-import type { FunctionCall, FunctionDeclaration } from "@google/genai";
+import { FunctionCallingConfigMode, type FunctionCall, type FunctionDeclaration } from "@google/genai";
 import { z } from "zod";
 import { geminiFlash } from "@/lib/gemini";
 import type { ChatMessage } from "../generated/prisma/client";
@@ -353,7 +353,7 @@ export async function runChatAgent(
       ],
       toolConfig: {
         functionCallingConfig: {
-          mode: "AUTO",
+          mode: FunctionCallingConfigMode.AUTO,
         },
       },
     },

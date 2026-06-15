@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -47,9 +48,11 @@ import { AI_READABLE_ATTACHMENT_HELPER_TEXT } from "@/lib/ai/attachmentSupport";
 import {
   fetchProjects,
   createProjectApi,
+  updateProjectApi,
   addProjectMemberApi,
   createProjectTaskApi,
   updateProjectTaskApi,
+  deleteProjectTaskApi,
   deleteProjectApi,
   type StoredProject,
   type StoredProjectTask,
@@ -103,7 +106,9 @@ const PRIORITY_STYLES: Record<number, string> = {
 
 const ROLE_STYLES: Record<ProjectRole, string> = {
   owner: "bg-accent/15 text-accent border-accent/30",
+  moderator: "bg-sky-500/15 text-sky-400 border-sky-500/30",
   collaborator: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+  member: "bg-muted text-muted-foreground border-border/60",
 };
 
 const MAX_TASK_ATTACHMENT_BYTES = 10 * 1024 * 1024;
@@ -133,15 +138,55 @@ const createMemberFromUser = (user: CurrentUser, role: ProjectRole): ProjectMemb
   };
 };
 
+const formatDateInputValue = (value?: string) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const formatTimeInputValue = (value?: string) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  return `${hour}:${minute}`;
+};
+
+const combineDateAndTime = (dateValue: string, timeValue: string) => {
+  if (!dateValue) return null;
+  const [year, month, day] = dateValue.split("-").map(Number);
+  const [hour, minute] = (timeValue || "23:59").split(":").map(Number);
+  const date = new Date(year, month - 1, day, hour, minute, 0, 0);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const normalizeRatingValue = (value: unknown, fallback = 2.5) => {
+  const rating = Number(value);
+  return Number.isFinite(rating) ? rating : fallback;
+};
+
 export default function ProjectsPage() {
+  const searchParams = useSearchParams();
+  const requestedProjectId = searchParams.get("projectId");
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [currentUserLoading, setCurrentUserLoading] = useState(true);
   const [projects, setProjects] = useState<StoredProject[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(true);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
 
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
+  const [editTaskOpen, setEditTaskOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<StoredProjectTask | null>(null);
   const [deletingProject, setDeletingProject] = useState(false);
+  const [savingProjectSettings, setSavingProjectSettings] = useState(false);
+  const [savingTaskEdit, setSavingTaskEdit] = useState(false);
 
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectDescription, setNewProjectDescription] = useState("");
@@ -149,14 +194,28 @@ export default function ProjectsPage() {
   const [newProjectPriorityRating, setNewProjectPriorityRating] = useState<number>(2.5);
   const [newProjectStatus, setNewProjectStatus] = useState<"active" | "completed" | "archived">("active");
 
+  const [settingsProjectName, setSettingsProjectName] = useState("");
+  const [settingsProjectDescription, setSettingsProjectDescription] = useState("");
+  const [settingsProjectDeadline, setSettingsProjectDeadline] = useState("");
+  const [settingsProjectPriorityRating, setSettingsProjectPriorityRating] = useState(2.5);
+  const [settingsProjectStatus, setSettingsProjectStatus] = useState<"active" | "completed" | "archived">("active");
+
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
+  const [taskDeadlineDate, setTaskDeadlineDate] = useState("");
+  const [taskDeadlineTime, setTaskDeadlineTime] = useState("");
   const [taskPriorityRating, setTaskPriorityRating] = useState(2.5);
-  const [taskReminder, setTaskReminder] = useState("none");
   const [taskAttachment, setTaskAttachment] = useState<File | null>(null);
   const [taskDraftPreview, setTaskDraftPreview] = useState<TaskDraftPreview | null>(null);
   const [taskDraftAttachmentIds, setTaskDraftAttachmentIds] = useState<number[]>([]);
   const [taskDraftLoading, setTaskDraftLoading] = useState(false);
+
+  const [editTaskTitle, setEditTaskTitle] = useState("");
+  const [editTaskDescription, setEditTaskDescription] = useState("");
+  const [editTaskDeadlineDate, setEditTaskDeadlineDate] = useState("");
+  const [editTaskDeadlineTime, setEditTaskDeadlineTime] = useState("");
+  const [editTaskPriorityRating, setEditTaskPriorityRating] = useState(2.5);
+  const [editTaskAssignedTo, setEditTaskAssignedTo] = useState("unassigned");
 
   const [inviteMemberQuery, setInviteMemberQuery] = useState("");
   const [invitingMemberId, setInvitingMemberId] = useState<string | null>(null);
@@ -175,42 +234,40 @@ export default function ProjectsPage() {
           });
         }
       })
-      .catch(() => { });
+      .catch(() => { })
+      .finally(() => setCurrentUserLoading(false));
   }, []);
 
   useEffect(() => {
     let isMounted = true;
 
     const loadProjects = async () => {
+      setProjectsLoading(true);
       try {
-        console.log("=== DEBUG 1: Triggering fetchProjects ===");
         const fetchedProjects = await fetchProjects();
-        console.log("=== DEBUG 2: Raw Projects from API ===", fetchedProjects);
-
-        if (fetchedProjects && fetchedProjects.length > 0) {
-          fetchedProjects.forEach(p => {
-            console.log(`Project: "${p.name}" contains ${p.tasks?.length || 0} tasks.`);
-            p.tasks?.forEach((t, i) => {
-              console.log(`  -> Task [${i}] Title: "${t.title}" | Status: "${t.status}" | Priority: "${t.priority}" (Type: ${typeof t.priority})`);
-            });
-          });
-        }
 
         if (isMounted) {
           setProjects(fetchedProjects);
           if (fetchedProjects.length > 0) {
-            setActiveProjectId(fetchedProjects[0].id);
+            const requestedProject = requestedProjectId
+              ? fetchedProjects.find((project) => project.id === requestedProjectId)
+              : null;
+            setActiveProjectId(requestedProject?.id ?? fetchedProjects[0].id);
+          } else {
+            setActiveProjectId(null);
           }
         }
       } catch (error) {
         console.error("Failed to load projects:", error);
         toast.error("Failed to load projects");
+      } finally {
+        if (isMounted) setProjectsLoading(false);
       }
     };
 
     loadProjects();
     return () => { isMounted = false; };
-  }, []);
+  }, [requestedProjectId]);
 
   // fetch all users once when settings dialog opens
   useEffect(() => {
@@ -242,6 +299,16 @@ export default function ProjectsPage() {
   }, [activeProject, currentUser]);
 
   const isOwner = currentMember?.role === "owner";
+
+  useEffect(() => {
+    if (!activeProject || !settingsOpen) return;
+
+    setSettingsProjectName(activeProject.name);
+    setSettingsProjectDescription(activeProject.description ?? "");
+    setSettingsProjectDeadline(formatDateInputValue(activeProject.deadline));
+    setSettingsProjectPriorityRating(normalizeRatingValue(activeProject.priority));
+    setSettingsProjectStatus(activeProject.project_status);
+  }, [activeProject, settingsOpen]);
 
   const updateProject = (
     projectId: string,
@@ -327,6 +394,45 @@ export default function ProjectsPage() {
     }
   };
 
+  const handleSaveProjectSettings = async () => {
+    if (!activeProject || !isOwner) return;
+
+    if (!settingsProjectName.trim()) {
+      toast.error("Project name is required");
+      return;
+    }
+
+    if (!settingsProjectDeadline) {
+      toast.error("Project deadline is required");
+      return;
+    }
+
+    setSavingProjectSettings(true);
+    try {
+      const deadline = combineDateAndTime(settingsProjectDeadline, "23:59");
+      if (!deadline) {
+        toast.error("Project deadline is required");
+        return;
+      }
+
+      const updatedProject = await updateProjectApi(activeProject.id, {
+        name: settingsProjectName.trim(),
+        description: settingsProjectDescription.trim() || undefined,
+        deadline: deadline.toISOString(),
+        priority: settingsProjectPriorityRating,
+        project_status: settingsProjectStatus,
+      });
+
+      updateProject(activeProject.id, () => updatedProject);
+      toast.success("Project settings saved");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to save project settings";
+      toast.error(message);
+    } finally {
+      setSavingProjectSettings(false);
+    }
+  };
+
   const resetProjectTaskDraft = () => {
     setTaskDraftPreview(null);
     setTaskDraftAttachmentIds([]);
@@ -365,6 +471,10 @@ export default function ProjectsPage() {
       formData.set("title", taskTitle);
       formData.set("description", taskDescription);
       formData.set("priority", String(taskPriorityRating));
+      const deadline = combineDateAndTime(taskDeadlineDate, taskDeadlineTime);
+      if (deadline) {
+        formData.set("deadline", deadline.toISOString());
+      }
       if (taskAttachment) {
         formData.append("file", taskAttachment);
       }
@@ -398,6 +508,62 @@ export default function ProjectsPage() {
     toast.success("AI suggestions applied");
   };
 
+  const openEditTaskDialog = (task: StoredProjectTask) => {
+    setEditingTask(task);
+    setEditTaskTitle(task.title);
+    setEditTaskDescription(task.description ?? "");
+    setEditTaskDeadlineDate(formatDateInputValue(task.deadline));
+    setEditTaskDeadlineTime(formatTimeInputValue(task.deadline));
+    setEditTaskPriorityRating(
+      task.priority === "high" ? 4 : task.priority === "low" ? 1 : 3,
+    );
+    setEditTaskAssignedTo(task.assignedTo ?? "unassigned");
+    setEditTaskOpen(true);
+  };
+
+  const handleSaveTaskEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeProject || !editingTask || !isOwner) return;
+
+    if (!editTaskTitle.trim()) {
+      toast.error("Task name is required");
+      return;
+    }
+
+    const deadline = combineDateAndTime(editTaskDeadlineDate, editTaskDeadlineTime);
+    if (!deadline) {
+      toast.error("Deadline is required");
+      return;
+    }
+
+    setSavingTaskEdit(true);
+    try {
+      const updatedTask = await updateProjectTaskApi(editingTask.id, {
+        title: editTaskTitle.trim(),
+        description: editTaskDescription.trim() || "",
+        deadline: deadline.toISOString(),
+        priority: editTaskPriorityRating,
+        assignedTo: editTaskAssignedTo === "unassigned" ? "" : editTaskAssignedTo,
+      });
+
+      updateProject(activeProject.id, (project) => ({
+        ...project,
+        tasks: project.tasks.map((task) =>
+          task.id === editingTask.id ? updatedTask : task,
+        ),
+      }));
+
+      setEditTaskOpen(false);
+      setEditingTask(null);
+      toast.success("Task updated");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to update task";
+      toast.error(message);
+    } finally {
+      setSavingTaskEdit(false);
+    }
+  };
+
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeProject) return;
@@ -406,15 +572,21 @@ export default function ProjectsPage() {
       return;
     }
 
+    const deadline = combineDateAndTime(taskDeadlineDate, taskDeadlineTime);
+    if (!deadline) {
+      toast.error("Deadline is required");
+      return;
+    }
+
     try {
       const newTask = await createProjectTaskApi(
         activeProject.id,
         taskTitle.trim(),
+        deadline.toISOString(),
         taskPriorityRating,
         taskDescription.trim() || undefined,
         undefined,
         taskDraftAttachmentIds,
-        taskReminder as string,
       );
 
       if (taskAttachment && taskDraftAttachmentIds.length === 0) {
@@ -450,8 +622,9 @@ export default function ProjectsPage() {
 
       setTaskTitle("");
       setTaskDescription("");
+      setTaskDeadlineDate("");
+      setTaskDeadlineTime("");
       setTaskPriorityRating(2.5);
-      setTaskReminder("none");
       setTaskAttachment(null);
       setTaskDraftPreview(null);
       setTaskDraftAttachmentIds([]);
@@ -467,7 +640,7 @@ export default function ProjectsPage() {
     if (!activeProject) return;
 
     try {
-      await updateProjectTaskApi(taskId, undefined, undefined, undefined, undefined, memberId);
+      await updateProjectTaskApi(taskId, { assignedTo: memberId ?? "" });
 
       updateProject(activeProject.id, (project) => ({
         ...project,
@@ -501,7 +674,7 @@ export default function ProjectsPage() {
     if (nextStatus === task.status) return;
 
     try {
-      await updateProjectTaskApi(taskId, undefined, undefined, undefined, nextStatus);
+      await updateProjectTaskApi(taskId, { status: nextStatus });
 
       updateProject(activeProject.id, (project) => ({
         ...project,
@@ -513,6 +686,22 @@ export default function ProjectsPage() {
       toast.success("Task moved successfully");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to move task";
+      toast.error(message);
+    }
+  };
+
+  const deleteTask = async (taskId: string) => {
+    if (!activeProject || !isOwner) return;
+
+    try {
+      await deleteProjectTaskApi(taskId);
+      updateProject(activeProject.id, (project) => ({
+        ...project,
+        tasks: project.tasks.filter((task) => task.id !== taskId),
+      }));
+      toast.success("Task deleted");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to delete task";
       toast.error(message);
     }
   };
@@ -575,6 +764,8 @@ export default function ProjectsPage() {
       { "not-done": [], pending: [], done: [] },
     );
   }, [activeProject]);
+
+  const pageLoading = currentUserLoading || projectsLoading;
 
   return (
     <div className="p-6 space-y-6">
@@ -700,10 +891,76 @@ export default function ProjectsPage() {
                   <DialogTitle>Project Settings</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{activeProject.name}</p>
-                    <p className="text-xs text-muted-foreground">{activeProject.description ?? "No description provided."}</p>
-                  </div>
+                  {isOwner ? (
+                    <div className="space-y-3 rounded-lg border border-border/50 bg-muted/10 p-3">
+                      <div className="space-y-1.5">
+                        <Label className="font-mono text-xs tracking-wider">PROJECT NAME</Label>
+                        <Input
+                          value={settingsProjectName}
+                          onChange={(e) => setSettingsProjectName(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="font-mono text-xs tracking-wider">DESCRIPTION</Label>
+                        <Textarea
+                          value={settingsProjectDescription}
+                          onChange={(e) => setSettingsProjectDescription(e.target.value)}
+                          className="min-h-20"
+                        />
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <div className="space-y-1.5">
+                          <Label className="font-mono text-xs tracking-wider">DEADLINE</Label>
+                          <Input
+                            type="date"
+                            value={settingsProjectDeadline}
+                            onChange={(e) => setSettingsProjectDeadline(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="font-mono text-xs tracking-wider">PRIORITY</Label>
+                          <div className="flex h-10 items-center gap-2">
+                            <StarRating value={settingsProjectPriorityRating} onChange={setSettingsProjectPriorityRating} />
+                            <span className="font-mono text-xs text-muted-foreground">
+                              {settingsProjectPriorityRating.toFixed(1)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="font-mono text-xs tracking-wider">STATUS</Label>
+                          <Select
+                            value={settingsProjectStatus}
+                            onValueChange={(value) =>
+                              setSettingsProjectStatus(value as "active" | "completed" | "archived")
+                            }
+                          >
+                            <SelectTrigger className="font-mono text-sm">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="active">Active</SelectItem>
+                              <SelectItem value="completed">Completed</SelectItem>
+                              <SelectItem value="archived">Archived</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleSaveProjectSettings}
+                        disabled={savingProjectSettings}
+                        className="bg-accent hover:bg-accent/90 text-accent-foreground"
+                      >
+                        {savingProjectSettings ? "Saving..." : "Save changes"}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{activeProject.name}</p>
+                      <p className="text-xs text-muted-foreground">{activeProject.description ?? "No description provided."}</p>
+                    </div>
+                  )}
 
                   {/* Members list */}
                   <div className="space-y-2">
@@ -831,6 +1088,30 @@ export default function ProjectsPage() {
                     />
                   </div>
 
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label className="font-mono text-xs tracking-wider">DEADLINE DATE *</Label>
+                      <Input
+                        type="date"
+                        value={taskDeadlineDate}
+                        onChange={(e) => setTaskDeadlineDate(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="font-mono text-xs tracking-wider">DEADLINE TIME</Label>
+                      <Input
+                        type="time"
+                        value={taskDeadlineTime}
+                        onChange={(e) => setTaskDeadlineTime(e.target.value)}
+                        placeholder="23:59"
+                      />
+                      <p className="font-mono text-[10px] text-muted-foreground">
+                        Defaults to 23:59 if left blank.
+                      </p>
+                    </div>
+                  </div>
+
                   <div className="space-y-1.5">
                     <Label className="font-mono text-xs tracking-wider">ATTACHMENT</Label>
                     <p className="font-mono text-[10px] text-muted-foreground">{AI_READABLE_ATTACHMENT_HELPER_TEXT}</p>
@@ -869,19 +1150,6 @@ export default function ProjectsPage() {
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <Label className="font-mono text-xs tracking-wider">REMINDER</Label>
-                    <Select value={taskReminder} onValueChange={setTaskReminder}>
-                      <SelectTrigger className="font-mono text-sm"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        <SelectItem value="daily">Daily</SelectItem>
-                        <SelectItem value="every-3-days">Every 3 Days</SelectItem>
-                        <SelectItem value="weekly">Weekly</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
                   <AiSuggestionsButton
                     description="Get project task ideas from the title, description, and file."
                     loading={taskDraftLoading}
@@ -910,6 +1178,97 @@ export default function ProjectsPage() {
               </DialogContent>
             </Dialog>
           )}
+
+          {activeProject && isOwner && (
+            <Dialog open={editTaskOpen} onOpenChange={setEditTaskOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Edit Task</DialogTitle>
+                  <DialogDescription>Update task details and assignment.</DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleSaveTaskEdit} className="space-y-5">
+                  <div className="space-y-1.5">
+                    <Label className="font-mono text-xs tracking-wider">TASK NAME *</Label>
+                    <Input
+                      value={editTaskTitle}
+                      onChange={(e) => setEditTaskTitle(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="font-mono text-xs tracking-wider">DESCRIPTION</Label>
+                    <Textarea
+                      value={editTaskDescription}
+                      onChange={(e) => setEditTaskDescription(e.target.value)}
+                      className="resize-y min-h-20"
+                    />
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label className="font-mono text-xs tracking-wider">DEADLINE DATE *</Label>
+                      <Input
+                        type="date"
+                        value={editTaskDeadlineDate}
+                        onChange={(e) => setEditTaskDeadlineDate(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="font-mono text-xs tracking-wider">DEADLINE TIME</Label>
+                      <Input
+                        type="time"
+                        value={editTaskDeadlineTime}
+                        onChange={(e) => setEditTaskDeadlineTime(e.target.value)}
+                        placeholder="23:59"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="font-mono text-xs tracking-wider">PRIORITY</Label>
+                    <div className="flex items-center gap-3">
+                      <StarRating value={editTaskPriorityRating} onChange={setEditTaskPriorityRating} size="lg" />
+                      <span className="font-mono text-sm text-muted-foreground">
+                        {editTaskPriorityRating.toFixed(1)} / 5.0
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="font-mono text-xs tracking-wider">ASSIGNEE</Label>
+                    <Select value={editTaskAssignedTo} onValueChange={setEditTaskAssignedTo}>
+                      <SelectTrigger className="font-mono text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        {activeProject.members.map((member) => (
+                          <SelectItem key={member.id} value={member.id}>
+                            {member.name} ({member.role})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <DialogFooter>
+                    <DialogClose asChild>
+                      <Button type="button" variant="outline">Cancel</Button>
+                    </DialogClose>
+                    <Button
+                      type="submit"
+                      disabled={savingTaskEdit}
+                      className="bg-accent hover:bg-accent/90 text-accent-foreground"
+                    >
+                      {savingTaskEdit ? "Saving..." : "Save task"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -924,7 +1283,11 @@ export default function ProjectsPage() {
         </div>
       </div>
 
-      {!activeProject ? (
+      {pageLoading ? (
+        <div className="rounded-xl border border-border/50 bg-muted/10 p-10 text-center text-muted-foreground">
+          Loading projects...
+        </div>
+      ) : !activeProject ? (
         <div className="rounded-xl border border-border/50 bg-muted/10 p-10 text-center text-muted-foreground">
           Create or select a project to view tasks.
         </div>
@@ -946,7 +1309,7 @@ export default function ProjectsPage() {
                         const assignedMember = activeProject.members.find((member) => member.id === task.assignedTo);
                         const isAssignedToCurrent = currentMember && task.assignedTo === currentMember.id;
                         const isAssignedElsewhere = task.assignedTo && (!currentMember || task.assignedTo !== currentMember.id);
-                        const canMove = Boolean(isAssignedToCurrent);
+                        const canMove = Boolean(isOwner || isAssignedToCurrent);
                         const dimTask = isAssignedElsewhere && task.status !== "done";
 
                         const currentIndex = STATUS_ORDER.indexOf(task.status);
@@ -972,9 +1335,46 @@ export default function ProjectsPage() {
 
                             <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground font-mono">
                               <span>{assignedMember ? `Assigned: ${assignedMember.name}` : "Unassigned"}</span>
+                              <span>Due: {new Date(task.deadline).toLocaleDateString()}</span>
                             </div>
 
                             <div className="flex flex-wrap items-center gap-2">
+                              {isOwner && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-xs"
+                                  onClick={() => openEditTaskDialog(task)}
+                                >
+                                  Edit Task
+                                </Button>
+                              )}
+
+                              {isOwner && (
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button size="sm" variant="outline" className="text-xs text-destructive">
+                                      Delete Task
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Delete &quot;{task.title}&quot;?</AlertDialogTitle>
+                                      <AlertDialogDescription>This project task will be removed for everyone.</AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => deleteTask(task.id)}
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      >
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              )}
+
                               {isOwner && (
                                 <Select
                                   value={task.assignedTo ?? "unassigned"}

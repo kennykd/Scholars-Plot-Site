@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { signOut } from "firebase/auth";
 import {
   LayoutDashboard,
   CheckSquare,
@@ -32,6 +33,7 @@ import {
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { NotificationPanel } from "../notification/notification-panel";
+import { auth } from "@/lib/firebase/firebase";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -72,6 +74,9 @@ export function Sidebar({ user }: { user: SidebarUser }) {
   const handleLogout = async () => {
     try {
       setLogoutLoading(true);
+      await signOut(auth).catch((error) => {
+        console.error("Failed to clear Firebase client auth during logout:", error);
+      });
       const res = await fetch("/api/auth/logout", { method: "POST" });
       if (!res.ok) throw new Error("Logout failed");
       toast.success("Logged out successfully");

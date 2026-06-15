@@ -15,7 +15,10 @@ import type {
   UpdateProjectTaskInput,
 } from '@/lib/validation/project';
 
-type ProjectUserRole = 'owner' | 'collaborator';
+type ProjectUserRole = 'owner' | 'moderator' | 'collaborator' | 'member';
+type ProjectInviteTarget =
+  | string
+  | Pick<CreateProjectInviteInput, 'targetUserId' | 'targetUserEmail'>;
 
 const projectManagerRoles: ProjectUserRole[] = ['owner'];
 
@@ -114,7 +117,7 @@ async function requireProjectManagerRole(projectId: number, userId: string) {
   }
 
   if (!isProjectManagerRole(memberRole.project_user_role as ProjectUserRole)) {
-    throw new ProjectServiceError(403, 'Only moderators or owners can manage members and tasks');
+    throw new ProjectServiceError(403, 'Only the project owner can manage members and tasks');
   }
 
   return memberRole.project_user_role as ProjectUserRole;
@@ -435,19 +438,9 @@ export async function createProjectTask(userId: string, data: CreateProjectTaskI
     throw new ProjectServiceError(404, 'Project not found');
   }
 
-  const memberRole = await getProjectMemberRole(data.projectId, userId);
+  await requireProjectOwnerRole(data.projectId, userId);
 
-  if (!memberRole) {
-    throw new ProjectServiceError(403, 'You are not a member of this project');
-  }
-
-  const isManager = isProjectManagerRole(memberRole.project_user_role as ProjectUserRole);
-
-  if (!isManager && data.assignedTo !== userId) {
-    throw new ProjectServiceError(403, 'Members can only manage tasks assigned to them');
-  }
-
-  if (data.assignedTo) {
+  if (data.assignedTo && data.assignedTo !== userId) {
     await requireUsersExist([data.assignedTo], 'Assigned user');
   }
 
@@ -459,7 +452,7 @@ export async function createProjectTask(userId: string, data: CreateProjectTaskI
         task_description: data.description,
         task_priority: data.priority,
         task_status: data.status,
-        task_deadline: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        task_deadline: data.deadline,
       },
       include: taskInclude,
     });
@@ -510,21 +503,38 @@ export async function updateProjectTaskById(taskId: number, userId: string, data
   const nextStatus = data.status as TaskStatus | undefined;
   const statusChanging = nextStatus !== undefined && nextStatus !== previousStatus;
   const existingAssignedUserId = access.task.task_users[0]?.user_id ?? null;
+  const isSelfClaim =
+    data.assignedTo !== undefined &&
+    data.assignedTo === userId &&
+    existingAssignedUserId === null;
+  const hasDetailEdits =
+    data.title !== undefined ||
+    data.description !== undefined ||
+    data.deadline !== undefined ||
+    data.priority !== undefined ||
+    data.attachments !== undefined;
+  const hasAssignmentEdit = data.assignedTo !== undefined;
+  const onlySelfClaim = isSelfClaim && !hasDetailEdits && nextStatus === undefined;
+  const onlyStatusMove = nextStatus !== undefined && !hasDetailEdits && !hasAssignmentEdit;
   const nextAssignedUserId = data.assignedTo !== undefined
     ? data.assignedTo || null
     : existingAssignedUserId;
 
   if (!access.isManager) {
-    if (!access.isAssigned) {
-      throw new ProjectServiceError(403, 'Members can only manage tasks assigned to them');
-    }
-
-    if (data.assignedTo !== undefined && data.assignedTo !== userId) {
-      throw new ProjectServiceError(403, 'Members can only manage tasks assigned to them');
+    if (onlySelfClaim) {
+      // Allowed below.
+    } else if (hasDetailEdits) {
+      throw new ProjectServiceError(403, 'Only the project owner can edit project task details');
+    } else if (hasAssignmentEdit) {
+      throw new ProjectServiceError(403, 'Members can only claim unassigned tasks for themselves');
+    } else if (onlyStatusMove && !access.isAssigned) {
+      throw new ProjectServiceError(403, 'Members can only move tasks assigned to them');
+    } else if (!onlyStatusMove) {
+      throw new ProjectServiceError(403, 'Only the project owner can edit project task details');
     }
   }
 
-  if (data.assignedTo) {
+  if (data.assignedTo && data.assignedTo !== userId) {
     await requireUsersExist([data.assignedTo], 'Assigned user');
   }
 
@@ -541,6 +551,7 @@ export async function updateProjectTaskById(taskId: number, userId: string, data
     data: {
       ...(data.title ? { task_name: data.title } : {}),
       ...(data.description !== undefined ? { task_description: data.description } : {}),
+      ...(data.deadline !== undefined ? { task_deadline: data.deadline } : {}),
       ...(data.priority ? { task_priority: data.priority } : {}),
       ...(nextStatus !== undefined ? { task_status: nextStatus } : {}),
       ...(statusChanging
@@ -588,8 +599,8 @@ export async function updateProjectTaskById(taskId: number, userId: string, data
 export async function deleteProjectTaskById(taskId: number, userId: string) {
   const access = await requireProjectTaskAccess(taskId, userId);
 
-  if (!access.isManager && !access.isAssigned) {
-    throw new ProjectServiceError(403, 'Members can only manage tasks assigned to them');
+  if (!access.isManager) {
+    throw new ProjectServiceError(403, 'Only the project owner can delete project tasks');
   }
 
   await prisma.task.delete({
@@ -625,7 +636,7 @@ export async function getPendingInvitesForUser(userId: string) {
 export async function createProjectInvite(
   projectId: number,
   senderUserId: string,
-  target: CreateProjectInviteInput | string,
+  target: ProjectInviteTarget,
 ) {
   const targetUserId = typeof target === "string" ? undefined : target.targetUserId;
   const targetUserEmail = typeof target === "string" ? target : target.targetUserEmail;

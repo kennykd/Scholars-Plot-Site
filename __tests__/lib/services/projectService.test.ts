@@ -2,15 +2,18 @@ import prisma from "@/lib/prisma";
 import { getAnalyticsByUserId, updateAnalyticsByUserId } from "@/lib/services/analyticService";
 import {
   addProjectMember,
+  createProjectTask,
   createProjectInvite,
   createProject,
   ProjectServiceError,
   updateProjectTaskById,
 } from "@/lib/services/projectService";
 
-jest.mock("@/lib/prisma", () => ({
-  __esModule: true,
-  default: {
+jest.mock("@/lib/prisma", () => {
+  const db: Record<string, unknown> = {};
+
+  Object.assign(db, {
+    $transaction: jest.fn(async (callback: (client: unknown) => unknown) => callback(db)),
     project: {
       create: jest.fn(),
       findUnique: jest.fn(),
@@ -27,15 +30,26 @@ jest.mock("@/lib/prisma", () => ({
       findMany: jest.fn(),
     },
     task: {
+      create: jest.fn(),
       findUnique: jest.fn(),
       update: jest.fn(),
+      delete: jest.fn(),
     },
     taskUser: {
-      deleteMany: jest.fn(),
       create: jest.fn(),
+      deleteMany: jest.fn(),
     },
-  },
-}));
+    attachment: {
+      findMany: jest.fn(),
+      updateMany: jest.fn(),
+    },
+  });
+
+  return {
+    __esModule: true,
+    default: db,
+  };
+});
 
 jest.mock("@/lib/services/analyticService", () => ({
   getAnalyticsByUserId: jest.fn(),
@@ -270,5 +284,173 @@ describe("projectService task status analytics", () => {
       tasks_completed_late: 0,
       streak_activity: true,
     });
+  });
+});
+
+describe("projectService project task permissions and deadlines", () => {
+  const projectTask = {
+    task_id: 42,
+    project_id: 12,
+    task_name: "Draft section",
+    task_description: null,
+    task_deadline: new Date("2099-06-20T12:00:00.000Z"),
+    task_priority: 3,
+    task_status: "Pending",
+    task_completed_at: null,
+    task_created_at: new Date("2026-06-01T12:00:00.000Z"),
+    estimated_minutes: null,
+    confidence_score: null,
+    grade_weight_percent: null,
+    ai_priority_score: null,
+    ai_analyzed_at: null,
+    project: {
+      project_user: [{ project_user_role: "owner" }],
+    },
+    task_users: [],
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (getAnalyticsByUserId as jest.Mock).mockResolvedValue(null);
+    (prisma.user.findMany as jest.Mock).mockResolvedValue([]);
+  });
+
+  it("creates project tasks with the requested deadline instead of a fallback deadline", async () => {
+    const deadline = new Date("2099-07-01T16:59:00.000Z");
+    (prisma.project.findUnique as jest.Mock).mockResolvedValue({ project_id: 12 });
+    (prisma.projectUser.findUnique as jest.Mock).mockResolvedValue({ project_user_role: "owner" });
+    (prisma.task.create as jest.Mock).mockResolvedValue({
+      ...projectTask,
+      task_deadline: deadline,
+      project: {},
+    });
+    (prisma.task.findUnique as jest.Mock).mockResolvedValue({
+      ...projectTask,
+      task_deadline: deadline,
+    });
+
+    await createProjectTask("owner-1", {
+      projectId: 12,
+      title: "Draft section",
+      description: "Write the draft",
+      deadline,
+      priority: 3,
+      status: "Pending",
+    });
+
+    expect(prisma.task.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          task_deadline: deadline,
+        }),
+      }),
+    );
+  });
+
+  it("lets owners edit project task details including deadline", async () => {
+    const nextDeadline = new Date("2099-08-15T10:30:00.000Z");
+    (prisma.task.findUnique as jest.Mock).mockResolvedValue(projectTask);
+    (prisma.task.update as jest.Mock).mockResolvedValue({
+      ...projectTask,
+      task_name: "Updated draft",
+      task_deadline: nextDeadline,
+    });
+
+    await updateProjectTaskById(42, "owner-1", {
+      title: "Updated draft",
+      deadline: nextDeadline,
+    });
+
+    expect(prisma.task.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          task_name: "Updated draft",
+          task_deadline: nextDeadline,
+        }),
+      }),
+    );
+  });
+
+  it("lets a member claim an unassigned project task only for themselves", async () => {
+    (prisma.task.findUnique as jest.Mock).mockResolvedValue({
+      ...projectTask,
+      project: {
+        project_user: [{ project_user_role: "collaborator" }],
+      },
+      task_users: [],
+    });
+    (prisma.task.update as jest.Mock).mockResolvedValue(projectTask);
+
+    await updateProjectTaskById(42, "member-1", { assignedTo: "member-1" });
+
+    expect(prisma.taskUser.deleteMany).toHaveBeenCalledWith({ where: { task_id: 42 } });
+    expect(prisma.taskUser.create).toHaveBeenCalledWith({
+      data: {
+        task_id: 42,
+        user_id: "member-1",
+      },
+    });
+  });
+
+  it("rejects a member assigning an unassigned project task to someone else", async () => {
+    (prisma.task.findUnique as jest.Mock).mockResolvedValue({
+      ...projectTask,
+      project: {
+        project_user: [{ project_user_role: "collaborator" }],
+      },
+      task_users: [],
+    });
+
+    await expect(
+      updateProjectTaskById(42, "member-1", { assignedTo: "member-2" }),
+    ).rejects.toMatchObject({
+      status: 403,
+      message: "Members can only claim unassigned tasks for themselves",
+    });
+
+    expect(prisma.task.update).not.toHaveBeenCalled();
+  });
+
+  it("rejects project task detail edits from assigned non-owner members", async () => {
+    (prisma.task.findUnique as jest.Mock).mockResolvedValue({
+      ...projectTask,
+      project: {
+        project_user: [{ project_user_role: "collaborator" }],
+      },
+      task_users: [{ user_id: "member-1" }],
+    });
+
+    await expect(
+      updateProjectTaskById(42, "member-1", { title: "Member rename" }),
+    ).rejects.toMatchObject({
+      status: 403,
+      message: "Only the project owner can edit project task details",
+    });
+
+    expect(prisma.task.update).not.toHaveBeenCalled();
+  });
+
+  it("lets assigned members move their own project task status", async () => {
+    (prisma.task.findUnique as jest.Mock).mockResolvedValue({
+      ...projectTask,
+      project: {
+        project_user: [{ project_user_role: "collaborator" }],
+      },
+      task_users: [{ user_id: "member-1" }],
+    });
+    (prisma.task.update as jest.Mock).mockResolvedValue({
+      ...projectTask,
+      task_status: "In_Progress",
+    });
+
+    await updateProjectTaskById(42, "member-1", { status: "In_Progress" });
+
+    expect(prisma.task.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          task_status: "In_Progress",
+        }),
+      }),
+    );
   });
 });

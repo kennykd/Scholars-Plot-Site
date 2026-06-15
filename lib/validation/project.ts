@@ -64,6 +64,10 @@ export const createProjectTaskSchema = z.object({
   .max(100, 'Title cannot exceed 100 characters'),
   description: z.string()
   .optional(),
+  deadline: z.coerce.date()
+  .refine((date) => date >= new Date(),
+    { message: "Deadline must be in the future" }
+  ),
   priority: z.coerce.number()
   .min(0.5).max(5),
   status: z.enum(['Pending', 'In_Progress', 'Completed']),
@@ -82,6 +86,8 @@ export const updateProjectTaskSchema = z.object({
   .max(100, 'Title cannot exceed 100 characters')
   .optional(),
   description: z.string()
+  .optional(),
+  deadline: z.coerce.date()
   .optional(),
   priority: z.coerce.number()
   .min(0.5).max(5)

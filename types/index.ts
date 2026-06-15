@@ -113,13 +113,19 @@ export interface DecryptedAnalytics {
 
 export interface ProductivityDay {
   day: string;
+  score?: number;
   tasksCompleted: number;
-  sessionsCompleted: number;
+  sessionsCompleted?: number;
 }
 
 export interface TimeByTask {
   taskName: string;
   minutes: number;
+}
+
+export interface TimeBySubject {
+  subject: string;
+  hours: number;
 }
 
 export interface AnalyticsData {
@@ -129,6 +135,7 @@ export interface AnalyticsData {
     late: number;
     pending: number;
   };
+  timeBySubject?: TimeBySubject[];
   timeByTask: TimeByTask[];
   productivityByDay: ProductivityDay[];
   streak: number;
@@ -160,7 +167,7 @@ export interface Notification {
   type: "reminder" | "timer-complete" | "deadline-approaching";
 }
 
-export type ProjectRole = "owner" | "collaborator"
+export type ProjectRole = "owner" | "moderator" | "collaborator" | "member"
 
 export interface ProjectMember {
   /** Unique identifier for the member */
@@ -169,6 +176,8 @@ export interface ProjectMember {
   name: string;
   /** Email address for the member */
   email?: string;
+  /** Optional short handle or display alias */
+  handle?: string;
   /** Role within the project */
   role: ProjectRole;
 }
@@ -181,6 +190,7 @@ export interface ProjectTask {
   priority: number;
   status: ProjectTaskStatus;
   assignedTo?: string;
+  deadline: string;
   createdAt: Date;
 }
 
