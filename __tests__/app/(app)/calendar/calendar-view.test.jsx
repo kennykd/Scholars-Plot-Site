@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { useRouter } from "next/navigation";
-import { CalendarView } from "./calendar-view";
+import { CalendarView } from "@/app/(app)/calendar/calendar-view";
 
 jest.mock("next/navigation", () => ({
   useRouter: jest.fn(),

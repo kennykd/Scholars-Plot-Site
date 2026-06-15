@@ -42,7 +42,7 @@ jest.mock("@/lib/services/taskService", () => {
   return { TaskServiceError };
 });
 
-import { POST } from "./route";
+import { POST } from "@/app/api/study/batch/route";
 import { getSession } from "@/lib/firebase/auth";
 import { ensureUserRecordForSession } from "@/lib/services/userService";
 import { createStudySessionsForTask } from "@/lib/services/studySessionService";

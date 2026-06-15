@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import TaskDetailPage from "./page";
+import TaskDetailPage from "@/app/(app)/tasks/[id]/page";
 import { getSession } from "@/lib/firebase/auth";
 import {
   getStudySessionsForTask,

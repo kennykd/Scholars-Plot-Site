@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Sidebar } from "./sidebar";
+import { Sidebar } from "@/app/components/layout/sidebar";
 import { usePathname, useRouter } from "next/navigation";
 
 jest.mock("next/navigation", () => ({

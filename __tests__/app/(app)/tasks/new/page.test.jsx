@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import TaskForm from "./page";
+import TaskForm from "@/app/(app)/tasks/new/page";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
