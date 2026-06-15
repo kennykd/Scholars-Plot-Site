@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { useParams, useRouter } from "next/navigation";
-import StudySessionPage from "./page";
+import StudySessionPage from "@/app/(app)/study/[id]/page";
 
 jest.mock("next/navigation", () => ({
   useParams: jest.fn(),

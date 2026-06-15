@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import RegisterPage from "./page";
+import RegisterPage from "@/app/(auth)/register/page";
 import { createUserWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";

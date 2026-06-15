@@ -43,7 +43,7 @@ jest.mock("@/lib/services/taskService", () => {
   };
 });
 
-import { PATCH } from "./route";
+import { PATCH } from "../../../../app/api/task/[id]/route";
 import { getSession } from "@/lib/firebase/auth";
 import { runWeightAdapter } from "@/lib/services/aiService";
 import { ensureUserRecordForSession } from "@/lib/services/userService";

@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import ProjectsPage from "./page";
+import ProjectsPage from "@/app/(app)/projects/page";
 import { fetchProjects } from "@/app/api/project/client";
 import { toast } from "sonner";
 

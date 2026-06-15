@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import StudyNewPage from "./page";
+import StudyNewPage from "@/app/(app)/study/new/page";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 

@@ -23,7 +23,7 @@ jest.mock("@/lib/prisma", () => ({
   default: {},
 }));
 
-import { POST } from "./route";
+import { POST } from "@/app/api/auth/firebase/route";
 import { getAdminAuth } from "@/lib/firebase/firebase-admin";
 import { ensureUserRecordForSession } from "@/lib/services/userService";
 

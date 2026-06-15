@@ -39,7 +39,7 @@ jest.mock("@/lib/services/aiService", () => ({
   runTaskAnalysis: jest.fn(),
 }));
 
-import { POST } from "./route";
+import { POST } from "../../../../app/api/task/route";
 import { getSession } from "@/lib/firebase/auth";
 import { ensureUserRecordForSession } from "@/lib/services/userService";
 import { createTask } from "@/lib/services/taskService";
