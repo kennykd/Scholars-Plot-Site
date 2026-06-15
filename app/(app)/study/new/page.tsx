@@ -118,12 +118,6 @@ const combineDateTime = (date: Date, time: string) => {
 
 const localDateValue = (date = new Date()) => format(date, "yyyy-MM-dd");
 
-const parseLocalDateValue = (value: string) => {
-  const [year, month, day] = value.split("-").map(Number);
-  if (!year || !month || !day) return undefined;
-  return new Date(year, month - 1, day);
-};
-
 type RepeatControlsProps = {
   idPrefix: string;
   checked: boolean;
@@ -267,6 +261,7 @@ export default function StudyNewPage() {
   const [repeatEnabled, setRepeatEnabled] = useState(false);
   const [repeatEvery, setRepeatEvery] = useState(1);
   const [repeatUnit, setRepeatUnit] = useState<"days" | "weeks">("weeks");
+  const [creating, setCreating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [taskContext, setTaskContext] = useState<Task | null>(null);
   const [taskLoading, setTaskLoading] = useState(Boolean(taskId));
@@ -358,17 +353,6 @@ export default function StudyNewPage() {
     () => taskOptions.find((task) => String(task.id) === selectedTaskId) ?? null,
     [selectedTaskId, taskOptions],
   );
-
-  const selectedTaskDeadlineDateValue = useMemo(() => {
-    const deadline = selectedTask?.deadline;
-    if (typeof deadline === "string" && /^\d{4}-\d{2}-\d{2}/.test(deadline)) {
-      return deadline.slice(0, 10);
-    }
-
-    if (!deadline) return null;
-    const date = new Date(deadline);
-    return Number.isNaN(date.getTime()) ? null : localDateValue(date);
-  }, [selectedTask]);
 
   const handleStandaloneTaskSelect = (taskIdValue: string) => {
     setSelectedTaskId(taskIdValue);
@@ -688,6 +672,7 @@ export default function StudyNewPage() {
 
   const handleCreateSession = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (creating) return;
     if (!title.trim()) {
       toast.error("Session title is required");
       return;
@@ -697,6 +682,7 @@ export default function StudyNewPage() {
       return;
     }
 
+    setCreating(true);
     const sessionScheduledAt = combineDateTime(scheduledDate, scheduledTime);
 
     const payload = {
@@ -741,6 +727,7 @@ export default function StudyNewPage() {
 
       if (!response.ok) {
         toast.error(data?.message ?? "Failed to create study session");
+        setCreating(false);
         return;
       }
 
@@ -781,6 +768,7 @@ export default function StudyNewPage() {
       router.push("/study");
     } catch {
       toast.error("Network error while creating study session");
+      setCreating(false);
     }
   };
 
@@ -1393,62 +1381,40 @@ export default function StudyNewPage() {
               />
             </div>
 
-            <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_180px]">
-              <div className="space-y-1.5">
+            <div className="flex min-w-full gap-4 md:flex-row flex-col">
+              <div className="space-y-1.5 flex-1">
                 <Label className="font-mono text-xs tracking-wider">
                   SCHEDULE DATE
                 </Label>
-                <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
-                  <Popover open={calOpen} onOpenChange={setCalOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !scheduledDate && "text-muted-foreground",
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {scheduledDate
-                          ? format(scheduledDate, "PPP")
-                          : "Pick a date"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={scheduledDate}
-                        onSelect={(value) => {
-                          setScheduledDate(value);
-                          setCalOpen(false);
-                        }}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setScheduledDate(new Date())}
-                    className="shrink-0"
-                  >
-                    Today
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={!selectedTaskDeadlineDateValue}
-                    onClick={() => {
-                      if (!selectedTaskDeadlineDateValue) return;
-                      setScheduledDate(parseLocalDateValue(selectedTaskDeadlineDateValue));
-                    }}
-                    className="shrink-0"
-                  >
-                    On task day
-                  </Button>
-                </div>
+                <Popover open={calOpen} onOpenChange={setCalOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !scheduledDate && "text-muted-foreground",
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {scheduledDate
+                        ? format(scheduledDate, "PPP")
+                        : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={scheduledDate}
+                      onSelect={(value) => {
+                        setScheduledDate(value);
+                        setCalOpen(false);
+                      }}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 flex-1">
                 <Label className="font-mono text-xs tracking-wider">TIME</Label>
                 <Input
                   type="time"
@@ -1528,25 +1494,24 @@ export default function StudyNewPage() {
               </p>
             </div>
 
-            <RepeatControls
-              idPrefix="study"
-              checked={repeatEnabled}
-              every={repeatEvery}
-              unit={repeatUnit}
-              disabled={!selectedTask}
-              label="Enable repeat"
-              description={
-                selectedTask
-                  ? "Repeats on this cadence until the linked task's deadline."
-                  : "Choose a task to repeat this session."
-              }
-              onCheckedChange={setRepeatEnabled}
-              onEveryChange={setRepeatEvery}
-              onUnitChange={(unit, every) => {
-                setRepeatUnit(unit);
-                setRepeatEvery(every);
-              }}
-            />
+            {/* Repeat only applies to task-linked sessions, so hide it entirely
+                until a task is chosen to keep the form uncluttered. */}
+            {selectedTask && (
+              <RepeatControls
+                idPrefix="study"
+                checked={repeatEnabled}
+                every={repeatEvery}
+                unit={repeatUnit}
+                label="Enable repeat"
+                description="Repeats on this cadence until the linked task's deadline."
+                onCheckedChange={setRepeatEnabled}
+                onEveryChange={setRepeatEvery}
+                onUnitChange={(unit, every) => {
+                  setRepeatUnit(unit);
+                  setRepeatEvery(every);
+                }}
+              />
+            )}
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1.5">
@@ -1806,9 +1771,10 @@ export default function StudyNewPage() {
             <div className="flex gap-3 pt-2">
               <Button
                 type="submit"
+                disabled={creating}
                 className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground font-semibold"
               >
-                Create Session
+                {creating ? "Creating..." : "Create Session"}
               </Button>
               <Button variant="outline" asChild>
                 <Link href="/study">Cancel</Link>

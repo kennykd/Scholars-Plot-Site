@@ -19,7 +19,7 @@ import { StudySessionPrompt } from "@/app/components/tasks/study-session-prompt"
 import { AiSuggestionsButton } from "@/app/components/common/ai-suggestions-button";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { ArrowLeft, CalendarIcon, Paperclip, X } from "lucide-react";
+import { ArrowLeft, CalendarIcon, Clock, Paperclip, X } from "lucide-react";
 import { cn, openNativePicker } from "@/lib/utils";
 import { AI_READABLE_ATTACHMENT_HELPER_TEXT } from "@/lib/ai/attachmentSupport";
 
@@ -328,15 +328,19 @@ export default function TaskForm() {
                 >
                   DEADLINE TIME
                 </Label>
-                <Input
-                  id="deadline-time"
-                  type="time"
-                  value={deadlineTime}
-                  onChange={(e) => setDeadlineTime(e.target.value)}
-                  onClick={openNativePicker}
-                  onFocus={openNativePicker}
-                  placeholder="23:59"
-                />
+                <div className="relative">
+                  <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="deadline-time"
+                    type="time"
+                    value={deadlineTime}
+                    onChange={(e) => setDeadlineTime(e.target.value)}
+                    onClick={openNativePicker}
+                    onFocus={openNativePicker}
+                    placeholder="23:59"
+                    className="pl-9 [&::-webkit-calendar-picker-indicator]:opacity-0"
+                  />
+                </div>
                 <p className="font-mono text-[10px] text-muted-foreground">
                   Defaults to 23:59 if left blank.
                 </p>

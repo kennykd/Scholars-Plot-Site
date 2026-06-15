@@ -7,6 +7,8 @@ type TaskSelectionToolbarProps = {
   allCount: number;
   isDeleting: boolean;
   canEdit: boolean;
+  showMarkInProgress: boolean;
+  showMarkDone: boolean;
   onSelectAll: () => void;
   onDeselectAll: () => void;
   onEditSelected: () => void;
@@ -20,6 +22,8 @@ export function TaskSelectionToolbar({
   allCount,
   isDeleting,
   canEdit,
+  showMarkInProgress,
+  showMarkDone,
   onSelectAll,
   onDeselectAll,
   onEditSelected,
@@ -65,21 +69,25 @@ export function TaskSelectionToolbar({
             Edit Task
           </Button>
         )}
-        <Button
-          size="sm"
-          variant="outline"
-          className="border-blue-500/40 text-blue-500 hover:bg-blue-500/10 font-semibold"
-          onClick={onMarkInProgress}
-        >
-          Set In Progress
-        </Button>
-        <Button
-          size="sm"
-          className="bg-green-600 hover:bg-green-700 text-white font-semibold"
-          onClick={onMarkDone}
-        >
-          Mark as Done
-        </Button>
+        {showMarkInProgress && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-blue-500/40 text-blue-500 hover:bg-blue-500/10 font-semibold"
+            onClick={onMarkInProgress}
+          >
+            Set In Progress
+          </Button>
+        )}
+        {showMarkDone && (
+          <Button
+            size="sm"
+            className="bg-green-600 hover:bg-green-700 text-white font-semibold"
+            onClick={onMarkDone}
+          >
+            Mark as Done
+          </Button>
+        )}
         <Button
           size="sm"
           variant="destructive"

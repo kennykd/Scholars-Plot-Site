@@ -96,7 +96,7 @@ export function Sidebar({ user }: { user: SidebarUser }) {
   return (
     <aside
       className={cn(
-        "hidden lg:flex flex-col h-dvh shrink-0 transition-all duration-150 ease-in-out",
+        "hidden lg:flex flex-col sticky top-0 self-start h-dvh shrink-0 transition-all duration-150 ease-in-out",
         "bg-sidebar",
         collapsed ? "w-20" : "w-72"
       )}

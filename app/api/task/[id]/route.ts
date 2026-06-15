@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { updateTaskSchema } from '../../../../lib/validation/task';
 import {
   deleteTaskById,
+  getStudySessionsForTask,
   getTaskById,
   recordTaskCompletion,
   serializeTask,
@@ -149,10 +150,17 @@ export async function GET(_: Request, context: RouteContext) {
       return NextResponse.json({ message: 'Invalid task id' }, { status: 400 });
     }
 
-    const task = await getTaskById(parsedId.data, session.id);
+    const [task, linkedSessions] = await Promise.all([
+      getTaskById(parsedId.data, session.id),
+      getStudySessionsForTask(parsedId.data, session.id),
+    ]);
 
     return NextResponse.json(
-      { message: 'Task retrieved successfully', task: serializeTask(task) },
+      {
+        message: 'Task retrieved successfully',
+        task: serializeTask(task),
+        linkedStudySessionIds: linkedSessions.map((row) => row.study_session_id),
+      },
       { status: 200 },
     );
   } catch (error) {

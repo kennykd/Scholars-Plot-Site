@@ -117,6 +117,7 @@ export default function QuickTimerPage() {
   const focusMinutesParam = Number(searchParams.get("focus")) || 25;
   const breakMinutesParam = Number(searchParams.get("break")) || 5;
   const totalMinutesParam = Number(searchParams.get("total")) || 60;
+  const autostart = searchParams.get("autostart") === "1";
 
   const [phase, setPhase] = useState<Phase>("idle");
   const [seconds, setSeconds] = useState(0);
@@ -133,14 +134,19 @@ export default function QuickTimerPage() {
   // Initialize timer from params
   useEffect(() => {
     const focusSeconds = focusMinutesParam * 60;
-    const breakSeconds = breakMinutesParam * 60;
     const totalSeconds = totalMinutesParam * 60;
 
     setPhase("focus");
     setSeconds(focusSeconds);
     setTotalSecondsRemaining(totalSeconds);
     totalSecondsRemainingRef.current = totalSeconds;
-  }, [focusMinutesParam, breakMinutesParam, totalMinutesParam]);
+
+    // When launched from "Quick Timer", start counting down right away.
+    if (autostart) {
+      setRunning(true);
+      setSessionStatus("running");
+    }
+  }, [focusMinutesParam, breakMinutesParam, totalMinutesParam, autostart]);
 
   const focusSeconds = focusMinutesParam * 60;
   const breakSeconds = breakMinutesParam * 60;

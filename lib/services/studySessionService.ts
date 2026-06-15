@@ -541,7 +541,25 @@ export async function updateStudySessionForMember(
 
   let updatedStudySession = null;
   if (Object.keys(sessionUpdates).length > 0) {
-    const data = Object.fromEntries(Object.entries(sessionUpdates).filter(([, v]) => v !== undefined)) as Prisma.StudySessionUpdateInput;
+    // `reminder_enabled` / `reminders` are API field names, not columns — pull
+    // them out and map onto the actual StudySession reminder columns (mirrors
+    // the create path) so the spread below only contains real Prisma fields.
+    const { reminder_enabled, reminders, ...rest } = sessionUpdates as {
+      reminder_enabled?: boolean;
+      reminders?: number[];
+      [key: string]: unknown;
+    };
+
+    const data = Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== undefined)) as Prisma.StudySessionUpdateInput;
+
+    if (reminder_enabled !== undefined) {
+      data.study_session_reminder_enabled = reminder_enabled;
+    }
+    if (reminders !== undefined) {
+      data.study_session_remind_at_minutes = reminders.map((minute) =>
+        Math.max(0, Number(minute) || 0),
+      );
+    }
 
     if ('checklist_json' in sessionUpdates && sessionUpdates.checklist_json === null) {
       data.checklist_json = Prisma.DbNull;

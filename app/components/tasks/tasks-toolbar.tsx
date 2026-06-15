@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { isPast, isToday } from "date-fns";
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -15,8 +16,16 @@ import { TaskCard } from "@/app/components/tasks/task-card";
 import { TaskSelectionToolbar } from "@/app/components/tasks/task-selection-toolbar";
 import type { Task } from "@/types";
 
-type FilterTab = "all" | "Pending" | "In_Progress" | "Completed";
+type FilterTab = "all" | "Pending" | "In_Progress" | "Completed" | "Expired";
 type SortKey = "priority" | "deadline" | "created";
+
+// A task is expired/overdue once its deadline has passed and it isn't done.
+// Overdue tasks are surfaced only under the Expired tab, not the active lists.
+const isExpiredTask = (task: Task) => {
+  if (task.status === "Completed") return false;
+  const deadline = new Date(task.deadline);
+  return isPast(deadline) && !isToday(deadline);
+};
 
 interface TasksToolbarProps {
   tasks: Task[];
@@ -30,9 +39,19 @@ export function TasksToolbar({ tasks, projectTasks }: TasksToolbarProps) {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const filtered = tasks.filter((t) =>
-    filter === "all" ? true : t.status === filter,
-  );
+  const filtered = tasks.filter((t) => {
+    switch (filter) {
+      case "all":
+        return !isExpiredTask(t);
+      case "Completed":
+        return t.status === "Completed";
+      case "Expired":
+        return isExpiredTask(t);
+      default:
+        // Pending / In_Progress — exclude overdue so they only show in Expired.
+        return t.status === filter && !isExpiredTask(t);
+    }
+  });
 
   const sorted = [...filtered].sort((a, b) => {
     if (sort === "priority") return b.priority - a.priority;
@@ -153,6 +172,14 @@ export function TasksToolbar({ tasks, projectTasks }: TasksToolbarProps) {
     router.push(`/tasks/${taskId}`);
   };
 
+  // Only offer a status change when at least one selected task isn't already in
+  // that state, so completed/in-progress selections don't get redundant actions.
+  const selectedTasks = tasks.filter((t) => selectedIds.includes(t.id));
+  const showMarkDone = selectedTasks.some((t) => t.status !== "Completed");
+  const showMarkInProgress = selectedTasks.some(
+    (t) => t.status !== "In_Progress",
+  );
+
   return (
     <>
       <TaskSelectionToolbar
@@ -160,6 +187,8 @@ export function TasksToolbar({ tasks, projectTasks }: TasksToolbarProps) {
         allCount={sorted.length}
         isDeleting={isDeleting}
         canEdit={selectedIds.length === 1}
+        showMarkInProgress={showMarkInProgress}
+        showMarkDone={showMarkDone}
         onSelectAll={selectVisible}
         onDeselectAll={deselectAll}
         onEditSelected={editSelected}
@@ -186,6 +215,9 @@ export function TasksToolbar({ tasks, projectTasks }: TasksToolbarProps) {
             </TabsTrigger>
             <TabsTrigger value="Completed" className="font-mono text-xs">
               Completed
+            </TabsTrigger>
+            <TabsTrigger value="Expired" className="font-mono text-xs">
+              Expired
             </TabsTrigger>
           </TabsList>
         </Tabs>

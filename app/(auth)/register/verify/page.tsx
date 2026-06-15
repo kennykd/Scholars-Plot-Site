@@ -139,7 +139,7 @@ export default function RegisterVerifyPage() {
   }
 
   return (
-    <div className="w-full max-w-md mx-auto space-y-8">
+    <div className="min-h-screen flex items-center w-full max-w-md mx-auto space-y-8">
       <div className="bg-[#0f1a66]/90 backdrop-blur-sm rounded-2xl p-8 shadow-2xl border border-white/10">
         
         <div className="text-center space-y-2 mb-8">

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   differenceInSeconds,
   format,
-  isPast,
   isToday,
   isTomorrow,
   parseISO,
@@ -112,7 +111,9 @@ function getRowAccent(sectionType: StudySectionType) {
 }
 
 function getScheduleBadge(date: Date, sectionType: StudySectionType) {
-  if (sectionType === "expired" || (isPast(date) && !isToday(date))) {
+  // Only the Expired section gets the red "Expired" badge — an in-progress row
+  // whose scheduled time has passed should not be mislabeled as expired.
+  if (sectionType === "expired") {
     return {
       label: "Expired",
       className: "bg-red-500/20 text-red-400 border-red-500/30",
@@ -193,8 +194,8 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
   }, [user]);
 
   const inProgressSessions = useMemo(
-    () => getInProgressSessions(sessions, nowTick),
-    [sessions, nowTick],
+    () => getInProgressSessions(sessions),
+    [sessions],
   );
 
   const upcomingSessions = useMemo(
@@ -425,27 +426,29 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
     if (quickFocusMinutes < 1 || quickBreakMinutes < 1 || quickTotalMinutes < 1)
       return;
 
-    const newStudySession: StudySession = {
-      id: `session-${Date.now()}`,
+    // Quick timers are ephemeral: jump straight into the timer route and start
+    // it running immediately rather than parking an idle row in the list.
+    const params = new URLSearchParams({
       title: quickTitle.trim() || "Timer Only",
-      notes: "",
-      attachments: [],
-      scheduledAt: new Date().toISOString(),
-      focusMinutes: Math.max(1, Number(quickFocusMinutes) || 25),
-      breakMinutes: Math.max(1, Number(quickBreakMinutes) || 5),
-      totalMinutes: Math.max(1, Number(quickTotalMinutes) || 60),
-      sessionStatus: "idle",
-      createdAt: new Date().toISOString(),
-      isTimerOnly: true,
-    };
+      focus: String(Math.max(1, Number(quickFocusMinutes) || 25)),
+      break: String(Math.max(1, Number(quickBreakMinutes) || 5)),
+      total: String(Math.max(1, Number(quickTotalMinutes) || 60)),
+      autostart: "1",
+    });
 
-    setSessions((prev) => [newStudySession, ...prev]);
+    setQuickTimerOpen(false);
     setQuickTitle("");
     setQuickFocusMinutes(25);
     setQuickBreakMinutes(5);
     setQuickTotalMinutes(60);
-    setQuickTimerOpen(false);
+    router.push(`/study/quicktimer?${params.toString()}`);
   };
+
+  // Hide "Mark as Done" when every selected session is already completed.
+  const showMarkDone = selectedSessionIds.some(
+    (id) =>
+      sessions.find((s) => s.id === id)?.sessionStatus !== "completed",
+  );
 
   return (
     <>
@@ -454,6 +457,7 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
         allCount={visibleRows.length}
         isDeleting={isDeleting}
         canEdit={selectedSessionIds.length === 1}
+        showMarkDone={showMarkDone}
         onSelectAll={selectVisibleSessions}
         onDeselectAll={deselectAllSessionsGlobal}
         onEditSelected={() => {

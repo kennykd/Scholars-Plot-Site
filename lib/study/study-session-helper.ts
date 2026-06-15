@@ -1,6 +1,5 @@
 import {
   addMinutes,
-  differenceInHours,
   differenceInMinutes,
   isAfter,
   isBefore,
@@ -10,21 +9,15 @@ import type { StudySession } from "@/types";
 
 export function getInProgressSessions(
   sessions: StudySession[],
-  nowTick: Date,
 ): StudySession[] {
+  // A running or paused timer stays "in progress" no matter how long ago it was
+  // scheduled — an active session should never get yanked into Expired.
   return sessions
-    .filter((studySession) => {
-      if (
-        studySession.sessionStatus !== "running" &&
-        studySession.sessionStatus !== "paused"
-      ) {
-        return false;
-      }
-
-      const scheduledTime = parseISO(studySession.scheduledAt);
-      const hoursPassed = differenceInHours(nowTick, scheduledTime);
-      return hoursPassed < 24;
-    })
+    .filter(
+      (studySession) =>
+        studySession.sessionStatus === "running" ||
+        studySession.sessionStatus === "paused",
+    )
     .sort(
       (a, b) =>
         new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime(),
@@ -69,28 +62,18 @@ export function getExpiredSessions(
 ): StudySession[] {
   return sessions
     .filter((studySession) => {
+      // Completed and running/paused sessions belong elsewhere; only an idle
+      // session that slipped past its scheduled time counts as expired (and it
+      // shows up here and nowhere else).
       if (
-        studySession.sessionStatus === "completed" ||
+        studySession.sessionStatus !== "idle" ||
         studySession.isTimerOnly
       ) {
         return false;
       }
 
       const scheduledTime = parseISO(studySession.scheduledAt);
-
-      if (studySession.sessionStatus === "idle") {
-        return isBefore(scheduledTime, addMinutes(nowTick, -15));
-      }
-
-      if (
-        studySession.sessionStatus === "running" ||
-        studySession.sessionStatus === "paused"
-      ) {
-        const hoursPassed = differenceInHours(nowTick, scheduledTime);
-        return hoursPassed >= 24;
-      }
-
-      return false;
+      return isBefore(scheduledTime, addMinutes(nowTick, -15));
     })
     .sort(
       (a, b) =>
