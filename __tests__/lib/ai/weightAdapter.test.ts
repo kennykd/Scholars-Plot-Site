@@ -16,6 +16,10 @@ jest.mock("@/lib/gemini", () => ({
 
 const mockGenerateContent = geminiFlash.generateContent as jest.Mock;
 
+beforeEach(() => {
+  jest.resetAllMocks();
+});
+
 // ─── Shared Fixtures ──────────────────────────────────────────────────────────
 
 const defaultWeights: CurrentWeights = {
