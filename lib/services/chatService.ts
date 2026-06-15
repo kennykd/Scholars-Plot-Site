@@ -1,6 +1,10 @@
 import prisma from '../prisma';
 import { MessageRole, ActionStatus } from "../generated/prisma/client";
-import { getUserPendingTasks, getUserAvailability } from "./scheduleService";
+import {
+  getUserPendingTasks,
+  getUserAvailability,
+  getUserStudyPreferences,
+} from "./scheduleService";
 import { getCurrentWeights } from "./weightService";
 import { getScheduledSessionsForWeek, getOverloadWarningsForUser } from "./overloadService";
 
@@ -9,11 +13,13 @@ import { getScheduledSessionsForWeek, getOverloadWarningsForUser } from "./overl
 export interface ContextTask {
   task_id: number;
   task_name: string;
+  task_description: string | null;
   task_deadline: string;
   hours_until_deadline: number;
   estimated_minutes: number | null;
   ai_priority_score: number | null;
   grade_weight_percent: number | null;
+  task_priority: number;
   task_status: string;
 }
 
@@ -59,6 +65,12 @@ export interface ChatContext {
     w_ease: number;
     w_urgency: number;
   };
+  study_preferences: {
+    focus_minutes: number;
+    break_minutes: number;
+    total_pomodoros: number;
+    total_minutes: number;
+  };
   behavior_profile: ContextBehaviorProfile | null;
 }
 
@@ -91,13 +103,14 @@ export async function buildChatContext(userId: string): Promise<ChatContext> {
   const { start: weekStart, end: weekEnd } = getWeekBounds(now);
 
   // Fetch all data in parallel
-  const [rawTasks, rawAvailability, rawSessions, rawWarnings, weights, user] =
+  const [rawTasks, rawAvailability, rawSessions, rawWarnings, weights, preferences, user] =
     await Promise.all([
       getUserPendingTasks(userId),
       getUserAvailability(userId),
       getScheduledSessionsForWeek(userId, weekStart, weekEnd),
       getOverloadWarningsForUser(userId, 1),
       getCurrentWeights(userId),
+      getUserStudyPreferences(userId),
       prisma.user.findUnique({
         where: { user_id: userId },
         select: { ai_behavior_profile: true },
@@ -117,6 +130,7 @@ export async function buildChatContext(userId: string): Promise<ChatContext> {
   const pending_tasks: ContextTask[] = taskPool.map((t) => ({
     task_id: t.task_id,
     task_name: t.task_name,
+    task_description: t.task_description,
     task_deadline: new Date(t.task_deadline).toISOString(),
     hours_until_deadline: hoursUntilDeadline(new Date(t.task_deadline), now),
     estimated_minutes: t.estimated_minutes ?? null,
@@ -124,6 +138,7 @@ export async function buildChatContext(userId: string): Promise<ChatContext> {
     grade_weight_percent: t.grade_weight_percent
       ? Number(t.grade_weight_percent)
       : null,
+    task_priority: Number(t.task_priority),
     task_status: t.task_status,
   }));
 
@@ -201,6 +216,7 @@ export async function buildChatContext(userId: string): Promise<ChatContext> {
     scheduled_sessions,
     active_overload_warning,
     formula_weights,
+    study_preferences: preferences,
     behavior_profile,
   };
 }

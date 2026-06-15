@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSession } from '@/lib/firebase/auth';
 import { addDraftAttachmentForUser, AttachmentServiceError } from '@/lib/services/attachmentService';
-import { AiDraftServiceError, generateTaskDraft } from '@/lib/services/aiDraftService';
+import { AiDraftServiceError, generateTaskDraft } from '@/lib/services/aiService';
 import { ensureUserRecordForSession } from '@/lib/services/userService';
 import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services/prismaErrors';
 

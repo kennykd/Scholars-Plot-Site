@@ -37,7 +37,7 @@ jest.mock("@/lib/services/attachmentService", () => ({
   listTaskAttachments: jest.fn(),
 }));
 
-jest.mock("@/lib/services/aiDraftService", () => {
+jest.mock("@/lib/services/aiService", () => {
   class AiDraftServiceError extends Error {
     constructor(code, message) {
       super(message);
@@ -71,7 +71,7 @@ import {
   AI_DRAFT_ERROR_MESSAGES,
   AiDraftServiceError,
   generateStudyTrackDraft,
-} from "@/lib/services/aiDraftService";
+} from "@/lib/services/aiService";
 
 function jsonRequest(body) {
   return {

@@ -2,19 +2,23 @@ import { ChatbotDemo } from "@/components/ai/chatbot";
 
 export default function ChatAssistantPage() {
   return (
-    <div className="p-6 h-[calc(100vh-4rem)] flex flex-col space-y-4">
-      {/* Structural Page Identity Block */}
-      <div>
-        <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">
-          PLOTY
-        </h1>
-        <p className="font-mono text-xs text-muted-foreground mt-1 tracking-widest">
-          YOUR AI STUDY COMPANION
+    <div className="flex h-[calc(100vh-4rem)] flex-col space-y-4 p-6">
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">
+            PLOTY
+          </h1>
+          <p className="mt-1 font-mono text-xs tracking-widest text-muted-foreground">
+            YOUR AI STUDY COMPANION
+          </p>
+        </div>
+        <p className="hidden max-w-sm text-right text-xs leading-5 text-muted-foreground sm:block">
+          Draft tasks and task-linked study sessions without leaving your
+          planning flow.
         </p>
       </div>
 
-      {/* Main Container Workspace */}
-      <div className="flex-1 w-full max-w-4xl mx-auto border border-border bg-card/60 backdrop-blur-md rounded-2xl shadow-xl overflow-hidden">
+      <div className="mx-auto min-h-0 w-full max-w-6xl flex-1 overflow-hidden rounded-lg border border-border bg-card/70 shadow-sm">
         <ChatbotDemo />
       </div>
     </div>
