@@ -33,7 +33,7 @@ export function ChatPanelWrapper({ children }: { children: React.ReactNode }) {
           It now inherits your gorgeous semi-transparent card canvas automatically.
         */}
         <div className="relative w-full h-full rounded-2xl overflow-hidden">
-          <ChatbotDemo />
+          <ChatbotDemo variant="panel" />
         </div>
       </div>
     </div>

@@ -29,7 +29,7 @@ const MAX_HISTORY_MESSAGES = 20;
 const createTaskDraftArgsSchema = z.object({
   title: z.string().min(1).max(100),
   description: z.string().max(4000).optional().nullable(),
-  deadline: z.coerce.date().optional().nullable(),
+  deadline: z.coerce.date(),
   priority: z.coerce.number().min(0.5).max(5).optional().nullable(),
 });
 
@@ -68,7 +68,7 @@ const createTaskDraftDeclaration: FunctionDeclaration = {
         description: "Priority from 0.5 to 5 if it can be inferred.",
       },
     },
-    required: ["title"],
+    required: ["title", "deadline"],
   },
 };
 
@@ -237,7 +237,7 @@ function trackToPlan(taskId: number, track: StudyTrackDraftTrack, index: number)
 async function handleCreateTaskDraft(args: unknown): Promise<ChatAgentResult> {
   const parsed = createTaskDraftArgsSchema.safeParse(args);
   if (!parsed.success) {
-    const text = "I can draft that task, but I need at least a clear title first.";
+    const text = "I can draft that task, but I need a clear title and deadline first.";
     return { text, action: null, rawResponse: text };
   }
 
@@ -256,7 +256,7 @@ async function handleCreateTaskDraft(args: unknown): Promise<ChatAgentResult> {
       payload: {
         title: draft.title,
         description: draft.description,
-        deadline: parsed.data.deadline?.toISOString() ?? null,
+        deadline: parsed.data.deadline.toISOString(),
         priority: draft.priority,
         reasoning: draft.reasoning,
       },

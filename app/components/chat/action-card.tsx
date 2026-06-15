@@ -1,284 +1,343 @@
 "use client";
 
-import { useState } from "react";
-import type { ActionStatus } from "../../../lib/generated/prisma/client";
+import { useEffect, useMemo, useState } from "react";
+import {
+  AlertTriangle,
+  BookOpen,
+  Calendar,
+  Check,
+  Clock,
+  FileText,
+  Loader2,
+  Sparkles,
+  X,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+type ActionStatus = "none" | "pending" | "confirmed" | "dismissed";
+type ActionType = "CREATE_TASK_DRAFT" | "CREATE_STUDY_TRACK_DRAFT";
 
-export interface ProposedSession {
-  task_id: number;
-  task_name: string;
-  study_session_name: string;
-  study_session_scheduled_at: Date;
+export interface TaskDraftPayload {
+  title: string;
+  description?: string | null;
+  deadline?: string | null;
+  priority?: number | null;
+  reasoning?: string | null;
+}
+
+export interface StudyTrackPlan {
+  client_plan_id: string;
+  title: string;
+  start_date: string;
+  repeat_enabled?: boolean;
+  repeat_every?: number;
+  repeat_unit?: "days" | "weeks";
+  time: string;
   focus_minutes: number;
   break_minutes: number;
   total_pomodoros: number;
-  total_minutes: number;
+  notes?: string;
+  description_as_checklist?: boolean;
 }
 
-export interface StudyPlanPayload {
-  proposed_sessions: ProposedSession[];
-  warnings: string[];
-  total_scheduled_minutes: number;
-}
-
-export interface TaskPayload {
-  title: string;
-  description: string | null;
-  deadline: string;
-  priority?: number;
+export interface StudyTrackDraftPayload {
+  task_id: number;
+  task_title: string;
+  plans: StudyTrackPlan[];
+  warnings?: string[];
+  reasoning?: string | null;
 }
 
 export interface ActionCardProps {
   messageId: number;
   conversationId: number;
-  userId: string;
-  actionType: "CREATE_STUDY_PLAN" | "CREATE_TASK" | "UPDATE_SCHEDULE";
-  payload: StudyPlanPayload | TaskPayload | Record<string, unknown>;
+  actionType: ActionType;
+  payload: TaskDraftPayload | StudyTrackDraftPayload | Record<string, unknown>;
   initialStatus: ActionStatus;
+  onStatusChange?: (messageId: number, status: ActionStatus) => void;
 }
 
-// ─── ConfirmBar ───────────────────────────────────────────────────────────────
-
-interface ConfirmBarProps {
-  onConfirm: () => void;
-  onDismiss: () => void;
-  loading: boolean;
-  status: ActionStatus;
+function isTaskDraftPayload(payload: ActionCardProps["payload"]): payload is TaskDraftPayload {
+  return typeof (payload as TaskDraftPayload).title === "string";
 }
 
-function ConfirmBar({ onConfirm, onDismiss, loading, status }: ConfirmBarProps) {
-  if (status === "confirmed") {
-    return (
-      <div className="confirm-bar confirm-bar--confirmed">
-        <span className="confirm-bar__icon">✓</span>
-        <span>Done</span>
-      </div>
-    );
-  }
-
-  if (status === "dismissed") {
-    return (
-      <div className="confirm-bar confirm-bar--dismissed">
-        <span>Dismissed</span>
-      </div>
-    );
-  }
-
+function isStudyDraftPayload(
+  payload: ActionCardProps["payload"],
+): payload is StudyTrackDraftPayload {
   return (
-    <div className="confirm-bar">
-      <button
-        className="confirm-bar__btn confirm-bar__btn--dismiss"
-        onClick={onDismiss}
-        disabled={loading}
-        aria-label="Dismiss this suggestion"
-      >
-        Dismiss
-      </button>
-      <button
-        className="confirm-bar__btn confirm-bar__btn--confirm"
-        onClick={onConfirm}
-        disabled={loading}
-        aria-label="Confirm and apply this suggestion"
-      >
-        {loading ? "Applying..." : "Apply"}
-      </button>
-    </div>
+    typeof (payload as StudyTrackDraftPayload).task_id === "number" &&
+    Array.isArray((payload as StudyTrackDraftPayload).plans)
   );
 }
 
-// ─── StudyPlanCard ────────────────────────────────────────────────────────────
-
-interface StudyPlanCardProps {
-  payload: StudyPlanPayload;
-}
-
-function StudyPlanCard({ payload }: StudyPlanCardProps) {
-  const { proposed_sessions, warnings, total_scheduled_minutes } = payload;
-
-  return (
-    <div className="action-card__body">
-      <div className="study-plan__meta">
-        <span className="study-plan__total">
-          {Math.round(total_scheduled_minutes / 60)}h {total_scheduled_minutes % 60}m scheduled
-        </span>
-        <span className="study-plan__count">
-          {proposed_sessions.length} session{proposed_sessions.length !== 1 ? "s" : ""}
-        </span>
-      </div>
-
-      {warnings.length > 0 && (
-        <ul className="study-plan__warnings">
-          {warnings.map((w, i) => (
-            <li key={i} className="study-plan__warning">
-              {w}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <ul className="study-plan__sessions">
-        {proposed_sessions.map((session, i) => {
-          const date = new Date(session.study_session_scheduled_at);
-          const dateLabel = date.toLocaleDateString("en-ID", {
-            weekday: "short",
-            month: "short",
-            day: "numeric",
-          });
-          const timeLabel = date.toLocaleTimeString("en-ID", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-          });
-
-          return (
-            <li key={i} className="study-plan__session">
-              <div className="study-plan__session-header">
-                <span className="study-plan__session-name">{session.study_session_name}</span>
-                <span className="study-plan__session-task">{session.task_name}</span>
-              </div>
-              <div className="study-plan__session-meta">
-                <span>{dateLabel} · {timeLabel}</span>
-                <span>{session.total_minutes} min · {session.total_pomodoros} pomodoros</span>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
-}
-
-// ─── TaskCard ─────────────────────────────────────────────────────────────────
-
-interface TaskCardProps {
-  payload: TaskPayload;
-}
-
-function TaskCard({ payload }: TaskCardProps) {
-  const { title, description, deadline, priority } = payload;
-
-  const deadlineDate = new Date(deadline);
-  const deadlineLabel = deadlineDate.toLocaleDateString("en-ID", {
-    weekday: "short",
-    year: "numeric",
+function formatDate(value?: string | null) {
+  if (!value) return "Missing";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Invalid";
+  return date.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
+    year: "numeric",
   });
+}
 
-  const priorityLabel = (p?: number) => {
-    if (p === undefined || p === null) return "Not set";
-    if (p >= 4) return "High";
-    if (p >= 2.5) return "Medium";
-    return "Low";
-  };
+function priorityLabel(priority?: number | null) {
+  if (priority === undefined || priority === null) return "Not set";
+  if (priority >= 4) return "High";
+  if (priority >= 2.5) return "Medium";
+  return "Low";
+}
 
-  const priorityText = priorityLabel(priority);
+function statusLabel(status: ActionStatus) {
+  if (status === "confirmed") return "Done";
+  if (status === "dismissed") return "Dismissed";
+  return "Pending";
+}
+
+function TaskDraftCard({ payload }: { payload: TaskDraftPayload }) {
+  const priority = priorityLabel(payload.priority);
 
   return (
-    <div className="action-card__body">
-      <div className="task-card__row">
-        <span className="task-card__label">Task</span>
-        <span className="task-card__value task-card__value--name">{title}</span>
-      </div>
-      {description && (
-        <div className="task-card__row">
-          <span className="task-card__label">Notes</span>
-          <span className="task-card__value">{description}</span>
+    <div className="space-y-3">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent">
+          <FileText className="h-4 w-4" />
         </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-foreground">
+            {payload.title}
+          </p>
+          {payload.description && (
+            <p className="mt-1 line-clamp-3 text-xs leading-5 text-muted-foreground">
+              {payload.description}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <Badge variant="outline" className="justify-start gap-1.5 font-mono text-[10px]">
+          <Calendar className="h-3 w-3" />
+          {formatDate(payload.deadline)}
+        </Badge>
+        <Badge
+          variant="outline"
+          className={cn(
+            "justify-start font-mono text-[10px]",
+            priority === "High" && "border-red-500/30 bg-red-500/10 text-red-500",
+            priority === "Medium" &&
+              "border-yellow-500/30 bg-yellow-500/10 text-yellow-600 dark:text-yellow-300",
+            priority === "Low" && "border-green-500/30 bg-green-500/10 text-green-600",
+          )}
+        >
+          Priority {priority}
+        </Badge>
+      </div>
+
+      {payload.reasoning && (
+        <p className="rounded-md bg-muted/50 px-3 py-2 text-xs leading-5 text-muted-foreground">
+          {payload.reasoning}
+        </p>
       )}
-      <div className="task-card__row">
-        <span className="task-card__label">Deadline</span>
-        <span className="task-card__value">{deadlineLabel}</span>
-      </div>
-      <div className="task-card__row">
-        <span className="task-card__label">Priority</span>
-        <span className={`task-card__value task-card__priority task-card__priority--${priorityText.toLowerCase().replace(" ", "-")}`}>
-          {priorityText}
-        </span>
-      </div>
     </div>
   );
 }
 
-// ─── ActionCard (base) ────────────────────────────────────────────────────────
+function StudyTrackDraftCard({ payload }: { payload: StudyTrackDraftPayload }) {
+  const totalMinutes = useMemo(
+    () =>
+      payload.plans.reduce(
+        (sum, plan) =>
+          sum + plan.focus_minutes * plan.total_pomodoros + plan.break_minutes * Math.max(0, plan.total_pomodoros - 1),
+        0,
+      ),
+    [payload.plans],
+  );
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-500/10 text-blue-500">
+          <BookOpen className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-foreground">
+            {payload.task_title}
+          </p>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            <Badge variant="secondary" className="font-mono text-[10px]">
+              {payload.plans.length} session{payload.plans.length === 1 ? "" : "s"}
+            </Badge>
+            <Badge variant="secondary" className="gap-1 font-mono text-[10px]">
+              <Clock className="h-3 w-3" />
+              {totalMinutes}m
+            </Badge>
+          </div>
+        </div>
+      </div>
+
+      {payload.warnings && payload.warnings.length > 0 && (
+        <div className="space-y-1 rounded-md border border-yellow-500/20 bg-yellow-500/10 p-2">
+          {payload.warnings.map((warning) => (
+            <p
+              key={warning}
+              className="flex gap-1.5 text-xs leading-5 text-yellow-700 dark:text-yellow-300"
+            >
+              <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+              <span>{warning}</span>
+            </p>
+          ))}
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {payload.plans.map((plan) => (
+          <div
+            key={plan.client_plan_id}
+            className="rounded-md border border-border/70 bg-background/50 px-3 py-2"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <p className="min-w-0 truncate text-xs font-semibold text-foreground">
+                {plan.title}
+              </p>
+              <Badge variant="outline" className="shrink-0 font-mono text-[10px]">
+                {plan.start_date} {plan.time}
+              </Badge>
+            </div>
+            <div className="mt-1 flex flex-wrap gap-1.5 text-[11px] text-muted-foreground">
+              <span>{plan.focus_minutes}m focus</span>
+              <span>{plan.break_minutes}m break</span>
+              <span>{plan.total_pomodoros} rounds</span>
+              {plan.repeat_enabled && (
+                <span>
+                  repeats every {plan.repeat_every ?? 1} {plan.repeat_unit ?? "weeks"}
+                </span>
+              )}
+            </div>
+            {plan.notes && (
+              <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">
+                {plan.notes}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {payload.reasoning && (
+        <p className="rounded-md bg-muted/50 px-3 py-2 text-xs leading-5 text-muted-foreground">
+          {payload.reasoning}
+        </p>
+      )}
+    </div>
+  );
+}
 
 export function ActionCard({
   messageId,
   conversationId,
-  userId,
   actionType,
   payload,
   initialStatus,
+  onStatusChange,
 }: ActionCardProps) {
   const [status, setStatus] = useState<ActionStatus>(initialStatus);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const titleMap: Record<string, string> = {
-    CREATE_STUDY_PLAN: "Study Plan",
-    CREATE_TASK: "New Task",
-    UPDATE_SCHEDULE: "Schedule Update",
-  };
+  useEffect(() => {
+    setStatus(initialStatus);
+  }, [initialStatus]);
+
+  const title =
+    actionType === "CREATE_STUDY_TRACK_DRAFT" ? "Study Draft" : "Task Draft";
+  const canApply =
+    status === "pending" &&
+    ((actionType === "CREATE_TASK_DRAFT" &&
+      isTaskDraftPayload(payload) &&
+      Boolean(payload.deadline)) ||
+      (actionType === "CREATE_STUDY_TRACK_DRAFT" &&
+        isStudyDraftPayload(payload) &&
+        payload.plans.length > 0));
 
   async function patchMessageStatus(nextStatus: "confirmed" | "dismissed") {
-    await fetch(`/api/chat/${conversationId}`, {
+    const response = await fetch(`/api/chat/${conversationId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        user_id: userId,
         message_id: messageId,
         action_status: nextStatus,
       }),
     });
+
+    if (!response.ok) {
+      throw new Error("Could not save action status.");
+    }
+  }
+
+  async function applyTaskDraft(taskPayload: TaskDraftPayload) {
+    if (!taskPayload.deadline) {
+      throw new Error("This task draft needs a deadline before it can be applied.");
+    }
+
+    const body: Record<string, unknown> = {
+      title: taskPayload.title,
+      deadline: taskPayload.deadline,
+    };
+
+    if (taskPayload.description) body.description = taskPayload.description;
+    if (taskPayload.priority !== undefined && taskPayload.priority !== null) {
+      body.priority = taskPayload.priority;
+    }
+
+    const response = await fetch("/api/task", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to create task.");
+    }
+  }
+
+  async function applyStudyDraft(studyPayload: StudyTrackDraftPayload) {
+    const response = await fetch("/api/study/batch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        task_id: studyPayload.task_id,
+        plans: studyPayload.plans,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to create study sessions.");
+    }
   }
 
   async function handleConfirm() {
+    if (!canApply) return;
+
     setLoading(true);
     setError(null);
 
     try {
-      if (actionType === "CREATE_STUDY_PLAN") {
-        // Call the schedule confirm endpoint with the proposed sessions
-        const res = await fetch("/api/study", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            user_id: userId,
-            sessions: (payload as StudyPlanPayload).proposed_sessions,
-          }),
-        });
-        if (!res.ok) throw new Error("Failed to confirm study plan.");
+      if (actionType === "CREATE_TASK_DRAFT" && isTaskDraftPayload(payload)) {
+        await applyTaskDraft(payload);
       }
 
-      if (actionType === "CREATE_TASK") {
-        const taskPayload = payload as TaskPayload;
-
-        // /api/task's createTaskSchema expects `description` as optional
-        // (string | undefined), not nullable — so a null value must be
-        // omitted entirely rather than sent as null.
-        const body: Record<string, unknown> = {
-          title: taskPayload.title,
-          deadline: taskPayload.deadline,
-        };
-        if (taskPayload.description) {
-          body.description = taskPayload.description;
-        }
-        if (taskPayload.priority !== undefined && taskPayload.priority !== null) {
-          body.priority = taskPayload.priority;
-        }
-
-        const res = await fetch("/api/task", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-        if (!res.ok) throw new Error("Failed to create task.");
+      if (
+        actionType === "CREATE_STUDY_TRACK_DRAFT" &&
+        isStudyDraftPayload(payload)
+      ) {
+        await applyStudyDraft(payload);
       }
 
-      // Patch the message status after the action succeeds
       await patchMessageStatus("confirmed");
       setStatus("confirmed");
+      onStatusChange?.(messageId, "confirmed");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -288,44 +347,90 @@ export function ActionCard({
 
   async function handleDismiss() {
     setLoading(true);
+    setError(null);
+
     try {
       await patchMessageStatus("dismissed");
       setStatus("dismissed");
-    } catch {
-      setError("Failed to dismiss.");
+      onStatusChange?.(messageId, "dismissed");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to dismiss draft.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className={`action-card action-card--${actionType.toLowerCase().replace(/_/g, "-")} action-card--${status}`}>
-      <div className="action-card__header">
-        <span className="action-card__type-label">{titleMap[actionType] ?? actionType}</span>
+    <div
+      className={cn(
+        "rounded-lg border border-border/70 bg-card shadow-sm",
+        status !== "pending" && "opacity-75",
+      )}
+    >
+      <div className="flex items-center justify-between gap-3 border-b border-border/60 px-3 py-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <Sparkles className="h-3.5 w-3.5 shrink-0 text-accent" />
+          <span className="truncate font-mono text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+            {title}
+          </span>
+        </div>
+        <Badge variant="outline" className="shrink-0 font-mono text-[10px]">
+          {statusLabel(status)}
+        </Badge>
       </div>
 
-      {actionType === "CREATE_STUDY_PLAN" && (
-        <StudyPlanCard payload={payload as StudyPlanPayload} />
+      <div className="p-3">
+        {actionType === "CREATE_TASK_DRAFT" && isTaskDraftPayload(payload) && (
+          <TaskDraftCard payload={payload} />
+        )}
+        {actionType === "CREATE_STUDY_TRACK_DRAFT" &&
+          isStudyDraftPayload(payload) && <StudyTrackDraftCard payload={payload} />}
+      </div>
+
+      {error && (
+        <p className="mx-3 mb-3 rounded-md border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-600">
+          {error}
+        </p>
       )}
-      {actionType === "CREATE_TASK" && (
-        <TaskCard payload={payload as TaskPayload} />
-      )}
-      {actionType === "UPDATE_SCHEDULE" && (
-        <div className="action-card__body">
-          {((payload as any).suggestions ?? []).map((s: string, i: number) => (
-            <p key={i} className="update-schedule__suggestion">{s}</p>
-          ))}
+
+      {status === "pending" ? (
+        <div className="flex items-center gap-2 border-t border-border/60 px-3 py-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleDismiss}
+            disabled={loading}
+            className="h-8 flex-1 gap-1.5 font-mono text-xs"
+          >
+            <X className="h-3.5 w-3.5" />
+            Dismiss
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            onClick={handleConfirm}
+            disabled={loading || !canApply}
+            className="h-8 flex-1 gap-1.5 bg-accent font-mono text-xs text-accent-foreground hover:bg-accent/90"
+          >
+            {loading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Check className="h-3.5 w-3.5" />
+            )}
+            Apply
+          </Button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 border-t border-border/60 px-3 py-2 text-xs text-muted-foreground">
+          {status === "confirmed" ? (
+            <Check className="h-3.5 w-3.5 text-green-500" />
+          ) : (
+            <X className="h-3.5 w-3.5" />
+          )}
+          <span>{statusLabel(status)}</span>
         </div>
       )}
-
-      {error && <p className="action-card__error">{error}</p>}
-
-      <ConfirmBar
-        onConfirm={handleConfirm}
-        onDismiss={handleDismiss}
-        loading={loading}
-        status={status}
-      />
     </div>
   );
 }
