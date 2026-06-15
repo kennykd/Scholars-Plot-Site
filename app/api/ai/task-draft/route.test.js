@@ -25,7 +25,7 @@ jest.mock("@/lib/services/attachmentService", () => ({
   addDraftAttachmentForUser: jest.fn(),
 }));
 
-jest.mock("@/lib/services/aiDraftService", () => {
+jest.mock("@/lib/services/aiService", () => {
   class AiDraftServiceError extends Error {
     constructor(code, message) {
       super(message);
@@ -53,7 +53,7 @@ import {
   AI_DRAFT_ERROR_MESSAGES,
   AiDraftServiceError,
   generateTaskDraft,
-} from "@/lib/services/aiDraftService";
+} from "@/lib/services/aiService";
 
 function formRequest(formData) {
   return {

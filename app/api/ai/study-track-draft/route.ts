@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSession } from '@/lib/firebase/auth';
-import { AiDraftServiceError, generateStudyTrackDraft } from '@/lib/services/aiDraftService';
+import { AiDraftServiceError, generateStudyTrackDraft } from '@/lib/services/aiService';
 import { listTaskAttachments, AttachmentServiceError } from '@/lib/services/attachmentService';
 import { getTaskById, TaskServiceError } from '@/lib/services/taskService';
 import {
