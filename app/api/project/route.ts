@@ -55,10 +55,6 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *           items:
  *             type: string
  *           example: ["spec.pdf"]
- *         reminder:
- *           type: string
- *           enum: [daily, every-3-days, weekly, none]
- *           example: daily
  *         createdAt:
  *           type: string
  *           format: date-time

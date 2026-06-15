@@ -249,6 +249,81 @@
   }
 }
 
+/* Fine secondary grid — layered over .blueprint-grid for drafting depth */
+.blueprint-grid-fine {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 15px 15px;
+}
+
+/* ============================================================
+   LANDING / BLUEPRINT DRAFTING UTILITIES
+   ============================================================ */
+
+/* Smooth in-page anchor scrolling (nav links -> sections) */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Offset anchored sections so they clear the sticky nav */
+.section-anchor {
+  scroll-margin-top: 6rem;
+}
+
+/* Drafting corner ticks — wraps a bordered box in surveyor crop marks */
+.blueprint-ticks {
+  position: relative;
+}
+.blueprint-ticks::before,
+.blueprint-ticks::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: rgba(255, 77, 46, 0.6);
+  border-style: solid;
+  pointer-events: none;
+}
+.blueprint-ticks::before {
+  top: -1px;
+  left: -1px;
+  border-width: 2px 0 0 2px;
+}
+.blueprint-ticks::after {
+  bottom: -1px;
+  right: -1px;
+  border-width: 0 2px 2px 0;
+}
+
+/* Dashed dimension/measurement line, drafting style */
+.dimension-line {
+  border-top: 1px dashed rgba(255, 255, 255, 0.25);
+}
+
+/* Slow drift used by blueprint background accents */
+@keyframes blueprint-drift {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(12px, -12px);
+  }
+}
+.blueprint-drift {
+  animation: blueprint-drift 14s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .blueprint-drift {
+    animation: none;
+  }
+}
+
 /* ============================================================
    GRAIN OVERLAY
    ============================================================ */

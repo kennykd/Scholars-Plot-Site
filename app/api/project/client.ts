@@ -16,7 +16,6 @@ export type StoredProjectTask = {
   title: string;
   description?: string;
   attachments?: string[];
-  reminder?: string;
   priority: string;
   status: ProjectTaskStatus;
   assignedTo?: string;
@@ -88,7 +87,6 @@ export function serializeProject(apiProject: ApiProject): StoredProject {
     title: task.task_name,
     description: task.task_description || undefined,
     attachments: [],
-    reminder: "none" as const,
     priority: priorityFromNumber(task.task_priority),
     status: statusFromTaskStatus(task.task_status),
     assignedTo: task.task_users?.[0]?.user_id || undefined,
@@ -124,7 +122,6 @@ export function serializeProjectTask(task: ApiProjectTask): StoredProjectTask {
     title: task.task_name,
     description: task.task_description || undefined,
     attachments: [],
-    reminder: "none" as const,
     priority: priorityFromNumber(task.task_priority),
     status: statusFromTaskStatus(task.task_status),
     assignedTo: task.task_users?.[0]?.user_id || undefined,
@@ -326,7 +323,6 @@ export async function createProjectTaskApi(
   description?: string,
   assignedTo?: string,
   attachmentIds?: number[],
-  reminder?: string,
 ): Promise<StoredProjectTask> {
   const projectNumId = projectId.replace("project-", "");
   const res = await fetch("/api/project/task", {
@@ -340,7 +336,6 @@ export async function createProjectTaskApi(
       status: "Pending",
       assignedTo,
       ...(attachmentIds?.length ? { attachmentIds } : {}),
-      reminder,
     }),
   });
 

@@ -133,10 +133,6 @@ import { getSession } from '@/lib/firebase/auth';
  *           items:
  *             type: string
  *           example: ["notes.pdf"]
- *         reminder:
- *           type: string
- *           enum: [daily, every-3-days, weekly, none]
- *           example: "daily"
  *     CreateStudyInput:
  *       type: object
  *       required:

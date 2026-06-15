@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createStudySchema } from '../../../lib/validation/study';
-import { getStudySessionsForUser, createStudySessionForUser } from '@/lib/services/studySessionService';
+import { getStudySessionsForUser, createStudySessionForUser, StudySessionServiceError } from '@/lib/services/studySessionService';
 import { getSession } from '@/lib/firebase/auth';
+import { TaskServiceError } from '@/lib/services/taskService';
 import { ensureUserRecordForSession } from '@/lib/services/userService';
 import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services/prismaErrors';
 
@@ -226,10 +227,14 @@ export async function POST(request: Request) {
 
     await ensureUserRecordForSession(session);
 
-    const studySession = await createStudySessionForUser(userId, parsed.data);
+    const { studySession, sessionIds } = await createStudySessionForUser(userId, parsed.data);
 
-    return NextResponse.json({ message: 'Study session created successfully', studySession }, { status: 201 });
+    return NextResponse.json({ message: 'Study session created successfully', studySession, sessionIds }, { status: 201 });
   } catch (error) {
+    if (error instanceof TaskServiceError || error instanceof StudySessionServiceError) {
+      return NextResponse.json({ message: error.message }, { status: error.status });
+    }
+
     if (isPrismaForeignKeyError(error)) {
       console.error('[api/study] Foreign key error while creating study session:', error);
       return NextResponse.json({ message: foreignKeyRepairMessage() }, { status: 409 });

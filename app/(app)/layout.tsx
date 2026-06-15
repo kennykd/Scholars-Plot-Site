@@ -18,12 +18,12 @@ export default async function AppLayout({
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex min-h-dvh">
       {/* Desktop sidebar */}
       <Sidebar user={user} />
 
       {/* Main content area */}
-      <main className="flex-1 overflow-y-auto bg-background relative">
+      <main className="relative min-w-0 flex-1 bg-background">
         <AuthProvider initialUser={user}>
           <div className="min-h-full pb-16 lg:pb-0">
             {/* Wrap your layout content with the toggleable chatbot layer */}

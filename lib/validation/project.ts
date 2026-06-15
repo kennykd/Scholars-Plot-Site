@@ -74,8 +74,6 @@ export const createProjectTaskSchema = z.object({
   attachmentIds: z.array(z.coerce.number().int().positive())
   .max(20)
   .optional(),
-  reminder: z.enum(['daily', 'every-3-days', 'weekly', 'none'])
-  .optional(),
 });
 
 export const updateProjectTaskSchema = z.object({
@@ -93,8 +91,6 @@ export const updateProjectTaskSchema = z.object({
   assignedTo: z.string()
   .optional(),
   attachments: z.array(z.string())
-  .optional(),
-  reminder: z.enum(['daily', 'every-3-days', 'weekly', 'none'])
   .optional(),
 });
 

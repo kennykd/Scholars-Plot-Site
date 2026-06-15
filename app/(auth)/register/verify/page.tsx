@@ -128,7 +128,7 @@ export default function RegisterVerifyPage() {
 
   if (isProcessingLink) {
     return (
-      <div className="w-full max-w-md mx-auto space-y-8">
+      <div className="min-h-screen w-full max-w-md mx-auto flex flex-col justify-center space-y-8 px-4 py-12">
         <div className="bg-[#0f1a66]/90 backdrop-blur-sm rounded-2xl p-8 shadow-2xl text-center min-h-87.5 flex flex-col justify-center items-center border border-white/10">
           <p className="font-mono text-sm tracking-widest animate-pulse text-[#FF4D2E]">
             INITIALIZING VERIFICATION PROCESS...
@@ -144,7 +144,7 @@ export default function RegisterVerifyPage() {
         
         <div className="text-center space-y-2 mb-8">
           <h1 className="font-display text-4xl font-extrabold tracking-tight text-white">
-            SCHOLAR&apos;S PLOT
+            SCHOLAR&apos;S PLOT <span className="text-[#FF4D2E]">SITE</span>
           </h1>
           <p className="font-mono text-xs tracking-[0.2em] text-white/60">
             PENDING VERIFICATION

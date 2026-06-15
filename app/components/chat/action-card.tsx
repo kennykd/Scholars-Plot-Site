@@ -117,15 +117,15 @@ function TaskDraftCard({ payload }: { payload: TaskDraftPayload }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <Badge variant="outline" className="justify-start gap-1.5 font-mono text-[10px]">
+      <div className="flex flex-wrap justify-between gap-2">
+        <Badge variant="outline" className="justify-start gap-1.5 font-mono text-[10px] flex-1">
           <Calendar className="h-3 w-3" />
           {formatDate(payload.deadline)}
         </Badge>
         <Badge
           variant="outline"
           className={cn(
-            "justify-start font-mono text-[10px]",
+            "justify-end font-mono text-[10px] flex-1",
             priority === "High" && "border-red-500/30 bg-red-500/10 text-red-500",
             priority === "Medium" &&
               "border-yellow-500/30 bg-yellow-500/10 text-yellow-600 dark:text-yellow-300",

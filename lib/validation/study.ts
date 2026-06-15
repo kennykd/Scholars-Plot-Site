@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+const legacyRepeatSchema = z.enum(['none', 'weekly', 'biweekly']);
+const repeatUnitSchema = z.enum(['days', 'weeks']);
+
 export const createStudySchema = z.object({
   study_session_name: z.string()
   .min(1, 'Study session name is required')
@@ -18,8 +21,10 @@ export const createStudySchema = z.object({
   total_minutes: z.coerce.number()
   .int('Total minutes must be a whole number')
   .min(1, 'Total minutes must be at least 1 minute'),
-  task_id: z.number().int().optional(),
-  attachment_id: z.number().int().optional(),
+  // A study session can stand on its own, so the task link is optional AND may be
+  // explicitly null (the client sends null when no task is selected).
+  task_id: z.number().int().positive().nullish(),
+  attachment_id: z.number().int().positive().nullish(),
   checklist_json: z.array(z.object({
     id: z.uuid(),
     text: z.string()
@@ -30,14 +35,56 @@ export const createStudySchema = z.object({
   reminders: z.array(z.coerce.number()
     .int('Reminder value must be a whole number')
     .min(0, 'Reminder value cannot be negative')).optional(),
+  // Optional batch-style recurrence. Repeats require a linked task so the
+  // generated series can stop at that task's deadline.
+  repeat_enabled: z.boolean().optional(),
+  repeat_every: z.coerce.number()
+    .int('Repeat interval must be a whole number')
+    .optional(),
+  repeat_unit: repeatUnitSchema.optional(),
   study_session_scheduled_at: z.coerce.date()
   .refine((date) => date >= new Date(),
     { message: "Scheduled time must be in the future" }
   )
-});
+})
+  .superRefine((data, ctx) => {
+    if (!data.repeat_enabled) return;
 
-const legacyRepeatSchema = z.enum(['none', 'weekly', 'biweekly']);
-const repeatUnitSchema = z.enum(['days', 'weeks']);
+    if (!data.task_id) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['task_id'],
+        message: 'Choose a task before repeating a study session',
+      });
+    }
+
+    if (!data.repeat_unit) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['repeat_unit'],
+        message: 'Choose whether to repeat by days or weeks',
+      });
+    }
+
+    const every = Number(data.repeat_every);
+    const finiteEvery = Number.isFinite(every) ? every : 0;
+
+    if (data.repeat_unit === 'days' && (finiteEvery < 1 || finiteEvery > 30)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['repeat_every'],
+        message: 'Day repeat interval must be between 1 and 30',
+      });
+    }
+
+    if (data.repeat_unit === 'weeks' && (finiteEvery < 1 || finiteEvery > 12)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['repeat_every'],
+        message: 'Week repeat interval must be between 1 and 12',
+      });
+    }
+  });
 
 const studySessionPlanSchema = z.object({
   client_plan_id: z.string().min(1, 'Plan id is required'),
@@ -157,6 +204,8 @@ export const updateStudySchema = z.object({
     { message: "Scheduled time must be in the future" }
   )
   .optional(),
+  // Allow linking/relinking (positive int) or unlinking (null) the task on edit.
+  task_id: z.number().int().positive().nullish(),
   status: z.enum(['idle', 'running', 'paused', 'completed'])
   .optional(),
   started_at: z.coerce.date()

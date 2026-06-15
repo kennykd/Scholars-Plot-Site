@@ -107,15 +107,28 @@ function parseLocalDateString(value: string) {
   return date;
 }
 
+// Convert a repeat cadence into the number of days between occurrences. Shared
+// by the batch planner and the single/standalone create flow so both expand
+// recurrence identically (1-30 days, 1-12 weeks).
+function repeatStepDays(
+  enabled: boolean | undefined,
+  every: number | undefined,
+  unit: "days" | "weeks" | undefined,
+) {
+  if (!enabled) return 0;
+
+  const repeatEvery = Math.round(Number(every) || 1);
+
+  if (unit === "days") {
+    return Math.max(1, Math.min(30, repeatEvery));
+  }
+
+  return Math.max(1, Math.min(12, repeatEvery)) * 7;
+}
+
 function getRepeatDays(plan: CreateStudyBatchInput["plans"][number]) {
   if (plan.repeat_enabled === true) {
-    const repeatEvery = Math.round(Number(plan.repeat_every) || 1);
-
-    if (plan.repeat_unit === "days") {
-      return Math.max(1, Math.min(30, repeatEvery));
-    }
-
-    return Math.max(1, Math.min(12, repeatEvery)) * 7;
+    return repeatStepDays(true, plan.repeat_every, plan.repeat_unit);
   }
 
   if (plan.repeat_enabled === false) return 0;
@@ -123,6 +136,23 @@ function getRepeatDays(plan: CreateStudyBatchInput["plans"][number]) {
   if (plan.repeat === "weekly") return 7;
   if (plan.repeat === "biweekly") return 14;
   return 0;
+}
+
+function expandOccurrences(first: Date, stepDays: number, bound: Date) {
+  if (stepDays <= 0) return [first];
+
+  const occurrences: Date[] = [];
+  const cursor = new Date(first);
+
+  while (
+    occurrences.length < MAX_GENERATED_SESSIONS &&
+    cursor <= bound
+  ) {
+    occurrences.push(new Date(cursor));
+    cursor.setDate(cursor.getDate() + stepDays);
+  }
+
+  return occurrences.length > 0 ? occurrences : [first];
 }
 
 function generateSessionsFromPlans(
@@ -215,40 +245,86 @@ export async function createStudySessionForUser(
     reminders,
     task_id,
     attachment_id,
+    repeat_enabled,
+    repeat_every,
+    repeat_unit,
   } = payload;
 
   const reminderMinutes = (reminders ?? []).map((reminderMinute: number) => Math.max(0, reminderMinute));
+  const reminderEnabled = reminder_enabled ?? reminderMinutes.length > 0;
 
-  const studySession = await prisma.studySession.create({
-    data: {
-      study_session_name,
-      study_session_description,
-      focus_minutes,
-      break_minutes,
-      total_pomodoros,
-      total_minutes,
-      study_session_scheduled_at,
-      checklist_json: checklist_json === null ? Prisma.DbNull : checklist_json,
-      study_session_reminder_enabled: reminder_enabled ?? reminderMinutes.length > 0,
-      study_session_remind_at_minutes: reminderMinutes,
-      study_session_user: {
-        create: {
-          user_id: userId,
-          task_id: task_id || null,
-          attachment_id: attachment_id || null,
-        },
-      },
+  if (repeat_enabled && !task_id) {
+    throw new StudySessionServiceError(
+      400,
+      "Choose a task before repeating a study session",
+    );
+  }
+
+  // Resolving the task blocks linking to a task the user does not own and
+  // supplies the deadline used to bound repeats.
+  let bound: Date | null = null;
+  if (task_id) {
+    const task = await requireTaskAccess(task_id, userId);
+    bound = task.task_deadline;
+  }
+
+  const stepDays = repeatStepDays(repeat_enabled, repeat_every, repeat_unit);
+  const occurrences =
+    stepDays > 0 && bound
+      ? expandOccurrences(study_session_scheduled_at, stepDays, bound)
+      : [study_session_scheduled_at];
+
+  const include = {
+    study_session_user: true,
+    study_session_attachments: {
+      where: { user_id: userId },
+      include: { attachment: true },
     },
-    include: {
-      study_session_user: true,
-      study_session_attachments: {
-        where: { user_id: userId },
-        include: { attachment: true },
+  } satisfies Prisma.StudySessionInclude;
+
+  const dataFor = (scheduledAt: Date): Prisma.StudySessionUncheckedCreateInput => ({
+    study_session_name,
+    study_session_description,
+    focus_minutes,
+    break_minutes,
+    total_pomodoros,
+    total_minutes,
+    study_session_scheduled_at: scheduledAt,
+    checklist_json: checklist_json === null ? Prisma.DbNull : checklist_json,
+    study_session_reminder_enabled: reminderEnabled,
+    study_session_remind_at_minutes: reminderMinutes,
+    study_session_user: {
+      create: {
+        user_id: userId,
+        task_id: task_id || null,
+        attachment_id: attachment_id || null,
       },
     },
   });
 
-  return studySession;
+  // The common (non-repeating) case stays a single create; repeats fan out
+  // inside one transaction so a failure rolls back the whole series.
+  if (occurrences.length === 1) {
+    const studySession = await prisma.studySession.create({
+      data: dataFor(occurrences[0]),
+      include,
+    });
+
+    return { studySession, sessionIds: [studySession.study_session_id] };
+  }
+
+  const studySessions = await prisma.$transaction((tx) =>
+    Promise.all(
+      occurrences.map((scheduledAt) =>
+        tx.studySession.create({ data: dataFor(scheduledAt), include }),
+      ),
+    ),
+  );
+
+  return {
+    studySession: studySessions[0],
+    sessionIds: studySessions.map((row) => row.study_session_id),
+  };
 }
 
 export async function createStudySessionsForTask(
@@ -435,11 +511,18 @@ export async function updateStudySessionForMember(
 
   if (!membership) return { notFound: true };
 
-  // When the parsed data status is changing to completed from a non-completed status, 
+  // Linking/relinking a task requires ownership of that task; null unlinks it.
+  if (parsedData.task_id != null) {
+    await requireTaskAccess(parsedData.task_id, userId);
+  }
+
+  // When the parsed data status is changing to completed from a non-completed status,
   // it means the user is completing the study session.
   const isCompleting = parsedData.status === "completed" && membership.status !== "completed";
 
-  const userFields = ['status', 'started_at', 'current_time', 'completed_at', 'actual_duration'];
+  // task_id lives on the StudySessionUser junction, so route it with the other
+  // user-scoped fields (a null value unlinks the task).
+  const userFields = ['status', 'started_at', 'current_time', 'completed_at', 'actual_duration', 'task_id'];
   const userUpdates = Object.fromEntries(Object.entries(parsedData).filter(([key]) => userFields.includes(key)));
   const sessionUpdates = Object.fromEntries(Object.entries(parsedData).filter(([key]) => !userFields.includes(key)));
 
@@ -472,7 +555,7 @@ export async function updateStudySessionForMember(
 
   // When the user is 
   if (isCompleting) {
-    let focusSecondsGiven = Number(parsedData.actual_duration);
+    const focusSecondsGiven = Number(parsedData.actual_duration);
 
     if (!isNaN(focusSecondsGiven) && focusSecondsGiven > 0) {
       const focusedMinutesGiven = Math.round(focusSecondsGiven / 60);
