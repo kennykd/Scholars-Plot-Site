@@ -20,9 +20,10 @@ type SortKey = "priority" | "deadline" | "created";
 
 interface TasksToolbarProps {
   tasks: Task[];
+  projectTasks: (Task & { projectName: string | null })[];
 }
 
-export function TasksToolbar({ tasks }: TasksToolbarProps) {
+export function TasksToolbar({ tasks, projectTasks }: TasksToolbarProps) {
   const router = useRouter();
   const [filter, setFilter] = useState<FilterTab>("all");
   const [sort, setSort] = useState<SortKey>("priority");

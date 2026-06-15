@@ -37,7 +37,6 @@ import {
 
 import { StarRating } from "@/app/components/common/star-rating";
 import { AiSuggestionsButton } from "@/app/components/common/ai-suggestions-button";
-import { mockProjects } from "@/lib/mock-data";
 import {
   ProjectMember,
   ProjectRole,
@@ -57,14 +56,10 @@ import {
 } from "@/app/api/project/client";
 
 import {
-  Crown,
   Paperclip,
   Plus,
   Settings,
-  ShieldCheck,
   Trash2,
-  UserPlus,
-  Users,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -78,45 +73,37 @@ type CurrentUser = {
 
 const STATUS_ORDER: ProjectTaskStatus[] = ["not-done", "pending", "done"];
 
-const normalizeProjectTaskStatus = (status: unknown): ProjectTaskStatus => {
-  return STATUS_ORDER.includes(status as ProjectTaskStatus)
-    ? (status as ProjectTaskStatus)
-    : "not-done";
-};
-
 const STATUS_META: Array<{
   key: ProjectTaskStatus;
   label: string;
   helper: string;
 }> = [
-  {
-    key: "not-done",
-    label: "Not Done",
-    helper: "Backlog and newly created tasks.",
-  },
-  {
-    key: "pending",
-    label: "Pending",
-    helper: "In progress or awaiting review.",
-  },
-  {
-    key: "done",
-    label: "Done",
-    helper: "Completed tasks ready to archive.",
-  },
-];
+    {
+      key: "not-done",
+      label: "Not Done",
+      helper: "Backlog and newly created tasks.",
+    },
+    {
+      key: "pending",
+      label: "Pending",
+      helper: "In progress or awaiting review.",
+    },
+    {
+      key: "done",
+      label: "Done",
+      helper: "Completed tasks ready to archive.",
+    },
+  ];
 
-const PRIORITY_STYLES: Record<string, string> = {
-  low: "bg-muted text-muted-foreground border-border",
-  medium: "bg-amber-500/15 text-amber-400 border-amber-500/30",
-  high: "bg-red-500/15 text-red-400 border-red-500/30",
+const PRIORITY_STYLES: Record<number, string> = {
+  1: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+  2: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+  3: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
 };
 
 const ROLE_STYLES: Record<ProjectRole, string> = {
   owner: "bg-accent/15 text-accent border-accent/30",
-  moderator: "bg-blue-500/15 text-blue-400 border-blue-500/30",
   collaborator: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-  member: "bg-muted text-muted-foreground border-border",
 };
 
 const MAX_TASK_ATTACHMENT_BYTES = 10 * 1024 * 1024;
@@ -136,15 +123,12 @@ type TaskDraftPreview = {
   attachmentIds: number[];
 };
 
-const createMemberFromUser = (
-  user: CurrentUser,
-  role: ProjectRole,
-): ProjectMember => {
+const createMemberFromUser = (user: CurrentUser, role: ProjectRole): ProjectMember => {
   const displayName = user.name ?? user.email.split("@")[0] ?? "User";
   return {
     id: user.id,
     name: displayName,
-    handle: user.email,
+    email: user.email,
     role,
   };
 };
@@ -161,17 +145,9 @@ export default function ProjectsPage() {
 
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectDescription, setNewProjectDescription] = useState("");
-  const [newProjectDeadline, setNewProjectDeadline] = useState<string | null>(
-    null,
-  );
-  const [newProjectPriorityRating, setNewProjectPriorityRating] =
-    useState<number>(2.5);
-  const [newProjectStatus, setNewProjectStatus] = useState<
-    "active" | "completed" | "archived"
-  >("active");
-
-  const [inviteHandle, setInviteHandle] = useState("");
-  const [inviteRole, setInviteRole] = useState<ProjectRole>("member");
+  const [newProjectDeadline, setNewProjectDeadline] = useState<string | null>(null);
+  const [newProjectPriorityRating, setNewProjectPriorityRating] = useState<number>(2.5);
+  const [newProjectStatus, setNewProjectStatus] = useState<"active" | "completed" | "archived">("active");
 
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
@@ -181,6 +157,10 @@ export default function ProjectsPage() {
   const [taskDraftPreview, setTaskDraftPreview] = useState<TaskDraftPreview | null>(null);
   const [taskDraftAttachmentIds, setTaskDraftAttachmentIds] = useState<number[]>([]);
   const [taskDraftLoading, setTaskDraftLoading] = useState(false);
+
+  const [inviteMemberQuery, setInviteMemberQuery] = useState("");
+  const [invitingMemberId, setInvitingMemberId] = useState<string | null>(null);
+  const [allUsers, setAllUsers] = useState<{ id: string; name: string | null; email: string }[]>([]);
 
   useEffect(() => {
     fetch("/api/users/me")
@@ -195,7 +175,7 @@ export default function ProjectsPage() {
           });
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   useEffect(() => {
@@ -203,7 +183,19 @@ export default function ProjectsPage() {
 
     const loadProjects = async () => {
       try {
+        console.log("=== DEBUG 1: Triggering fetchProjects ===");
         const fetchedProjects = await fetchProjects();
+        console.log("=== DEBUG 2: Raw Projects from API ===", fetchedProjects);
+
+        if (fetchedProjects && fetchedProjects.length > 0) {
+          fetchedProjects.forEach(p => {
+            console.log(`Project: "${p.name}" contains ${p.tasks?.length || 0} tasks.`);
+            p.tasks?.forEach((t, i) => {
+              console.log(`  -> Task [${i}] Title: "${t.title}" | Status: "${t.status}" | Priority: "${t.priority}" (Type: ${typeof t.priority})`);
+            });
+          });
+        }
+
         if (isMounted) {
           setProjects(fetchedProjects);
           if (fetchedProjects.length > 0) {
@@ -213,45 +205,24 @@ export default function ProjectsPage() {
       } catch (error) {
         console.error("Failed to load projects:", error);
         toast.error("Failed to load projects");
-        // Fallback to mock data
-        const seeded = mockProjects.map((p) => ({
-          id: `project-${Date.now()}-${Math.random()}`,
-          name: p.name,
-          description: p.description,
-          deadline: undefined,
-          project_status: "active" as const,
-          priority: 3,
-          ownerId: p.ownerId,
-          members: p.members,
-          tasks: p.tasks.map((t) => ({
-            id: `proj-task-${t.id}`,
-            title: t.title,
-            description: t.description,
-            attachments: t.attachments || [],
-            reminder: t.reminder || "none",
-            priority:
-              t.priority >= 4 ? "high" : t.priority >= 2.5 ? "medium" : "low",
-            status: normalizeProjectTaskStatus(t.status),
-            assignedTo: undefined,
-            createdAt: t.createdAt.toISOString(),
-          })),
-          createdAt: p.createdAt.toISOString(),
-        }));
-        if (isMounted) {
-          setProjects(seeded);
-          if (seeded.length > 0) {
-            setActiveProjectId(seeded[0].id);
-          }
-        }
       }
     };
 
     loadProjects();
-
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, []);
+
+  // fetch all users once when settings dialog opens
+  useEffect(() => {
+    if (!settingsOpen) return;
+
+    fetch("/api/users")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.users) setAllUsers(data.users);
+      })
+      .catch(() => { });
+  }, [settingsOpen]);
 
   const activeProject = useMemo(
     () => projects.find((project) => project.id === activeProjectId) ?? null,
@@ -264,14 +235,12 @@ export default function ProjectsPage() {
       activeProject.members.find(
         (member) =>
           member.id === currentUser.id ||
-          (member.handle &&
-            member.handle.toLowerCase() === currentUser.email.toLowerCase()),
+          (member.email &&
+            member.email.toLowerCase() === currentUser.email.toLowerCase())
       ) ?? null
     );
   }, [activeProject, currentUser]);
 
-  const isOwnerOrModerator =
-    currentMember?.role === "owner" || currentMember?.role === "moderator";
   const isOwner = currentMember?.role === "owner";
 
   const updateProject = (
@@ -298,7 +267,6 @@ export default function ProjectsPage() {
         newProjectStatus,
       );
 
-      // Add current user as owner member
       newProject.members = [createMemberFromUser(currentUser, "owner")];
 
       setProjects((prev) => [newProject, ...prev]);
@@ -311,42 +279,21 @@ export default function ProjectsPage() {
       setCreateProjectOpen(false);
       toast.success("Project created successfully");
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to create project";
+      const message = error instanceof Error ? error.message : "Failed to create project";
       toast.error(message);
     }
   };
 
-  const handleJoinProject = () => {
+  const handleJoinProject = async () => {
     if (!activeProject || !currentUser) return;
-    updateProject(activeProject.id, (project) => {
-      const alreadyMember = project.members.some(
-        (member) =>
-          member.id === currentUser.id ||
-          (member.handle &&
-            member.handle.toLowerCase() === currentUser.email.toLowerCase()),
-      );
-      if (alreadyMember) return project;
-      return {
-        ...project,
-        members: [
-          ...project.members,
-          createMemberFromUser(currentUser, "member"),
-        ],
-      };
-    });
-  };
-
-  const handleInviteMember = async () => {
-    if (!activeProject || !inviteHandle.trim()) return;
 
     try {
       const newMember = await addProjectMemberApi(
         activeProject.id,
-        `user-${Date.now()}`,
-        inviteHandle.trim(),
-        inviteHandle.trim(),
-        inviteRole,
+        currentUser.id,
+        currentUser.name ?? currentUser.email.split("@")[0],
+        currentUser.email,
+        "collaborator",
       );
 
       updateProject(activeProject.id, (project) => ({
@@ -354,12 +301,9 @@ export default function ProjectsPage() {
         members: [...project.members, newMember],
       }));
 
-      setInviteHandle("");
-      setInviteRole("member");
-      toast.success("Member invited successfully");
+      toast.success("Joined project successfully");
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to invite member";
+      const message = error instanceof Error ? error.message : "Failed to join project";
       toast.error(message);
     }
   };
@@ -376,8 +320,7 @@ export default function ProjectsPage() {
       setSettingsOpen(false);
       toast.success(`Deleted "${activeProject.name}"`);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to delete project";
+      const message = error instanceof Error ? error.message : "Failed to delete project";
       toast.error(message);
     } finally {
       setDeletingProject(false);
@@ -440,9 +383,7 @@ export default function ProjectsPage() {
         attachmentIds: data.attachmentIds ?? [],
       });
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not generate AI suggestions",
-      );
+      toast.error(error instanceof Error ? error.message : "Could not generate AI suggestions");
     } finally {
       setTaskDraftLoading(false);
     }
@@ -494,14 +435,22 @@ export default function ProjectsPage() {
         newTask.attachments = [taskAttachment.name];
       }
 
+      const stringPriority = taskPriorityRating >= 4 ? "high" : taskPriorityRating >= 2.5 ? "medium" : "low";
+
+      const normalizedTask: StoredProjectTask = {
+        ...newTask,
+        priority: stringPriority,
+        status: newTask.status || "not-done",
+      };
+
       updateProject(activeProject.id, (project) => ({
         ...project,
-        tasks: [newTask, ...project.tasks],
+        tasks: [normalizedTask, ...project.tasks],
       }));
 
       setTaskTitle("");
       setTaskDescription("");
-      setTaskPriorityRating(3);
+      setTaskPriorityRating(2.5);
       setTaskReminder("none");
       setTaskAttachment(null);
       setTaskDraftPreview(null);
@@ -509,8 +458,7 @@ export default function ProjectsPage() {
       setCreateTaskOpen(false);
       toast.success("Task created successfully");
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to create task";
+      const message = error instanceof Error ? error.message : "Failed to create task";
       toast.error(message);
     }
   };
@@ -519,14 +467,7 @@ export default function ProjectsPage() {
     if (!activeProject) return;
 
     try {
-      await updateProjectTaskApi(
-        taskId,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        memberId,
-      );
+      await updateProjectTaskApi(taskId, undefined, undefined, undefined, undefined, memberId);
 
       updateProject(activeProject.id, (project) => ({
         ...project,
@@ -537,8 +478,7 @@ export default function ProjectsPage() {
 
       toast.success("Task assigned successfully");
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to assign task";
+      const message = error instanceof Error ? error.message : "Failed to assign task";
       toast.error(message);
     }
   };
@@ -555,20 +495,13 @@ export default function ProjectsPage() {
     if (!task) return;
 
     const currentIndex = STATUS_ORDER.indexOf(task.status);
-    const nextIndex =
-      direction === "next" ? currentIndex + 1 : currentIndex - 1;
+    const nextIndex = direction === "next" ? currentIndex + 1 : currentIndex - 1;
     const nextStatus = STATUS_ORDER[nextIndex] ?? task.status;
 
     if (nextStatus === task.status) return;
 
     try {
-      await updateProjectTaskApi(
-        taskId,
-        undefined,
-        undefined,
-        undefined,
-        nextStatus,
-      );
+      await updateProjectTaskApi(taskId, undefined, undefined, undefined, nextStatus);
 
       updateProject(activeProject.id, (project) => ({
         ...project,
@@ -579,30 +512,62 @@ export default function ProjectsPage() {
 
       toast.success("Task moved successfully");
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to move task";
+      const message = error instanceof Error ? error.message : "Failed to move task";
       toast.error(message);
     }
   };
+
+  const handleInviteMember = async (user: { id: string; name: string | null; email: string }) => {
+    if (!activeProject) return;
+
+    // don't add someone already in the project
+    if (activeProject.members.some((m) => m.id === user.id)) {
+      toast.error(`${user.name ?? user.email} is already a member`);
+      return;
+    }
+
+    setInvitingMemberId(user.id);
+    try {
+      const newMember = await addProjectMemberApi(
+        activeProject.id,
+        user.id,
+        user.name ?? user.email.split("@")[0],
+        user.email,
+        "collaborator",
+      );
+      updateProject(activeProject.id, (project) => ({
+        ...project,
+        members: [...project.members, newMember],
+      }));
+      setInviteMemberQuery("");
+      toast.success(`${user.name ?? user.email} added to project`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to add member");
+    } finally {
+      setInvitingMemberId(null);
+    }
+  };
+
+  const inviteResults = useMemo(() => {
+    const q = inviteMemberQuery.trim().toLowerCase();
+    if (!q) return [];
+    return allUsers.filter(
+      (u) =>
+        u.name?.toLowerCase().includes(q) ||
+        u.email?.toLowerCase().includes(q)
+    );
+  }, [inviteMemberQuery, allUsers]);
 
   const tasksByStatus = useMemo(() => {
     if (!activeProject) return null;
     return STATUS_META.reduce<Record<ProjectTaskStatus, StoredProjectTask[]>>(
       (acc, column) => {
-        acc[column.key] = activeProject.tasks.filter(
-          (task) => task.status === column.key,
-        );
+        acc[column.key] = activeProject.tasks.filter((task) => task.status === column.key);
         return acc;
       },
-      {
-        "not-done": [],
-        pending: [],
-        done: [],
-      },
+      { "not-done": [], pending: [], done: [] },
     );
   }, [activeProject]);
-
-  const projectSelectValue = activeProject?.id ?? "";
 
   return (
     <div className="p-6 space-y-6">
@@ -618,15 +583,11 @@ export default function ProjectsPage() {
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-3">
           <Select
-            value={projectSelectValue}
+            value={activeProject?.id ?? ""}
             onValueChange={(value) => setActiveProjectId(value)}
           >
             <SelectTrigger className="min-w-55 font-mono text-xs">
-              <SelectValue
-                placeholder={
-                  projects.length ? "Select project" : "No projects yet"
-                }
-              />
+              <SelectValue placeholder={projects.length ? "Select project" : "No projects yet"} />
             </SelectTrigger>
             <SelectContent>
               {projects.map((project) => (
@@ -640,24 +601,14 @@ export default function ProjectsPage() {
           {activeProject && (
             <div className="flex items-center gap-2 text-xs">
               <div className="flex items-center gap-1 text-muted-foreground">
-                <Users className="h-4 w-4" />
-                {activeProject.members.length} member
-                {activeProject.members.length !== 1 ? "s" : ""}
+                {activeProject.members.length} member{activeProject.members.length !== 1 ? "s" : ""}
               </div>
               {currentMember ? (
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "text-[10px] font-mono",
-                    ROLE_STYLES[currentMember.role],
-                  )}
-                >
+                <Badge variant="outline" className={cn("text-[10px] font-mono", ROLE_STYLES[currentMember.role])}>
                   {currentMember.role.toUpperCase()}
                 </Badge>
               ) : (
-                <Badge variant="outline" className="text-[10px] font-mono">
-                  Not a member
-                </Badge>
+                <Badge variant="outline" className="text-[10px] font-mono">Not a member</Badge>
               )}
             </div>
           )}
@@ -666,9 +617,7 @@ export default function ProjectsPage() {
             <DialogContent className="sm:max-w-3xl">
               <DialogHeader>
                 <DialogTitle>Create Project</DialogTitle>
-                <DialogDescription>
-                  Create a new collaboration space and invite teammates.
-                </DialogDescription>
+                <DialogDescription>Create a new collaboration space.</DialogDescription>
               </DialogHeader>
               <div className="space-y-3">
                 <Input
@@ -689,19 +638,14 @@ export default function ProjectsPage() {
                       className="mt-1"
                       type="date"
                       value={newProjectDeadline ?? ""}
-                      onChange={(e) =>
-                        setNewProjectDeadline(e.target.value || null)
-                      }
+                      onChange={(e) => setNewProjectDeadline(e.target.value || null)}
                     />
                   </div>
 
                   <div>
                     <Label className="font-mono text-xs">Priority</Label>
                     <div className="mt-1 flex h-10 flex-nowrap items-center gap-2 whitespace-nowrap">
-                      <StarRating
-                        value={newProjectPriorityRating}
-                        onChange={setNewProjectPriorityRating}
-                      />
+                      <StarRating value={newProjectPriorityRating} onChange={setNewProjectPriorityRating} />
                       <span className="font-mono text-sm text-muted-foreground">
                         {newProjectPriorityRating.toFixed(1)} / 5.0
                       </span>
@@ -712,11 +656,7 @@ export default function ProjectsPage() {
                     <Label className="font-mono text-xs">Status</Label>
                     <Select
                       value={newProjectStatus}
-                      onValueChange={(v) =>
-                        setNewProjectStatus(
-                          v as "active" | "completed" | "archived",
-                        )
-                      }
+                      onValueChange={(v) => setNewProjectStatus(v as "active" | "completed" | "archived")}
                     >
                       <SelectTrigger className="mt-1 w-full font-mono text-sm">
                         <SelectValue />
@@ -734,10 +674,7 @@ export default function ProjectsPage() {
                 <DialogClose asChild>
                   <Button variant="outline">Cancel</Button>
                 </DialogClose>
-                <Button
-                  className="bg-accent hover:bg-accent/90 text-accent-foreground"
-                  onClick={handleCreateProject}
-                >
+                <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleCreateProject}>
                   Create
                 </Button>
               </DialogFooter>
@@ -748,123 +685,95 @@ export default function ProjectsPage() {
             <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline">
-                  <Settings className="h-4 w-4 mr-2" />
-                  Project Settings
+                  <Settings className="h-4 w-4 mr-2" /> Project Settings
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Project Settings</DialogTitle>
-                  <DialogDescription>
-                    Manage members and access for this project.
-                  </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>
-                    <p className="text-sm font-medium text-foreground">
-                      {activeProject.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {activeProject.description ?? "No description provided."}
-                    </p>
+                    <p className="text-sm font-medium text-foreground">{activeProject.name}</p>
+                    <p className="text-xs text-muted-foreground">{activeProject.description ?? "No description provided."}</p>
                   </div>
 
+                  {/* ── Members list ── */}
                   <div className="space-y-2">
-                    <p className="text-xs font-mono text-muted-foreground tracking-wider">
-                      MEMBERS
-                    </p>
-                    <div className="flex flex-wrap gap-2">
+                    <p className="text-xs font-mono tracking-wider text-muted-foreground">MEMBERS</p>
+                    <div className="divide-y divide-border/40 rounded-lg border border-border/50">
                       {activeProject.members.map((member) => (
-                        <Badge
-                          key={member.id}
-                          variant="outline"
-                          className={cn(
-                            "text-xs font-mono",
-                            ROLE_STYLES[member.role],
-                          )}
-                        >
-                          {member.role === "owner" && (
-                            <Crown className="h-3 w-3 mr-1" />
-                          )}
-                          {member.role === "moderator" && (
-                            <ShieldCheck className="h-3 w-3 mr-1" />
-                          )}
-                          {member.name}
-                        </Badge>
+                        <div key={member.id} className="flex items-center justify-between px-3 py-2">
+                          <div>
+                            <p className="text-sm font-medium">{member.name}</p>
+                            <p className="text-[10px] text-muted-foreground font-mono">{member.email}</p>
+                          </div>
+                          <Badge variant="outline" className={cn("text-[10px] font-mono", ROLE_STYLES[member.role])}>
+                            {member.role.toUpperCase()}
+                          </Badge>
+                        </div>
                       ))}
                     </div>
                   </div>
 
+                  {/* ── Invite by email (owner only) ── */}
                   {isOwner && (
-                    <div className="space-y-3">
-                      <p className="text-xs font-mono text-muted-foreground tracking-wider">
-                        INVITE MEMBERS
-                      </p>
-                      <Input
-                        placeholder="Email or username"
-                        value={inviteHandle}
-                        onChange={(e) => setInviteHandle(e.target.value)}
-                      />
-                      <Select
-                        value={inviteRole}
-                        onValueChange={(value) =>
-                          setInviteRole(value as ProjectRole)
-                        }
-                      >
-                        <SelectTrigger className="font-mono text-xs">
-                          <SelectValue placeholder="Role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="member">Member</SelectItem>
-                          <SelectItem value="collaborator">
-                            Collaborator
-                          </SelectItem>
-                          <SelectItem value="moderator">Moderator</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        onClick={handleInviteMember}
-                        className="bg-accent hover:bg-accent/90 text-accent-foreground"
-                      >
-                        <UserPlus className="h-4 w-4 mr-2" />
-                        Send Invite
-                      </Button>
+                    <div className="space-y-2">
+                      <p className="text-xs font-mono tracking-wider text-muted-foreground">INVITE MEMBER</p>
+                      <div className="relative">
+                        <Input
+                          placeholder="Search by name or email..."
+                          value={inviteMemberQuery}
+                          onChange={(e) => setInviteMemberQuery(e.target.value)}
+                          className="font-mono text-sm"
+                        />
+
+                        {/* dropdown results */}
+                        {inviteResults.length > 0 && (
+                          <div className="absolute z-50 mt-1 w-full rounded-lg border border-border/50 bg-popover shadow-md overflow-hidden">
+                            {inviteResults.map((user) => {
+                              const alreadyMember = activeProject.members.some((m) => m.id === user.id);
+                              return (
+                                <button
+                                  key={user.id}
+                                  type="button"
+                                  disabled={alreadyMember || invitingMemberId === user.id}
+                                  onClick={() => handleInviteMember(user)}
+                                  className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-accent/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                >
+                                  <div>
+                                    <p className="text-sm font-medium">{user.name ?? "—"}</p>
+                                    <p className="text-[10px] text-muted-foreground font-mono">{user.email}</p>
+                                  </div>
+                                  <span className="text-[10px] font-mono text-muted-foreground">
+                                    {alreadyMember ? "Already added" : invitingMemberId === user.id ? "Adding..." : "Add"}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
 
-                  {isOwner && activeProject && (
+                  {/* ── Danger zone ── */}
+                  {isOwner && (
                     <div className="space-y-2 border-t border-destructive/30 pt-4">
-                      <p className="text-xs font-mono text-destructive tracking-wider">
-                        DANGER ZONE
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Deleting this project removes its tasks and all member
-                        assignments. This cannot be undone.
-                      </p>
+                      <p className="text-xs font-mono text-destructive tracking-wider">DANGER ZONE</p>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button
-                            variant="destructive"
-                            className="font-mono text-xs"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete project
+                          <Button variant="destructive" className="font-mono text-xs">
+                            <Trash2 className="h-4 w-4 mr-2" /> Delete project
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>
-                              Delete &quot;{activeProject.name}&quot;?
-                            </AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This permanently deletes the project, its tasks,
-                              and all member assignments. This cannot be undone.
-                            </AlertDialogDescription>
+                            <AlertDialogTitle>Delete &quot;{activeProject.name}&quot;?</AlertDialogTitle>
+                            <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel disabled={deletingProject}>
-                              Cancel
-                            </AlertDialogCancel>
+                            <AlertDialogCancel disabled={deletingProject}>Cancel</AlertDialogCancel>
                             <AlertDialogAction
                               onClick={handleDeleteProject}
                               disabled={deletingProject}
@@ -878,31 +787,24 @@ export default function ProjectsPage() {
                     </div>
                   )}
                 </div>
-                <DialogFooter showCloseButton />
               </DialogContent>
             </Dialog>
           )}
 
-          {activeProject && isOwnerOrModerator && (
+          {activeProject && isOwner && (
             <Dialog open={createTaskOpen} onOpenChange={setCreateTaskOpen}>
               <DialogTrigger asChild>
                 <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Task
+                  <Plus className="h-4 w-4 mr-2" /> New Task
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Create Task</DialogTitle>
-                  <DialogDescription>
-                    Add a task to the selected project.
-                  </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleCreateTask} className="space-y-5">
                   <div className="space-y-1.5">
-                    <Label className="font-mono text-xs tracking-wider">
-                      TASK NAME *
-                    </Label>
+                    <Label className="font-mono text-xs tracking-wider">TASK NAME *</Label>
                     <Input
                       placeholder="e.g. Finalize onboarding docs"
                       value={taskTitle}
@@ -912,9 +814,7 @@ export default function ProjectsPage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label className="font-mono text-xs tracking-wider">
-                      DESCRIPTION
-                    </Label>
+                    <Label className="font-mono text-xs tracking-wider">DESCRIPTION</Label>
                     <Textarea
                       placeholder="Optional task description..."
                       value={taskDescription}
@@ -924,18 +824,12 @@ export default function ProjectsPage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label className="font-mono text-xs tracking-wider">
-                      ATTACHMENT
-                    </Label>
-                    <p className="font-mono text-[10px] text-muted-foreground">
-                      {AI_READABLE_ATTACHMENT_HELPER_TEXT}
-                    </p>
+                    <Label className="font-mono text-xs tracking-wider">ATTACHMENT</Label>
+                    <p className="font-mono text-[10px] text-muted-foreground">{AI_READABLE_ATTACHMENT_HELPER_TEXT}</p>
                     {taskAttachment ? (
                       <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/30 px-3 py-2">
                         <Paperclip className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm flex-1 truncate">
-                          {taskAttachment.name}
-                        </span>
+                        <span className="text-sm flex-1 truncate">{taskAttachment.name}</span>
                         <button
                           type="button"
                           onClick={() => {
@@ -953,51 +847,28 @@ export default function ProjectsPage() {
                         onDrop={handleTaskDrop}
                       >
                         <Paperclip className="h-6 w-6 text-muted-foreground" />
-                        <span className="font-mono text-xs text-muted-foreground">
-                          Drop file here or click to browse
-                        </span>
-                        <input
-                          type="file"
-                          className="hidden"
-                          onChange={handleTaskFileSelect}
-                        />
+                        <span className="font-mono text-xs text-muted-foreground">Drop file here or click to browse</span>
+                        <input type="file" className="hidden" onChange={handleTaskFileSelect} />
                       </label>
                     )}
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label className="font-mono text-xs tracking-wider">
-                      PRIORITY
-                    </Label>
+                    <Label className="font-mono text-xs tracking-wider">PRIORITY</Label>
                     <div className="flex items-center gap-3">
-                      <StarRating
-                        value={taskPriorityRating}
-                        onChange={setTaskPriorityRating}
-                        size="lg"
-                      />
-                      <span className="font-mono text-sm text-muted-foreground">
-                        {taskPriorityRating.toFixed(1)} / 5.0
-                      </span>
+                      <StarRating value={taskPriorityRating} onChange={setTaskPriorityRating} size="lg" />
+                      <span className="font-mono text-sm text-muted-foreground">{taskPriorityRating.toFixed(1)} / 5.0</span>
                     </div>
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label className="font-mono text-xs tracking-wider">
-                      REMINDER
-                    </Label>
-                    <Select
-                      value={taskReminder}
-                      onValueChange={setTaskReminder}
-                    >
-                      <SelectTrigger className="font-mono text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
+                    <Label className="font-mono text-xs tracking-wider">REMINDER</Label>
+                    <Select value={taskReminder} onValueChange={setTaskReminder}>
+                      <SelectTrigger className="font-mono text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">None</SelectItem>
                         <SelectItem value="daily">Daily</SelectItem>
-                        <SelectItem value="every-3-days">
-                          Every 3 Days
-                        </SelectItem>
+                        <SelectItem value="every-3-days">Every 3 Days</SelectItem>
                         <SelectItem value="weekly">Weekly</SelectItem>
                       </SelectContent>
                     </Select>
@@ -1012,69 +883,20 @@ export default function ProjectsPage() {
                   {taskDraftPreview && (
                     <div className="space-y-3 rounded-lg border border-accent/30 bg-accent/5 p-4">
                       <div>
-                        <p className="font-mono text-xs tracking-wider text-muted-foreground">
-                          AI DRAFT
-                        </p>
-                        <h3 className="mt-1 text-base font-semibold">
-                          {taskDraftPreview.draft.title}
-                        </h3>
-                        <p className="mt-2 text-sm text-muted-foreground whitespace-pre-line">
-                          {taskDraftPreview.draft.description}
-                        </p>
+                        <p className="font-mono text-xs tracking-wider text-muted-foreground">AI DRAFT</p>
+                        <h3 className="mt-1 text-base font-semibold">{taskDraftPreview.draft.title}</h3>
+                        <p className="mt-2 text-sm text-muted-foreground whitespace-pre-line">{taskDraftPreview.draft.description}</p>
                       </div>
-                      <p className="font-mono text-xs text-muted-foreground">
-                        Priority: {Number(taskDraftPreview.draft.priority).toFixed(1)} / 5.0
-                      </p>
-                      {taskDraftPreview.draft.reasoning ? (
-                        <p className="text-sm text-muted-foreground">
-                          {taskDraftPreview.draft.reasoning}
-                        </p>
-                      ) : null}
-                      {taskDraftPreview.draft.skippedAttachments?.length ? (
-                        <div className="space-y-1 rounded-md border border-border/60 bg-background/60 p-3">
-                          <p className="font-mono text-[10px] tracking-wider text-muted-foreground">
-                            SKIPPED FILES
-                          </p>
-                          {taskDraftPreview.draft.skippedAttachments.map((attachment) => (
-                            <p
-                              key={`${attachment.fileName}-${attachment.reason}`}
-                              className="text-xs text-muted-foreground"
-                            >
-                              {attachment.fileName}: {attachment.reason}
-                            </p>
-                          ))}
-                        </div>
-                      ) : null}
                       <div className="flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={applyProjectTaskDraft}
-                        >
-                          Apply suggestions
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setTaskDraftPreview(null)}
-                        >
-                          Dismiss
-                        </Button>
+                        <Button type="button" size="sm" onClick={applyProjectTaskDraft}>Apply suggestions</Button>
+                        <Button type="button" size="sm" variant="outline" onClick={() => setTaskDraftPreview(null)}>Dismiss</Button>
                       </div>
                     </div>
                   )}
 
                   <DialogFooter>
-                    <DialogClose asChild>
-                      <Button variant="outline">Cancel</Button>
-                    </DialogClose>
-                    <Button
-                      type="submit"
-                      className="bg-accent hover:bg-accent/90 text-accent-foreground"
-                    >
-                      Create Task
-                    </Button>
+                    <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+                    <Button type="submit" className="bg-accent hover:bg-accent/90 text-accent-foreground">Create Task</Button>
                   </DialogFooter>
                 </form>
               </DialogContent>
@@ -1084,18 +906,11 @@ export default function ProjectsPage() {
 
         <div className="flex flex-wrap items-center gap-2">
           {activeProject && !currentMember && (
-            <Button
-              size="sm"
-              className="bg-accent hover:bg-accent/90 text-accent-foreground"
-              onClick={handleJoinProject}
-            >
+            <Button size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleJoinProject}>
               Join Project
             </Button>
           )}
-          <Button
-            onClick={() => setCreateProjectOpen(true)}
-            className="bg-accent hover:bg-accent/90 text-accent-foreground font-semibold"
-          >
+          <Button onClick={() => setCreateProjectOpen(true)} className="bg-accent hover:bg-accent/90 text-accent-foreground font-semibold">
             <Plus className="h-4 w-4 mr-1" /> New Project
           </Button>
         </div>
@@ -1109,108 +924,61 @@ export default function ProjectsPage() {
         tasksByStatus && (
           <div className="grid gap-4 lg:grid-cols-3">
             {STATUS_META.map((column) => (
-              <section
-                key={column.key}
-                className="rounded-xl border border-border/50 bg-card/40"
-              >
+              <section key={column.key} className="rounded-xl border border-border/50 bg-card/40">
                 <div className="px-4 py-3 border-b border-border/40">
-                  <h3 className="font-display text-base font-bold tracking-wide">
-                    {column.label}
-                  </h3>
-                  <p className="text-xs text-muted-foreground">
-                    {column.helper}
-                  </p>
+                  <h3 className="font-display text-base font-bold tracking-wide">{column.label}</h3>
+                  <p className="text-xs text-muted-foreground">{column.helper}</p>
                 </div>
                 <div className="px-4 py-2">
                   {tasksByStatus[column.key].length === 0 ? (
-                    <p className="text-sm text-muted-foreground py-4">
-                      No tasks in this column.
-                    </p>
+                    <p className="text-sm text-muted-foreground py-4">No tasks in this column.</p>
                   ) : (
                     <div className="divide-y divide-border/40">
                       {tasksByStatus[column.key].map((task) => {
-                        const assignedMember = activeProject.members.find(
-                          (member) => member.id === task.assignedTo,
-                        );
-                        const isAssignedToCurrent =
-                          currentMember && task.assignedTo === currentMember.id;
-                        const isAssignedElsewhere =
-                          task.assignedTo &&
-                          (!currentMember ||
-                            task.assignedTo !== currentMember.id);
+                        const assignedMember = activeProject.members.find((member) => member.id === task.assignedTo);
+                        const isAssignedToCurrent = currentMember && task.assignedTo === currentMember.id;
+                        const isAssignedElsewhere = task.assignedTo && (!currentMember || task.assignedTo !== currentMember.id);
                         const canMove = Boolean(isAssignedToCurrent);
-                        const dimTask =
-                          isAssignedElsewhere && task.status !== "done";
+                        const dimTask = isAssignedElsewhere && task.status !== "done";
 
                         const currentIndex = STATUS_ORDER.indexOf(task.status);
-                        const prevStatus =
-                          STATUS_ORDER[currentIndex - 1] ?? null;
-                        const nextStatus =
-                          STATUS_ORDER[currentIndex + 1] ?? null;
+                        const prevStatus = STATUS_ORDER[currentIndex - 1] ?? null;
+                        const nextStatus = STATUS_ORDER[currentIndex + 1] ?? null;
 
                         return (
-                          <div
-                            key={task.id}
-                            className={cn(
-                              "py-3 space-y-2",
-                              dimTask && "opacity-60",
-                            )}
-                          >
+                          <div key={task.id} className={cn("py-3 space-y-2", dimTask && "opacity-60")}>
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
-                                <p className="font-medium text-foreground">
-                                  {task.title}
-                                </p>
-                                {task.description && (
-                                  <p className="text-xs text-muted-foreground">
-                                    {task.description}
-                                  </p>
-                                )}
+                                <p className="font-medium text-foreground">{task.title}</p>
+                                {task.description && <p className="text-xs text-muted-foreground">{task.description}</p>}
                               </div>
                               <Badge
-                                variant="outline"
                                 className={cn(
-                                  "text-[10px] font-mono",
-                                  PRIORITY_STYLES[task.priority],
+                                  "text-[10px] px-2 py-0.5",
+                                  PRIORITY_STYLES[Number(task.priority)] || "bg-gray-100 text-gray-800"
                                 )}
                               >
-                                {task.priority.toUpperCase()}
+                                {Number(task.priority) >= 3 ? "HIGH" : Number(task.priority) === 2 ? "MEDIUM" : "LOW"}
                               </Badge>
                             </div>
 
                             <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground font-mono">
-                              <span>
-                                {assignedMember
-                                  ? `Assigned: ${assignedMember.name}`
-                                  : "Unassigned"}
-                              </span>
+                              <span>{assignedMember ? `Assigned: ${assignedMember.name}` : "Unassigned"}</span>
                             </div>
 
                             <div className="flex flex-wrap items-center gap-2">
-                              {isOwnerOrModerator && (
+                              {isOwner && (
                                 <Select
                                   value={task.assignedTo ?? "unassigned"}
-                                  onValueChange={(value) =>
-                                    assignTask(
-                                      task.id,
-                                      value === "unassigned"
-                                        ? undefined
-                                        : value,
-                                    )
-                                  }
+                                  onValueChange={(value) => assignTask(task.id, value === "unassigned" ? undefined : value)}
                                 >
                                   <SelectTrigger className="h-8 text-xs font-mono">
                                     <SelectValue placeholder="Assign" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="unassigned">
-                                      Unassigned
-                                    </SelectItem>
+                                    <SelectItem value="unassigned">Unassigned</SelectItem>
                                     {activeProject.members.map((member) => (
-                                      <SelectItem
-                                        key={member.id}
-                                        value={member.id}
-                                      >
+                                      <SelectItem key={member.id} value={member.id}>
                                         {member.name} ({member.role})
                                       </SelectItem>
                                     ))}
@@ -1218,47 +986,23 @@ export default function ProjectsPage() {
                                 </Select>
                               )}
 
-                              {!isOwnerOrModerator &&
-                                !task.assignedTo &&
-                                currentMember && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="text-xs"
-                                    onClick={() => claimTask(task.id)}
-                                  >
-                                    Claim Task
-                                  </Button>
-                                )}
+                              {!isOwner && !task.assignedTo && currentMember && (
+                                <Button size="sm" variant="outline" className="text-xs" onClick={() => claimTask(task.id)}>
+                                  Claim Task
+                                </Button>
+                              )}
 
                               {prevStatus && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="text-xs"
-                                  onClick={() => moveTask(task.id, "prev")}
-                                  disabled={!canMove}
-                                >
+                                <Button size="sm" variant="outline" className="text-xs" onClick={() => moveTask(task.id, "prev")} disabled={!canMove}>
                                   Move Back
                                 </Button>
                               )}
                               {nextStatus && (
-                                <Button
-                                  size="sm"
-                                  className="text-xs bg-accent hover:bg-accent/90 text-accent-foreground"
-                                  onClick={() => moveTask(task.id, "next")}
-                                  disabled={!canMove}
-                                >
+                                <Button size="sm" className="text-xs bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => moveTask(task.id, "next")} disabled={!canMove}>
                                   Move Forward
                                 </Button>
                               )}
                             </div>
-
-                            {!canMove && task.assignedTo && (
-                              <p className="text-[10px] text-muted-foreground font-mono">
-                                Only the assigned member can move this task.
-                              </p>
-                            )}
                           </div>
                         );
                       })}

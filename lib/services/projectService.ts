@@ -14,9 +14,9 @@ import type {
   UpdateProjectTaskInput,
 } from '@/lib/validation/project';
 
-type ProjectUserRole = 'owner' | 'moderator' | 'collaborator' | 'member';
+type ProjectUserRole = 'owner' | 'collaborator';
 
-const projectManagerRoles: ProjectUserRole[] = ['owner', 'moderator'];
+const projectManagerRoles: ProjectUserRole[] = ['owner'];
 
 export class ProjectServiceError extends Error {
   constructor(
@@ -29,8 +29,23 @@ export class ProjectServiceError extends Error {
 }
 
 const projectInclude = {
-  project_user: true,
-  tasks: true,
+  project_user: {
+    include: {
+      user: {
+        select: {
+          user_name: true,
+          user_email: true,
+        },
+      },
+    },
+  },
+  tasks: {
+    include: {
+      task_users: {
+        select: { user_id: true },
+      },
+    },
+  },
 };
 
 const taskInclude = {
@@ -326,6 +341,13 @@ export async function addProjectMember(projectId: number, userId: string, data: 
       user_id: data.id,
       project_user_role: data.role,
     },
+    include: {
+      user: {
+        select: {
+          user_name: true,
+          user_email: true,
+      }
+    }},
   });
 }
 
@@ -359,6 +381,14 @@ export async function updateProjectMemberById(
     },
     data: {
       project_user_role: data.role,
+    },
+    include: {
+      user: {
+        select: {
+          user_name: true,
+          user_email: true,
+        },
+      },
     },
   });
 }

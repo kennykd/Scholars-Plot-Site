@@ -48,6 +48,10 @@ export interface ApiProject {
     project_id: number;
     user_id: string;
     project_user_role: string;
+    user?: {
+      user_name: string;
+      user_email: string;
+    };
   }>;
   tasks: ApiProjectTask[];
 }
@@ -100,7 +104,12 @@ export function serializeProject(apiProject: ApiProject): StoredProject {
     priority: apiProject.project_priority || 3,
     ownerId: apiProject.project_user.find((pu) => pu.project_user_role === "owner")
       ?.user_id,
-    members: [],
+    members: apiProject.project_user.map((pu) => ({
+      id: pu.user_id,
+      name: pu.user?.user_name ?? pu.user_id,
+      email: pu.user?.user_email,
+      role: pu.project_user_role as ProjectRole,
+    })),  
     tasks,
     createdAt: apiProject.project_created_at,
   };
@@ -272,7 +281,7 @@ export async function addProjectMemberApi(
   projectId: string,
   memberId: string,
   name: string,
-  handle: string,
+  email: string,
   role: ProjectRole
 ): Promise<ProjectMember> {
   const projectNumId = projectId.replace("project-", "");
@@ -282,7 +291,7 @@ export async function addProjectMemberApi(
     body: JSON.stringify({
       id: memberId,
       name,
-      handle,
+      email,
       role,
     }),
   });
@@ -301,8 +310,8 @@ export async function addProjectMemberApi(
   const data = await res.json();
   return {
     id: data.member.user_id,
-    name: data.member.project_user_role, // May need adjustment based on API
-    handle,
+    name: data.member.user?.user_name ?? data.member.user_id,
+    email: data.member.user?.user_email,
     role: data.member.project_user_role as ProjectRole,
   };
 }

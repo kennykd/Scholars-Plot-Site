@@ -107,6 +107,7 @@ export async function getPublicUsers() {
     select: {
       user_id: true,
       user_name: true,
+      user_email: true,
       avatar_url: true,
     },
   });
@@ -114,6 +115,7 @@ export async function getPublicUsers() {
   return users.map((user) => ({
     id: user.user_id,
     name: user.user_name,
+    email: user.user_email,
     image: user.avatar_url,
   }));
 }

@@ -63,6 +63,12 @@ enum ActionStatus {
   dismissed
 }
 
+enum InviteStatus {
+  pending
+  accepted
+  declined
+}
+
 // ─── MODELS ──────────────────────────────────────────────────────────────────
 
 model User {
@@ -90,6 +96,8 @@ model User {
   chat_conversations   ChatConversation[]  
   attachments          Attachment[]
   study_session_attachments StudySessionAttachment[]
+  sent_invites         ProjectInvite[]     @relation("SentInvites")
+  received_invites     ProjectInvite[]     @relation("ReceivedInvites")
 
   @@map("user")
 }
@@ -134,6 +142,7 @@ model Project {
 
   project_user ProjectUser[]
   tasks        Task[]
+  project_invites ProjectInvite[]
 
   @@map("project")
 }
@@ -290,6 +299,23 @@ model TaskReminder {
   task   Task    @relation(fields: [task_id], references: [task_id])
 
   @@map("task_reminder")
+}
+
+model ProjectInvite {
+  invite_id    Int          @id @default(autoincrement())
+  project_id   Int
+  invited_by   String       // owner's user_id
+  invited_user String       // recipient's user_id
+  status       InviteStatus @default(pending)
+  created_at   DateTime     @default(now())
+  responded_at DateTime?
+
+  project      Project @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
+  inviter      User    @relation("SentInvites", fields: [invited_by], references: [user_id])
+  invitee      User    @relation("ReceivedInvites", fields: [invited_user], references: [user_id])
+
+  @@unique([project_id, invited_user]) // can't invite same person twice
+  @@map("project_invite")
 }
 
 model OverloadWarning {

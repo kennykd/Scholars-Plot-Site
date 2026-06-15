@@ -163,15 +163,15 @@ export interface Notification {
   type: "reminder" | "timer-complete" | "deadline-approaching";
 }
 
-export type ProjectRole = "owner" | "moderator" | "collaborator" | "member";
+export type ProjectRole = "owner" | "collaborator"
 
 export interface ProjectMember {
   /** Unique identifier for the member */
   id: string;
   /** Display name for the member */
   name: string;
-  /** Optional email or username */
-  handle?: string;
+  /** Email address for the member */
+  email?: string;
   /** Role within the project */
   role: ProjectRole;
 }

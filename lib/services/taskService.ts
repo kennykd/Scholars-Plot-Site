@@ -110,6 +110,21 @@ export async function getTasks(userId: string) {
   });
 }
 
+export async function getProjectTask(userId: string) {
+  return prisma.task.findMany({
+    where: {
+      project_id: { not: null },
+      task_users: { some: { user_id: userId } },
+    },
+    include: {
+      project: {
+        select: { project_name: true, project_id: true }
+      },
+    },
+    orderBy: { task_created_at: 'desc' },
+  });
+}
+
 export async function getTaskAttachments(
   task_id: number
 ): Promise<TaskAttachment[]> {
@@ -154,14 +169,14 @@ export async function createTask(userId: string, data: CreateTaskInput) {
         task_users: { create: { user_id: userId } },
         ...(reminderInterval
           ? {
-              task_reminders: {
-                create: {
-                  interval_type: reminderInterval.interval_type,
-                  interval_value: reminderInterval.interval_value,
-                  remind_at: new Date(Date.now() + intervalToMs(reminderInterval)),
-                },
+            task_reminders: {
+              create: {
+                interval_type: reminderInterval.interval_type,
+                interval_value: reminderInterval.interval_value,
+                remind_at: new Date(Date.now() + intervalToMs(reminderInterval)),
               },
-            }
+            },
+          }
           : {}),
       },
     });
@@ -192,13 +207,13 @@ export async function createTask(userId: string, data: CreateTaskInput) {
     if (currentAnalytics) {
       await updateAnalyticsByUserId(userId, {
         tasks_pending: currentAnalytics.completionStats.pending + 1,
-    });
-  }
-  
+      });
+    }
+
     return task;
   });
 
-  
+
 
 }
 

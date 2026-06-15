@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { NotificationPanel } from "../notification/notification-panel";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -53,13 +54,14 @@ type SidebarUser = {
 export function Sidebar({ user }: { user: SidebarUser }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [collapsed, setCollapsed] = useState(false); // server-safe default
+  const [collapsed, setCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [logoutLoading, setLogoutLoading] = useState(false);
+
   useEffect(() => {
     setMounted(true);
     setCollapsed(localStorage.getItem("sidebar-collapsed") === "true");
   }, []);
-  const [logoutLoading, setLogoutLoading] = useState(false);
 
   const toggleCollapsed = () => {
     const next = !collapsed;
@@ -93,124 +95,126 @@ export function Sidebar({ user }: { user: SidebarUser }) {
 
   return (
     <aside
+      className={cn(
+        "hidden lg:flex flex-col h-dvh shrink-0 transition-all duration-150 ease-in-out",
+        "bg-sidebar",
+        collapsed ? "w-20" : "w-72"
+      )}
+    >
+      {/* User avatar section - fixed at top */}
+      <div
         className={cn(
-          "hidden lg:flex flex-col h-dvh shrink-0 transition-all duration-150 ease-in-out",
-          "bg-sidebar",
-          collapsed ? "w-20" : "w-72",
+          "flex items-center gap-4 px-5 py-5 shrink-0",
+          mounted && collapsed && "justify-center px-0"
         )}
       >
-        {/* User avatar section - fixed at top */}
-        <div
-          className={cn(
-            "flex items-center gap-4 px-5 py-5 shrink-0",
-            mounted && collapsed && "justify-center px-0"
-          )}
-        >
-          <Avatar className="h-10 w-10 shrink-0">
-            <AvatarImage src={avatarSrc} alt={displayName ?? ""} />
-            <AvatarFallback className="bg-accent text-accent-foreground text-sm font-bold">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
-          {!collapsed && (
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-sidebar-foreground truncate">
-                {displayName}
-              </p>
-              <p className="font-mono text-xs text-sidebar-foreground/50 truncate">
-                {user?.email}
-              </p>
-            </div>
-          )}
-        </div>
+        <Avatar className="h-10 w-10 shrink-0">
+          <AvatarImage src={avatarSrc} alt={displayName ?? ""} />
+          <AvatarFallback className="bg-accent text-accent-foreground text-sm font-bold">
+            {initials}
+          </AvatarFallback>
+        </Avatar>
+        {!collapsed && (
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-sidebar-foreground truncate">
+              {displayName}
+            </p>
+            <p className="font-mono text-xs text-sidebar-foreground/50 truncate">
+              {user?.email}
+            </p>
+          </div>
+        )}
+      </div>
 
-        {/* Navigation - centered vertically */}
-        <nav className="min-h-0 flex-1 flex flex-col justify-center py-4 space-y-1 px-3 overflow-y-auto">
-          {navItems.map(({ href, label, icon: Icon }) => {
-            const isActive =
-              pathname === href || pathname.startsWith(href + "/");
-            return (
-              <Link
-                key={href}
-                href={href}
-                aria-label={label}
+      {/* Navigation - centered vertically */}
+      <nav className="min-h-0 flex-1 flex flex-col justify-center py-4 space-y-1 px-3 overflow-y-auto">
+        {navItems.map(({ href, label, icon: Icon }) => {
+          const isActive = pathname === href || pathname.startsWith(href + "/");
+          return (
+            <Link
+              key={href}
+              href={href}
+              aria-label={label}
+              className={cn(
+                "flex items-center gap-4 rounded-lg px-4 py-3 text-sm font-medium transition-colors duration-150",
+                isActive
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                collapsed && "justify-center px-0"
+              )}
+            >
+              <Icon
                 className={cn(
-                  "flex items-center gap-4 rounded-lg px-4 py-3 text-sm font-medium transition-colors duration-150",
+                  "h-5 w-5 shrink-0",
                   isActive
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground",
-                  collapsed && "justify-center px-0",
+                    ? "text-sidebar-primary-foreground"
+                    : "text-sidebar-foreground/60"
                 )}
+              />
+              {!collapsed && <span>{label}</span>}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* Bottom section - notification dashboard item, logout, and collapse toggle */}
+      <div className="shrink-0 p-3 space-y-2">
+        {/* Notification Panel Placed right above logout button */}
+        <NotificationPanel collapsed={collapsed} />
+
+        {/* Logout button */}
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <button
+              aria-label="Logout"
+              className={cn(
+                "flex items-center gap-4 w-full rounded-lg px-4 py-3 text-sm font-medium transition-colors duration-150",
+                "text-sidebar-foreground/70 hover:bg-destructive/10 hover:text-destructive",
+                collapsed && "justify-center px-0"
+              )}
+            >
+              <LogOut className="h-5 w-5 shrink-0" />
+              {!collapsed && <span>Logout</span>}
+            </button>
+          </AlertDialogTrigger>
+
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Logout Confirmation</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to logout?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleLogout}
+                disabled={logoutLoading}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
-                <Icon
-                  className={cn(
-                    "h-5 w-5 shrink-0",
-                    isActive
-                      ? "text-sidebar-primary-foreground"
-                      : "text-sidebar-foreground/60",
-                  )}
-                />
-                {!collapsed && <span>{label}</span>}
-              </Link>
-            );
-          })}
-        </nav>
+                {logoutLoading ? "Logging out..." : "Yes, Logout"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
-        {/* Bottom section - logout and collapse */}
-        <div className="shrink-0 p-3 space-y-2">
-          {/* Logout button */}
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <button
-                aria-label="Logout"
-                className={cn(
-                  "flex items-center gap-4 w-full rounded-lg px-4 py-3 text-sm font-medium transition-colors duration-150",
-                  "text-sidebar-foreground/70 hover:bg-destructive/10 hover:text-destructive",
-                  collapsed && "justify-center px-0",
-                )}
-              >
-                <LogOut className="h-5 w-5 shrink-0" />
-                {!collapsed && <span>Logout</span>}
-              </button>
-            </AlertDialogTrigger>
-
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Logout Confirmation</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Are you sure you want to logout?
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleLogout}
-                  disabled={logoutLoading}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  {logoutLoading ? "Logging out..." : "Yes, Logout"}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-
-          {/* Collapse toggle */}
-          <button
-            onClick={toggleCollapsed}
-            className={cn(
-              "flex items-center justify-center w-full rounded-lg p-2 text-sidebar-foreground/50",
-              "hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors duration-150",
-              collapsed && "px-0",
-            )}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {collapsed ? (
-              <ChevronRight className="h-4 w-4" />
-            ) : (
-              <ChevronLeft className="h-4 w-4" />
-            )}
-          </button>
-        </div>
+        {/* Collapse toggle */}
+        <button
+          onClick={toggleCollapsed}
+          className={cn(
+            "flex items-center justify-center w-full rounded-lg p-2 text-sidebar-foreground/50",
+            "hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors duration-150",
+            collapsed && "px-0"
+          )}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {collapsed ? (
+            <ChevronRight className="h-4 w-4" />
+          ) : (
+            <ChevronLeft className="h-4 w-4" />
+          )}
+        </button>
+      </div>
     </aside>
   );
 }
