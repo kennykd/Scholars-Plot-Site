@@ -71,7 +71,7 @@ export function AnalyticsDashboardView({ data }: AnalyticsDashboardViewProps) {
 
   const statCards = [
     {
-      icon: <Target className="h-5 w-5 text-accent" />,
+      icon: <Target className="h-5 w-5 text-yellow-400" />,
       label: "Total Tasks",
       value: totalTasks,
     },
@@ -86,7 +86,7 @@ export function AnalyticsDashboardView({ data }: AnalyticsDashboardViewProps) {
       value: `${focusHours}h ${focusMins}m`,
     },
     {
-      icon: <Flame className="h-5 w-5 text-accent" />,
+      icon: <Flame className="h-5 w-5 text-red-400" />,
       label: "Streak",
       value: `${streak} days`,
     },
