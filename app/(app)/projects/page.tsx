@@ -517,32 +517,37 @@ export default function ProjectsPage() {
     }
   };
 
-  const handleInviteMember = async (user: { id: string; name: string | null; email: string }) => {
-    if (!activeProject) return;
+  const handleInviteMember = async (email: string, userId?: string) => {
+    if (!activeProject || !userId) return;
 
-    // don't add someone already in the project
-    if (activeProject.members.some((m) => m.id === user.id)) {
-      toast.error(`${user.name ?? user.email} is already a member`);
-      return;
-    }
-
-    setInvitingMemberId(user.id);
     try {
-      const newMember = await addProjectMemberApi(
-        activeProject.id,
-        user.id,
-        user.name ?? user.email.split("@")[0],
-        user.email,
-        "collaborator",
-      );
-      updateProject(activeProject.id, (project) => ({
-        ...project,
-        members: [...project.members, newMember],
-      }));
+      setInvitingMemberId(userId);
+
+      console.log("INVITE PAYLOAD:", {
+        projectId: activeProject.id,
+        targetUserEmail: email,
+      });
+
+      const res = await fetch("/api/project/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: Number(activeProject.id),
+          targetUserId: userId,
+        }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(data?.message || "Unable to complete invitation.");
+      }
+
+      toast.success("Invitation sent successfully!");
       setInviteMemberQuery("");
-      toast.success(`${user.name ?? user.email} added to project`);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to add member");
+    } catch (err: any) {
+      console.error("Invite Error Details:", err);
+      toast.error(err?.message || "Something went wrong.");
     } finally {
       setInvitingMemberId(null);
     }
@@ -698,7 +703,7 @@ export default function ProjectsPage() {
                     <p className="text-xs text-muted-foreground">{activeProject.description ?? "No description provided."}</p>
                   </div>
 
-                  {/* ── Members list ── */}
+                  {/* Members list */}
                   <div className="space-y-2">
                     <p className="text-xs font-mono tracking-wider text-muted-foreground">MEMBERS</p>
                     <div className="divide-y divide-border/40 rounded-lg border border-border/50">
@@ -716,7 +721,7 @@ export default function ProjectsPage() {
                     </div>
                   </div>
 
-                  {/* ── Invite by email (owner only) ── */}
+                  {/* Invite by email (owner only) */}
                   {isOwner && (
                     <div className="space-y-2">
                       <p className="text-xs font-mono tracking-wider text-muted-foreground">INVITE MEMBER</p>
@@ -738,7 +743,8 @@ export default function ProjectsPage() {
                                   key={user.id}
                                   type="button"
                                   disabled={alreadyMember || invitingMemberId === user.id}
-                                  onClick={() => handleInviteMember(user)}
+
+                                  onClick={() => handleInviteMember(user.email, user.id)}
                                   className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-accent/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                 >
                                   <div>
@@ -757,7 +763,7 @@ export default function ProjectsPage() {
                     </div>
                   )}
 
-                  {/* ── Danger zone ── */}
+                  {/* Danger zone */}
                   {isOwner && (
                     <div className="space-y-2 border-t border-destructive/30 pt-4">
                       <p className="text-xs font-mono text-destructive tracking-wider">DANGER ZONE</p>
