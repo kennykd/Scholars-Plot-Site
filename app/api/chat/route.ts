@@ -46,14 +46,10 @@ export async function POST(req: NextRequest) {
 
   try {
     let conversationId = conversation_id;
-    let isNewConversation = false;
+    const isNewConversation = !conversationId;
     let history: ChatHistory = [];
 
-    if (!conversationId) {
-      const newConversation = await createConversation(userId);
-      conversationId = newConversation.id;
-      isNewConversation = true;
-    } else {
+    if (conversationId) {
       const conversation = await getConversation(conversationId, userId);
       if (!conversation) {
         return NextResponse.json(
@@ -66,6 +62,11 @@ export async function POST(req: NextRequest) {
 
     const context = await buildChatContext(userId);
     const result = await runChatAgent(message, history, context);
+
+    if (!conversationId) {
+      const newConversation = await createConversation(userId);
+      conversationId = newConversation.id;
+    }
 
     const { userMessage, assistantMessage } = await saveMessagePair(
       conversationId,

@@ -111,4 +111,18 @@ describe("/api/chat", () => {
     expect(body.error).toMatch(/not authenticated/i);
     expect(createConversation).not.toHaveBeenCalled();
   });
+
+  it("does not create an empty saved conversation when a new chat turn fails", async () => {
+    const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    runChatAgent.mockRejectedValue(new Error("Gemini failed"));
+
+    const response = await POST(jsonRequest({ message: "Hello" }));
+    const body = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(body.error).toMatch(/failed to process/i);
+    expect(createConversation).not.toHaveBeenCalled();
+    expect(saveMessagePair).not.toHaveBeenCalled();
+    consoleSpy.mockRestore();
+  });
 });
