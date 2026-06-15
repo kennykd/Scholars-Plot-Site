@@ -84,9 +84,17 @@ describe("runChatAgent", () => {
       expect.objectContaining({
         config: expect.objectContaining({
           tools: expect.any(Array),
-          toolConfig: expect.any(Object),
+          toolConfig: expect.objectContaining({
+            functionCallingConfig: expect.objectContaining({
+              mode: "AUTO",
+            }),
+          }),
         }),
       }),
+    );
+    const call = (geminiFlash.generateContent as jest.Mock).mock.calls[0][0];
+    expect(call.config.toolConfig.functionCallingConfig).not.toHaveProperty(
+      "allowedFunctionNames",
     );
     expect(generateTaskDraft).not.toHaveBeenCalled();
     expect(generateStudyTrackDraft).not.toHaveBeenCalled();

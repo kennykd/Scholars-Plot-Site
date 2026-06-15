@@ -354,10 +354,6 @@ export async function runChatAgent(
       toolConfig: {
         functionCallingConfig: {
           mode: "AUTO",
-          allowedFunctionNames: [
-            "create_task_draft",
-            "create_study_track_draft",
-          ],
         },
       },
     },
