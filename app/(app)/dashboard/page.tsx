@@ -21,7 +21,7 @@ export default async function DashboardPage() {
   const analyticsData = await getAnalyticsByUserId(session.id);
 
   return (
-    <div className="flex flex-col gap-6 p-6 lg:h-screen lg:overflow-hidden">
+    <div className="flex flex-col gap-6 p-6">
       <div>
         <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">
           COMMAND CENTER
@@ -31,16 +31,14 @@ export default async function DashboardPage() {
         </p>
       </div>
       <QuickStatsBar data={analyticsData} />
+      <WeeklyScheduleMini tasks={tasks} />
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <TodaysTasks tasks={tasks} />
         </div>
         <ActiveStudySession sessions={studySessions} />
-        <WeeklyScheduleMini tasks={tasks} />
-        <div className="h-full min-h-0 md:col-span-2 lg:col-span-2">
-          <UpcomingDeadlines tasks={tasks} />
-        </div>
       </div>
+      <UpcomingDeadlines tasks={tasks} />
     </div>
   );
 }
