@@ -10,7 +10,7 @@ jest.mock("@/lib/prisma", () => ({
 }));
 
 import prisma from "@/lib/prisma";
-import { ensureUserRecordForSession } from "./userService";
+import { ensureUserRecordForSession } from "@/lib/services/userService";
 
 const mockUser = prisma.user as jest.Mocked<typeof prisma.user>;
 
