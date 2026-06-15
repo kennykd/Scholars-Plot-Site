@@ -23,7 +23,7 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Scholar's Plot",
+  title: "Scholar's Plot Site",
   description: "Student Planner & Productivity Tracker",
 };
 
