@@ -15,6 +15,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Calendar } from "@/components/ui/calendar";
 import { cn, openNativePicker } from "@/lib/utils";
 import { AiSuggestionsButton } from "@/app/components/common/ai-suggestions-button";
@@ -22,6 +30,8 @@ import { toast } from "sonner";
 import {
   ArrowLeft,
   CalendarIcon,
+  Check,
+  ChevronsUpDown,
   Paperclip,
   Plus,
   Trash2,
@@ -106,6 +116,128 @@ const combineDateTime = (date: Date, time: string) => {
   return next;
 };
 
+const localDateValue = (date = new Date()) => format(date, "yyyy-MM-dd");
+
+const parseLocalDateValue = (value: string) => {
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return undefined;
+  return new Date(year, month - 1, day);
+};
+
+type RepeatControlsProps = {
+  idPrefix: string;
+  checked: boolean;
+  every: number;
+  unit: "days" | "weeks";
+  disabled?: boolean;
+  label: string;
+  description: string;
+  onCheckedChange: (checked: boolean) => void;
+  onEveryChange: (value: number) => void;
+  onUnitChange: (unit: "days" | "weeks", every: number) => void;
+};
+
+function RepeatControls({
+  idPrefix,
+  checked,
+  every,
+  unit,
+  disabled = false,
+  label,
+  description,
+  onCheckedChange,
+  onEveryChange,
+  onUnitChange,
+}: RepeatControlsProps) {
+  const repeatEveryId = `${idPrefix}-repeat-every`;
+
+  return (
+    <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <Label className="font-mono text-xs tracking-wider">REPEAT</Label>
+          <p className="text-xs text-muted-foreground mt-1">{description}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id={`${idPrefix}-repeat-enabled`}
+            checked={checked}
+            disabled={disabled}
+            onCheckedChange={(next) => onCheckedChange(next === true)}
+          />
+          <Label
+            htmlFor={`${idPrefix}-repeat-enabled`}
+            className="font-mono text-xs tracking-wider"
+          >
+            {label}
+          </Label>
+        </div>
+      </div>
+
+      {checked ? (
+        <div className="grid grid-cols-[minmax(0,1fr)_160px] gap-2">
+          <div className="space-y-1.5">
+            <Label
+              htmlFor={repeatEveryId}
+              className="font-mono text-xs tracking-wider"
+            >
+              REPEAT EVERY
+            </Label>
+            <Input
+              id={repeatEveryId}
+              type="number"
+              min={1}
+              max={unit === "days" ? 30 : 12}
+              value={every}
+              disabled={disabled}
+              onChange={(event) => onEveryChange(Number(event.target.value))}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="font-mono text-xs tracking-wider">UNIT</Label>
+            <div
+              role="group"
+              aria-label="Repeat unit"
+              className="grid grid-cols-2 gap-1"
+            >
+              <Button
+                type="button"
+                size="sm"
+                variant={unit === "days" ? "default" : "outline"}
+                disabled={disabled}
+                aria-pressed={unit === "days"}
+                onClick={() =>
+                  onUnitChange(
+                    "days",
+                    Math.min(Math.max(1, Number(every) || 1), 30),
+                  )
+                }
+              >
+                Days
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={unit === "weeks" ? "default" : "outline"}
+                disabled={disabled}
+                aria-pressed={unit === "weeks"}
+                onClick={() =>
+                  onUnitChange(
+                    "weeks",
+                    Math.min(Math.max(1, Number(every) || 1), 12),
+                  )
+                }
+              >
+                Weeks
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function StudyNewPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -128,6 +260,13 @@ export default function StudyNewPage() {
     { unit: "minutes", value: 5 },
     { unit: "minutes", value: 0, atStart: true },
   ]);
+  // Standalone-form only: optional task link + batch-style repeat.
+  const [selectedTaskId, setSelectedTaskId] = useState<string>("none");
+  const [taskOptions, setTaskOptions] = useState<Task[]>([]);
+  const [taskPickerOpen, setTaskPickerOpen] = useState(false);
+  const [repeatEnabled, setRepeatEnabled] = useState(false);
+  const [repeatEvery, setRepeatEvery] = useState(1);
+  const [repeatUnit, setRepeatUnit] = useState<"days" | "weeks">("weeks");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [taskContext, setTaskContext] = useState<Task | null>(null);
   const [taskLoading, setTaskLoading] = useState(Boolean(taskId));
@@ -180,6 +319,29 @@ export default function StudyNewPage() {
     };
   }, [taskId]);
 
+  // The standalone form (no task in the URL) lets the user optionally link a task.
+  useEffect(() => {
+    if (taskId) return;
+
+    let isMounted = true;
+    fetch("/api/task")
+      .then(async (response) => {
+        const data = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(data?.message ?? "Could not load tasks");
+        return (data?.tasks as Task[]) ?? [];
+      })
+      .then((tasks) => {
+        if (isMounted) setTaskOptions(tasks);
+      })
+      .catch(() => {
+        // Linking a task is optional, so a failed fetch is non-fatal.
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [taskId]);
+
   const totalMinutesComputed =
     (Math.max(1, Number(focusMinutes) || 0) +
       Math.max(1, Number(breakMinutes) || 0)) *
@@ -191,6 +353,31 @@ export default function StudyNewPage() {
     const value = Math.max(1, Number(reminder.value) || 1);
     return reminder.unit === "hours" ? value * 60 : value;
   });
+
+  const selectedTask = useMemo(
+    () => taskOptions.find((task) => String(task.id) === selectedTaskId) ?? null,
+    [selectedTaskId, taskOptions],
+  );
+
+  const selectedTaskDeadlineDateValue = useMemo(() => {
+    const deadline = selectedTask?.deadline;
+    if (typeof deadline === "string" && /^\d{4}-\d{2}-\d{2}/.test(deadline)) {
+      return deadline.slice(0, 10);
+    }
+
+    if (!deadline) return null;
+    const date = new Date(deadline);
+    return Number.isNaN(date.getTime()) ? null : localDateValue(date);
+  }, [selectedTask]);
+
+  const handleStandaloneTaskSelect = (taskIdValue: string) => {
+    setSelectedTaskId(taskIdValue);
+    setTaskPickerOpen(false);
+
+    if (taskIdValue === "none") {
+      setRepeatEnabled(false);
+    }
+  };
 
   const taskDeadline = useMemo(() => {
     if (!taskContext?.deadline) return null;
@@ -533,8 +720,12 @@ export default function StudyNewPage() {
       study_session_scheduled_at: sessionScheduledAt.toISOString(),
       reminders: reminderEnabled ? reminderOffsetsInMinutes : [],
       reminder_enabled: reminderEnabled,
-      // Give the task ID if it exist (user comes from task)
-      task_id: taskId ? Number(taskId) : null,
+      task_id: selectedTask ? selectedTask.id : null,
+      repeat_enabled: repeatEnabled && Boolean(selectedTask),
+      repeat_every: repeatEnabled && selectedTask
+        ? Math.max(1, Math.min(repeatUnit === "days" ? 30 : 12, Math.round(Number(repeatEvery) || 1)))
+        : undefined,
+      repeat_unit: repeatEnabled && selectedTask ? repeatUnit : undefined,
     };
 
     try {
@@ -553,13 +744,21 @@ export default function StudyNewPage() {
         return;
       }
 
-      const studySessionId = data?.studySession?.study_session_id ?? data?.studySession?.id;
+      const fallbackId =
+        data?.studySession?.study_session_id ?? data?.studySession?.id;
+      const sessionIds: number[] =
+        Array.isArray(data?.sessionIds) && data.sessionIds.length > 0
+          ? data.sessionIds
+          : fallbackId
+            ? [fallbackId]
+            : [];
       const failures: string[] = [];
-      if (studySessionId && attachments.length > 0) {
+      if (sessionIds.length > 0 && attachments.length > 0) {
         for (const file of attachments) {
           const formData = new FormData();
           formData.append("file", file);
-          formData.append("studySessionIds", JSON.stringify([studySessionId]));
+          // Attach each file to every generated occurrence (matches batch).
+          formData.append("studySessionIds", JSON.stringify(sessionIds));
           const uploadResponse = await fetch("/api/study/attachment", {
             method: "POST",
             body: formData,
@@ -573,7 +772,11 @@ export default function StudyNewPage() {
           `Study session created. Some files failed: ${failures.join(", ")}`,
         );
       } else {
-        toast.success("Study session created");
+        toast.success(
+          sessionIds.length > 1
+            ? `Created ${sessionIds.length} study sessions`
+            : "Study session created",
+        );
       }
       router.push("/study");
     } catch {
@@ -724,7 +927,7 @@ export default function StudyNewPage() {
                     </div>
                   </div>
 
-                  <div className="grid gap-4 md:grid-cols-[1fr_180px]">
+                  <div className="space-y-4">
                     <div className="space-y-1.5">
                       <Label
                         htmlFor={`track-start-date-${track.id}`}
@@ -732,7 +935,7 @@ export default function StudyNewPage() {
                       >
                         START DATE
                       </Label>
-                      <div className="flex gap-2">
+                      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
                         <Input
                           id={`track-start-date-${track.id}`}
                           type="date"
@@ -743,6 +946,16 @@ export default function StudyNewPage() {
                             })
                           }
                         />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() =>
+                            updateTrack(track.id, { startDate: localDateValue() })
+                          }
+                          className="shrink-0"
+                        >
+                          Today
+                        </Button>
                         <Button
                           type="button"
                           variant="outline"
@@ -761,87 +974,23 @@ export default function StudyNewPage() {
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      
-                      <div className="flex items-center gap-2">
-                        <Label className="font-mono text-xs tracking-wider">
-                        REPEAT PER
-                      </Label>
-                        <Checkbox
-                          id={`track-repeat-enabled-${track.id}`}
-                          checked={track.repeatEnabled}
-                          onCheckedChange={(checked) =>
-                            updateTrack(track.id, {
-                              repeatEnabled: checked === true,
-                            })
-                          }
-                        />
-                  
-                      </div>
-                      <div className="grid grid-cols-[minmax(0,1fr)_110px] gap-2">
-                        <div className="space-y-1.5">
-                      
-                          <Input
-                            id={`track-repeat-every-${track.id}`}
-                            type="number"
-                            min={1}
-                            max={track.repeatUnit === "days" ? 30 : 12}
-                            value={track.repeatEvery}
-                            disabled={!track.repeatEnabled}
-                            onChange={(event) =>
-                              updateTrack(track.id, {
-                                repeatEvery: Number(event.target.value),
-                              })
-                            }
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <div
-                            id={`track-repeat-unit-${track.id}`}
-                            role="group"
-                            aria-label="Repeat unit"
-                            className="grid grid-cols-2 gap-1"
-                          >
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant={track.repeatUnit === "days" ? "default" : "outline"}
-                              disabled={!track.repeatEnabled}
-                              aria-pressed={track.repeatUnit === "days"}
-                              onClick={() =>
-                                updateTrack(track.id, {
-                                  repeatUnit: "days",
-                                  repeatEvery: Math.min(
-                                    Math.max(1, Number(track.repeatEvery) || 1),
-                                    30,
-                                  ),
-                                })
-                              }
-                            >
-                              Days
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant={track.repeatUnit === "weeks" ? "default" : "outline"}
-                              disabled={!track.repeatEnabled}
-                              aria-pressed={track.repeatUnit === "weeks"}
-                              onClick={() =>
-                                updateTrack(track.id, {
-                                  repeatUnit: "weeks",
-                                  repeatEvery: Math.min(
-                                    Math.max(1, Number(track.repeatEvery) || 1),
-                                    12,
-                                  ),
-                                })
-                              }
-                            >
-                              Weeks
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    <RepeatControls
+                      idPrefix={`track-${track.id}`}
+                      checked={track.repeatEnabled}
+                      every={track.repeatEvery}
+                      unit={track.repeatUnit}
+                      label="Repeat this track"
+                      description="Repeats on this cadence until the task deadline."
+                      onCheckedChange={(checked) =>
+                        updateTrack(track.id, { repeatEnabled: checked })
+                      }
+                      onEveryChange={(value) =>
+                        updateTrack(track.id, { repeatEvery: value })
+                      }
+                      onUnitChange={(unit, every) =>
+                        updateTrack(track.id, { repeatUnit: unit, repeatEvery: every })
+                      }
+                    />
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-3">
@@ -1244,37 +1393,59 @@ export default function StudyNewPage() {
               />
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_180px]">
               <div className="space-y-1.5">
                 <Label className="font-mono text-xs tracking-wider">
                   SCHEDULE DATE
                 </Label>
-                <Popover open={calOpen} onOpenChange={setCalOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !scheduledDate && "text-muted-foreground",
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {scheduledDate
-                        ? format(scheduledDate, "PPP")
-                        : "Pick a date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={scheduledDate}
-                      onSelect={(value) => {
-                        setScheduledDate(value);
-                        setCalOpen(false);
-                      }}
-                    />
-                  </PopoverContent>
-                </Popover>
+                <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+                  <Popover open={calOpen} onOpenChange={setCalOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !scheduledDate && "text-muted-foreground",
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {scheduledDate
+                          ? format(scheduledDate, "PPP")
+                          : "Pick a date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={scheduledDate}
+                        onSelect={(value) => {
+                          setScheduledDate(value);
+                          setCalOpen(false);
+                        }}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setScheduledDate(new Date())}
+                    className="shrink-0"
+                  >
+                    Today
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={!selectedTaskDeadlineDateValue}
+                    onClick={() => {
+                      if (!selectedTaskDeadlineDateValue) return;
+                      setScheduledDate(parseLocalDateValue(selectedTaskDeadlineDateValue));
+                    }}
+                    className="shrink-0"
+                  >
+                    On task day
+                  </Button>
+                </div>
               </div>
 
               <div className="space-y-1.5">
@@ -1288,6 +1459,94 @@ export default function StudyNewPage() {
                 />
               </div>
             </div>
+
+            <div className="space-y-1.5">
+              <Label className="font-mono text-xs tracking-wider">
+                LINKED TASK
+              </Label>
+              <Popover open={taskPickerOpen} onOpenChange={setTaskPickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    aria-expanded={taskPickerOpen}
+                    className="w-full justify-between font-mono text-sm"
+                  >
+                    <span className="truncate">
+                      {selectedTask ? selectedTask.title : "No task"}
+                    </span>
+                    <ChevronsUpDown className="h-4 w-4 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search tasks..." />
+                    <CommandList>
+                      <CommandEmpty>No matching task.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          value="No task"
+                          onSelect={() => handleStandaloneTaskSelect("none")}
+                          onClick={() => handleStandaloneTaskSelect("none")}
+                        >
+                          <Check
+                            className={cn(
+                              "h-4 w-4",
+                              selectedTaskId === "none" ? "opacity-100" : "opacity-0",
+                            )}
+                          />
+                          No task
+                        </CommandItem>
+                        {taskOptions.map((task) => (
+                          <CommandItem
+                            key={task.id}
+                            value={task.title}
+                            onSelect={() => handleStandaloneTaskSelect(String(task.id))}
+                            onClick={() => handleStandaloneTaskSelect(String(task.id))}
+                          >
+                            <Check
+                              className={cn(
+                                "h-4 w-4",
+                                selectedTaskId === String(task.id)
+                                  ? "opacity-100"
+                                  : "opacity-0",
+                              )}
+                            />
+                            <span className="flex-1 truncate">{task.title}</span>
+                            <span className="font-mono text-[10px] text-muted-foreground">
+                              {format(new Date(task.deadline), "MMM d")}
+                            </span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              <p className="font-mono text-[10px] text-muted-foreground">
+                Link this session to an existing task to unlock repeat.
+              </p>
+            </div>
+
+            <RepeatControls
+              idPrefix="study"
+              checked={repeatEnabled}
+              every={repeatEvery}
+              unit={repeatUnit}
+              disabled={!selectedTask}
+              label="Enable repeat"
+              description={
+                selectedTask
+                  ? "Repeats on this cadence until the linked task's deadline."
+                  : "Choose a task to repeat this session."
+              }
+              onCheckedChange={setRepeatEnabled}
+              onEveryChange={setRepeatEvery}
+              onUnitChange={(unit, every) => {
+                setRepeatUnit(unit);
+                setRepeatEvery(every);
+              }}
+            />
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1.5">

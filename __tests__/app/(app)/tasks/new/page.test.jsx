@@ -56,6 +56,7 @@ describe("TaskForm", () => {
     expect(
       screen.getByRole("link", { name: /back to tasks/i }),
     ).toHaveAttribute("href", "/tasks");
+    expect(screen.queryByText(/^reminder$/i)).not.toBeInTheDocument();
   });
 
   it("shows title validation error when form is submitted without a title", () => {
@@ -176,7 +177,7 @@ describe("TaskForm", () => {
     expect(mockRefresh).toHaveBeenCalled();
   });
 
-  it("sends the selected reminder option in the POST body", async () => {
+  it("does not send task reminder settings in the POST body", async () => {
     global.fetch.mockResolvedValue({
       ok: true,
       json: async () => ({ task: { id: 99 } }),

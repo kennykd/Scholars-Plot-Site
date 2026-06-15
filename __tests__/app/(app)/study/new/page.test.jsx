@@ -43,6 +43,9 @@ describe("StudyNewPage", () => {
     if (!HTMLElement.prototype.releasePointerCapture) {
       HTMLElement.prototype.releasePointerCapture = () => {};
     }
+    if (!HTMLElement.prototype.scrollIntoView) {
+      HTMLElement.prototype.scrollIntoView = () => {};
+    }
     mockSearchParams = new URLSearchParams();
     localStorage.clear();
     useRouter.mockReturnValue({ push: mockPush });
@@ -96,6 +99,98 @@ describe("StudyNewPage", () => {
     expect(toast.error).toHaveBeenCalledWith(
       "Pick a date and time for the session",
     );
+  });
+
+  it("keeps standalone repeat disabled until a task is selected", async () => {
+    global.fetch = jest.fn(async (url) => {
+      if (url === "/api/task") {
+        return {
+          ok: true,
+          json: async () => ({ tasks: [] }),
+        };
+      }
+
+      return {
+        ok: true,
+        json: async () => ({ studySession: { id: 1 } }),
+      };
+    });
+
+    render(<StudyNewPage />);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith("/api/task");
+    });
+    expect(screen.getByLabelText(/enable repeat/i)).toBeDisabled();
+    expect(screen.getByText(/choose a task to repeat/i)).toBeInTheDocument();
+  });
+
+  it("selects an existing task from suggestions and uses task-day shortcut", async () => {
+    global.fetch = jest.fn(async (url, init) => {
+      if (url === "/api/task") {
+        return {
+          ok: true,
+          json: async () => ({
+            tasks: [
+              {
+                id: 42,
+                title: "Physics Final",
+                description: "Mechanics",
+                deadline: "2099-03-31T23:59:00.000Z",
+                priority: 4,
+                status: "Pending",
+                createdAt: "2099-03-01T00:00:00.000Z",
+                completedAt: null,
+              },
+            ],
+          }),
+        };
+      }
+
+      if (url === "/api/study") {
+        return {
+          ok: true,
+          json: async () => ({ studySession: { id: 1 }, sessionIds: [1] }),
+        };
+      }
+
+      throw new Error(`Unexpected fetch: ${url} ${init?.method ?? ""}`);
+    });
+
+    const { container } = render(<StudyNewPage />);
+
+    fireEvent.change(screen.getByPlaceholderText(/biology chapter 6 review/i), {
+      target: { value: "Task-linked review" },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: /no task/i }));
+    fireEvent.change(screen.getByPlaceholderText(/search tasks/i), {
+      target: { value: "physics" },
+    });
+    fireEvent.click(screen.getByText("Physics Final"));
+    fireEvent.click(screen.getByRole("button", { name: /on task day/i }));
+
+    const timeInput = container.querySelector('input[type="time"]');
+    fireEvent.change(timeInput, { target: { value: "14:00" } });
+    fireEvent.click(screen.getByLabelText(/enable repeat/i));
+    fireEvent.click(screen.getByRole("button", { name: /create session/i }));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        "/api/study",
+        expect.objectContaining({ method: "POST" }),
+      );
+    });
+    const studyCall = global.fetch.mock.calls.find(([url]) => url === "/api/study");
+    const payload = JSON.parse(studyCall[1].body);
+    expect(payload).toEqual(
+      expect.objectContaining({
+        task_id: 42,
+        repeat_enabled: true,
+        repeat_every: 1,
+        repeat_unit: "weeks",
+      }),
+    );
+    expect(payload.study_session_scheduled_at).toContain("2099-03-31");
   });
 
   it("creates a session and redirects to /study", async () => {
@@ -213,6 +308,7 @@ describe("StudyNewPage", () => {
     expect(screen.getByText("Study Sessions")).toBeInTheDocument();
     expect(screen.getAllByText(/REPEAT/i).length).toBeGreaterThan(0);
     expect(screen.queryByRole("button", { name: "Mon" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /today/i })).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText(/session topic/i), {
       target: { value: "Mechanical Physics" },

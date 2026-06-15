@@ -14,12 +14,19 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ArrowLeft, CalendarIcon, Paperclip, X, Sparkles } from "lucide-react";
 import { format, parseISO } from "date-fns";
-import type { Attachment } from "@/types";
+import type { Attachment, Task } from "@/types";
 import { AI_READABLE_ATTACHMENT_HELPER_TEXT } from "@/lib/ai/attachmentSupport";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
@@ -71,6 +78,8 @@ export default function StudyEditPage() {
   const [attachments, setAttachments] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedTaskId, setSelectedTaskId] = useState<string>("none");
+  const [taskOptions, setTaskOptions] = useState<Task[]>([]);
 
   useEffect(() => {
     if (!sessionId) {
@@ -139,6 +148,9 @@ export default function StudyEditPage() {
         setBreakMinutes(apiStudy.break_minutes ?? 5);
         setTotalPomodoro(apiStudy.total_pomodoros ?? 2);
         setDescriptionAsChecklist(checklistItems.length > 0);
+
+        const currentTaskId = apiStudy.study_session_user?.[0]?.task_id;
+        setSelectedTaskId(currentTaskId ? String(currentTaskId) : "none");
       } catch {
         toast.error("Network error while loading study session");
         router.push("/study");
@@ -149,6 +161,27 @@ export default function StudyEditPage() {
 
     fetchSession();
   }, [router, sessionId]);
+
+  // Load the user's tasks so the session can be linked, relinked, or unlinked.
+  useEffect(() => {
+    let isMounted = true;
+    fetch("/api/task")
+      .then(async (response) => {
+        const data = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(data?.message ?? "Could not load tasks");
+        return (data?.tasks as Task[]) ?? [];
+      })
+      .then((tasks) => {
+        if (isMounted) setTaskOptions(tasks);
+      })
+      .catch(() => {
+        // Linking a task is optional, so a failed fetch is non-fatal.
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const totalMinutesComputed =
     (Math.max(1, Number(focusMinutes) || 0) +
@@ -244,6 +277,8 @@ export default function StudyEditPage() {
         scheduledDate,
         scheduledTime,
       ).toISOString(),
+      // Link/relink to the chosen task, or unlink with null ("none").
+      task_id: selectedTaskId !== "none" ? Number(selectedTaskId) : null,
     };
 
     try {
@@ -396,6 +431,29 @@ export default function StudyEditPage() {
                   onChange={(e) => setScheduledTime(e.target.value)}
                 />
               </div>
+            </div>
+
+            {/* Link the session to a task (or leave it standalone) */}
+            <div className="space-y-1.5">
+              <Label className="font-mono text-xs tracking-wider">
+                LINKED TASK
+              </Label>
+              <Select value={selectedTaskId} onValueChange={setSelectedTaskId}>
+                <SelectTrigger className="w-full font-mono text-sm">
+                  <SelectValue placeholder="No task" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No task</SelectItem>
+                  {taskOptions.map((task) => (
+                    <SelectItem key={task.id} value={String(task.id)}>
+                      {task.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="font-mono text-[10px] text-muted-foreground">
+                Connect this session to a task, or leave it standalone.
+              </p>
             </div>
 
             {/* Insert Focus Minutes and Break Minutes (For Pomodoro) */}

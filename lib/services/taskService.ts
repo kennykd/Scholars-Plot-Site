@@ -1,6 +1,6 @@
 import prisma from '@/lib/prisma';
 import type { Task as PrismaTask } from '@/lib/generated/prisma/client';
-import type { CreateTaskInput, ReminderOption, UpdateTaskInput } from '@/lib/validation/task';
+import type { CreateTaskInput, UpdateTaskInput } from '@/lib/validation/task';
 import type { Attachment, Task, TaskStatus } from '@/types';
 import { TaskAttachment } from '@/lib/ai/taskAnalyzer';
 import { getFileUrl } from '@/lib/bucket';
@@ -10,40 +10,6 @@ import {
   getTaskStatusAnalyticsUpdate,
   isCompletionStatusTransition,
 } from "@/lib/services/taskStatusAnalytics";
-
-type ReminderInterval = { interval_type: 'days' | 'weeks' | 'months'; interval_value: number };
-
-function reminderOptionToInterval(option: ReminderOption | undefined): ReminderInterval | null {
-  switch (option) {
-    case 'daily': return { interval_type: 'days', interval_value: 1 };
-    case 'every-3-days': return { interval_type: 'days', interval_value: 3 };
-    case 'weekly': return { interval_type: 'weeks', interval_value: 1 };
-    case 'biweekly': return { interval_type: 'weeks', interval_value: 2 };
-    case 'monthly': return { interval_type: 'months', interval_value: 1 };
-    default: return null;
-  }
-}
-
-function intervalToMs({ interval_type, interval_value }: ReminderInterval): number {
-  const day = 24 * 60 * 60 * 1000;
-  const unit = interval_type === 'weeks' ? 7 * day : interval_type === 'months' ? 30 * day : day;
-  return interval_value * unit;
-}
-
-async function replaceTaskReminder(taskId: number, option: ReminderOption | undefined) {
-  if (option === undefined) return;
-  await prisma.taskReminder.deleteMany({ where: { task_id: taskId } });
-  const interval = reminderOptionToInterval(option);
-  if (!interval) return;
-  await prisma.taskReminder.create({
-    data: {
-      task_id: taskId,
-      interval_type: interval.interval_type,
-      interval_value: interval.interval_value,
-      remind_at: new Date(Date.now() + intervalToMs(interval)),
-    },
-  });
-}
 
 export function serializeTask(row: PrismaTask, attachments?: Attachment[]): Task {
   return {
@@ -141,7 +107,6 @@ export async function getStudySessionsForTask(taskId: number, userId: string) {
 }
 
 export async function createTask(userId: string, data: CreateTaskInput) {
-  const reminderInterval = reminderOptionToInterval(data.reminder);
   return prisma.$transaction(async (tx) => {
     const task = await tx.task.create({
       data: {
@@ -152,17 +117,6 @@ export async function createTask(userId: string, data: CreateTaskInput) {
         task_status: data.status,
         project_id: null,
         task_users: { create: { user_id: userId } },
-        ...(reminderInterval
-          ? {
-              task_reminders: {
-                create: {
-                  interval_type: reminderInterval.interval_type,
-                  interval_value: reminderInterval.interval_value,
-                  remind_at: new Date(Date.now() + intervalToMs(reminderInterval)),
-                },
-              },
-            }
-          : {}),
       },
     });
 
@@ -245,7 +199,6 @@ export async function updateTaskById(
     }
   }
 
-  await replaceTaskReminder(taskId, data.reminder);
   return {
     task: updated,
     becameCompleted: previousStatus !== "Completed" && nextStatus === "Completed",

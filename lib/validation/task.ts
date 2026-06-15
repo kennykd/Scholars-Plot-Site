@@ -1,14 +1,5 @@
 import { z } from 'zod';
 
-export const reminderOptionSchema = z.enum([
-  'none',
-  'daily',
-  'every-3-days',
-  'weekly',
-  'biweekly',
-  'monthly',
-]);
-
 export const createTaskSchema = z.object({
   title: z.string()
     .min(1, 'Title is required')
@@ -24,7 +15,6 @@ export const createTaskSchema = z.object({
   priority: z.coerce.number()
     .min(0.5).max(5)
     .optional(),
-  reminder: reminderOptionSchema.optional(),
   attachmentIds: z.array(z.coerce.number().int().positive())
     .max(20)
     .optional(),
@@ -45,10 +35,7 @@ export const updateTaskSchema = z.object({
   priority: z.coerce.number()
     .min(0.5).max(5)
     .optional(),
-  reminder: reminderOptionSchema.optional(),
 });
-
-export type ReminderOption = z.infer<typeof reminderOptionSchema>;
 
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;

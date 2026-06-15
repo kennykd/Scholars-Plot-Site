@@ -176,7 +176,6 @@ export default function ProjectsPage() {
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
   const [taskPriorityRating, setTaskPriorityRating] = useState(2.5);
-  const [taskReminder, setTaskReminder] = useState("none");
   const [taskAttachment, setTaskAttachment] = useState<File | null>(null);
   const [taskDraftPreview, setTaskDraftPreview] = useState<TaskDraftPreview | null>(null);
   const [taskDraftAttachmentIds, setTaskDraftAttachmentIds] = useState<number[]>([]);
@@ -228,7 +227,6 @@ export default function ProjectsPage() {
             title: t.title,
             description: t.description,
             attachments: t.attachments || [],
-            reminder: t.reminder || "none",
             priority:
               t.priority >= 4 ? "high" : t.priority >= 2.5 ? "medium" : "low",
             status: normalizeProjectTaskStatus(t.status),
@@ -473,7 +471,6 @@ export default function ProjectsPage() {
         taskDescription.trim() || undefined,
         undefined,
         taskDraftAttachmentIds,
-        taskReminder as string,
       );
 
       if (taskAttachment && taskDraftAttachmentIds.length === 0) {
@@ -502,7 +499,6 @@ export default function ProjectsPage() {
       setTaskTitle("");
       setTaskDescription("");
       setTaskPriorityRating(3);
-      setTaskReminder("none");
       setTaskAttachment(null);
       setTaskDraftPreview(null);
       setTaskDraftAttachmentIds([]);
@@ -979,28 +975,6 @@ export default function ProjectsPage() {
                         {taskPriorityRating.toFixed(1)} / 5.0
                       </span>
                     </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label className="font-mono text-xs tracking-wider">
-                      REMINDER
-                    </Label>
-                    <Select
-                      value={taskReminder}
-                      onValueChange={setTaskReminder}
-                    >
-                      <SelectTrigger className="font-mono text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        <SelectItem value="daily">Daily</SelectItem>
-                        <SelectItem value="every-3-days">
-                          Every 3 Days
-                        </SelectItem>
-                        <SelectItem value="weekly">Weekly</SelectItem>
-                      </SelectContent>
-                    </Select>
                   </div>
 
                   <AiSuggestionsButton

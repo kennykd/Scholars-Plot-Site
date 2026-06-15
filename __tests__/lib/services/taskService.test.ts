@@ -9,10 +9,6 @@ jest.mock("@/lib/prisma", () => ({
       findUnique: jest.fn(),
       update: jest.fn(),
     },
-    taskReminder: {
-      deleteMany: jest.fn(),
-      create: jest.fn(),
-    },
   },
 }));
 

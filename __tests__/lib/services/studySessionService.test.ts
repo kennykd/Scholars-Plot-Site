@@ -1,6 +1,8 @@
 import prisma from "@/lib/prisma";
 import {
   createStudySessionsForTask,
+  createStudySessionForUser,
+  updateStudySessionForMember,
   linkAttachmentToStudySessions,
 } from "@/lib/services/studySessionService";
 import { requireTaskAccess } from "@/lib/services/taskService";
@@ -9,11 +11,17 @@ jest.mock("@/lib/prisma", () => ({
   __esModule: true,
   default: {
     $transaction: jest.fn(),
+    studySession: {
+      create: jest.fn(),
+      update: jest.fn(),
+    },
     attachment: {
       findUnique: jest.fn(),
     },
     studySessionUser: {
+      findUnique: jest.fn(),
       findMany: jest.fn(),
+      update: jest.fn(),
     },
     studySessionAttachment: {
       createMany: jest.fn(),
@@ -324,5 +332,135 @@ describe("linkAttachmentToStudySessions", () => {
       ],
       skipDuplicates: true,
     });
+  });
+});
+
+type CreateInput = Parameters<typeof createStudySessionForUser>[1];
+type UpdateInput = Parameters<typeof updateStudySessionForMember>[2];
+
+describe("createStudySessionForUser", () => {
+  const baseInput = {
+    study_session_name: "Solo focus",
+    focus_minutes: 25,
+    break_minutes: 5,
+    total_pomodoros: 2,
+    total_minutes: 60,
+    checklist_json: null,
+    study_session_scheduled_at: new Date("2099-03-25T15:00:00.000Z"),
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers().setSystemTime(new Date("2099-03-20T08:00:00.000Z"));
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it("creates a single standalone session (no task) and returns its id", async () => {
+    (prisma.studySession.create as jest.Mock).mockResolvedValue({
+      study_session_id: 101,
+      study_session_name: "Solo focus",
+    });
+
+    const result = await createStudySessionForUser("user-1", {
+      ...baseInput,
+      task_id: null,
+    } as unknown as CreateInput);
+
+    expect(requireTaskAccess).not.toHaveBeenCalled();
+    expect(prisma.studySession.create).toHaveBeenCalledTimes(1);
+    expect(prisma.studySession.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          study_session_user: {
+            create: expect.objectContaining({ user_id: "user-1", task_id: null }),
+          },
+        }),
+      }),
+    );
+    expect(result.sessionIds).toEqual([101]);
+  });
+
+  it("rejects a repeating session when no task is linked", async () => {
+    await expect(createStudySessionForUser("user-1", {
+      ...baseInput,
+      task_id: null,
+      repeat_enabled: true,
+      repeat_every: 1,
+      repeat_unit: "weeks",
+    } as unknown as CreateInput)).rejects.toThrow(
+      "Choose a task before repeating a study session",
+    );
+
+    expect(requireTaskAccess).not.toHaveBeenCalled();
+    expect(prisma.studySession.create).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("bounds a task-linked repeat by the task deadline", async () => {
+    (requireTaskAccess as jest.Mock).mockResolvedValue({
+      task_id: 42,
+      task_deadline: new Date("2099-04-15T23:59:00.000Z"),
+    });
+    const createMock = jest.fn(async () => ({ study_session_id: 7 }));
+    (prisma.$transaction as jest.Mock).mockImplementation((callback) =>
+      callback({ studySession: { create: createMock } }),
+    );
+
+    const result = await createStudySessionForUser("user-1", {
+      ...baseInput,
+      task_id: 42,
+      repeat_enabled: true,
+      repeat_every: 1,
+      repeat_unit: "weeks",
+    } as unknown as CreateInput);
+
+    expect(requireTaskAccess).toHaveBeenCalledWith(42, "user-1");
+    // Weekly from Mar 25 through the Apr 15 deadline: Mar 25, Apr 1, 8, 15.
+    expect(createMock).toHaveBeenCalledTimes(4);
+    expect(result.sessionIds).toHaveLength(4);
+  });
+});
+
+describe("updateStudySessionForMember", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (prisma.studySessionUser.findUnique as jest.Mock).mockResolvedValue({
+      study_session_id: 5,
+      user_id: "user-1",
+      status: "idle",
+    });
+  });
+
+  it("relinks the session to a task after verifying ownership", async () => {
+    (requireTaskAccess as jest.Mock).mockResolvedValue({ task_id: 9 });
+
+    const result = await updateStudySessionForMember(5, "user-1", {
+      task_id: 9,
+    } as unknown as UpdateInput);
+
+    expect(requireTaskAccess).toHaveBeenCalledWith(9, "user-1");
+    expect(prisma.studySessionUser.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          study_session_id_user_id: { study_session_id: 5, user_id: "user-1" },
+        },
+        data: { task_id: 9 },
+      }),
+    );
+    expect(result.notFound).toBe(false);
+  });
+
+  it("unlinks the task when task_id is null without an ownership check", async () => {
+    await updateStudySessionForMember(5, "user-1", {
+      task_id: null,
+    } as unknown as UpdateInput);
+
+    expect(requireTaskAccess).not.toHaveBeenCalled();
+    expect(prisma.studySessionUser.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { task_id: null } }),
+    );
   });
 });

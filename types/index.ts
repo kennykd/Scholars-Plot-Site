@@ -2,13 +2,6 @@ export type TaskStatus = "Pending" | "In_Progress" | "Completed";
 export type ProjectTaskStatus = "not-done" | "pending" | "done";
 export type ReminderIntervalType = "minutes" | "hours" | "days" | "weeks" | "months";
 export type StudyReminderValueUnit = "minutes" | "hours";
-export type ReminderFrequency =
-  | "none"
-  | "daily"
-  | "every-3-days"
-  | "weekly"
-  | "biweekly"
-  | "monthly";
 export type StudyReminderOffset = {
   unit: StudyReminderValueUnit;
   value: number;
@@ -74,6 +67,9 @@ export interface CreateStudySessionPayload extends Omit<StudySession, 'id' | 'cr
   reminders?: number[];
   task_id?: number | null;
   attachment_id?: number | null;
+  repeat_enabled?: boolean;
+  repeat_every?: number;
+  repeat_unit?: "days" | "weeks";
 }
 
 /** Payload allowed for updating a study session */
@@ -89,6 +85,7 @@ export interface UpdateStudySessionPayload {
   break_minutes?: number;
   total_minutes?: number;
   checklist_json?: unknown;
+  task_id?: number | null;
 }
 
 export interface AnalyticsInput {
@@ -181,7 +178,6 @@ export interface ProjectTask {
   title: string;
   description?: string;
   attachments?: string[];
-  reminder?: ReminderFrequency;
   priority: number;
   status: ProjectTaskStatus;
   assignedTo?: string;

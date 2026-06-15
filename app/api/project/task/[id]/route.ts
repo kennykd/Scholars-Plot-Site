@@ -58,10 +58,6 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *                 items:
  *                   type: string
  *                 example: ["updated-spec.pdf"]
- *               reminder:
- *                 type: string
- *                 enum: [daily, every-3-days, weekly, none]
- *                 example: weekly
  *     responses:
  *       200:
  *         description: Project task updated successfully

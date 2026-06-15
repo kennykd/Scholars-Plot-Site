@@ -14,13 +14,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { StarRating } from "@/app/components/common/star-rating";
 import { StudySessionPrompt } from "@/app/components/tasks/study-session-prompt";
 import { AiSuggestionsButton } from "@/app/components/common/ai-suggestions-button";
@@ -29,8 +22,6 @@ import { format } from "date-fns";
 import { ArrowLeft, CalendarIcon, Paperclip, X } from "lucide-react";
 import { cn, openNativePicker } from "@/lib/utils";
 import { AI_READABLE_ATTACHMENT_HELPER_TEXT } from "@/lib/ai/attachmentSupport";
-
-type ReminderOption = "none" | "daily" | "every-3-days" | "weekly" | "biweekly";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
@@ -56,7 +47,6 @@ export default function TaskForm() {
   const [deadlineTime, setDeadlineTime] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState(2.5);
-  const [reminder, setReminder] = useState<ReminderOption>("none");
   const [files, setFiles] = useState<File[]>([]);
   const [calOpen, setCalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -188,7 +178,6 @@ export default function TaskForm() {
           deadline: combinedDeadline.toISOString(),
           status: "Pending",
           priority,
-          ...(reminder !== "none" ? { reminder } : {}),
           ...(draftAttachmentIds.length > 0 ? { attachmentIds: draftAttachmentIds } : {}),
         }),
       });
@@ -428,30 +417,6 @@ export default function TaskForm() {
                   {priority.toFixed(1)} / 5.0
                 </span>
               </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="font-mono text-xs tracking-wider">
-                REMINDER
-              </Label>
-              <Select
-                value={reminder}
-                onValueChange={(v) => setReminder(v as ReminderOption)}
-              >
-                <SelectTrigger className="font-mono text-sm w-full min-w-65">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="min-w-65">
-                  <SelectItem value="none">None</SelectItem>
-                  <SelectItem value="daily">Every day</SelectItem>
-                  <SelectItem value="every-3-days">Every 3 days</SelectItem>
-                  <SelectItem value="weekly">Every week</SelectItem>
-                  <SelectItem value="biweekly">Every 2 weeks</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="font-mono text-[10px] text-muted-foreground">
-                We&apos;ll nudge you on this cadence until the deadline.
-              </p>
             </div>
 
             <AiSuggestionsButton
