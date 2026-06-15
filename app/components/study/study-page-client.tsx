@@ -37,7 +37,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StudySelectionToolbar } from "@/app/components/study/study-selection-toolbar";
 import { StudyQuickTimerCard } from "@/app/components/study/study-quick-timer-card";
 
@@ -46,7 +45,6 @@ type StudyPageClientProps = {
 };
 
 type StudySectionType = "in-progress" | "upcoming" | "completed" | "expired";
-type StudyFilter = "all" | StudySectionType;
 type StudySort = "scheduled" | "status";
 
 type StudySessionRow = {
@@ -54,13 +52,34 @@ type StudySessionRow = {
   sectionType: StudySectionType;
 };
 
-const FILTERS: Array<{ value: StudyFilter; label: string }> = [
-  { value: "all", label: "All" },
-  { value: "in-progress", label: "In Progress" },
-  { value: "upcoming", label: "Upcoming" },
-  { value: "completed", label: "Completed" },
-  { value: "expired", label: "Expired" },
+const STUDY_SECTIONS: Array<{
+  value: StudySectionType;
+  label: string;
+  dotClassName: string;
+}> = [
+  {
+    value: "in-progress",
+    label: "In Progress",
+    dotClassName: "bg-amber-500",
+  },
+  {
+    value: "upcoming",
+    label: "Upcoming",
+    dotClassName: "bg-blue-500",
+  },
+  {
+    value: "completed",
+    label: "Completed",
+    dotClassName: "bg-green-500",
+  },
+  {
+    value: "expired",
+    label: "Expired",
+    dotClassName: "bg-red-500",
+  },
 ];
+
+const DEFAULT_VISIBLE_SECTIONS = STUDY_SECTIONS.map((section) => section.value);
 
 const STATUS_ORDER: Record<StudySectionType, number> = {
   "in-progress": 0,
@@ -190,6 +209,21 @@ function buildRows(
   return rows;
 }
 
+function sortStudyRows(rows: StudySessionRow[], sortMode: StudySort) {
+  return [...rows].sort((a, b) => {
+    if (sortMode === "status") {
+      const statusDiff =
+        STATUS_ORDER[a.sectionType] - STATUS_ORDER[b.sectionType];
+      if (statusDiff !== 0) return statusDiff;
+    }
+
+    return (
+      new Date(a.session.scheduledAt).getTime() -
+      new Date(b.session.scheduledAt).getTime()
+    );
+  });
+}
+
 export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
   const router = useRouter();
   const userIDRef = useRef<string | null>(null);
@@ -202,7 +236,8 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
   const [quickTotalMinutes, setQuickTotalMinutes] = useState(60);
   const [selectedSessionIds, setSelectedSessionIds] = useState<string[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [filter, setFilter] = useState<StudyFilter>("all");
+  const [visibleSectionTypes, setVisibleSectionTypes] =
+    useState<StudySectionType[]>(DEFAULT_VISIBLE_SECTIONS);
   const [sortMode, setSortMode] = useState<StudySort>("scheduled");
 
   useEffect(() => {
@@ -258,25 +293,31 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
     [inProgressSessions, upcomingSessions, completedSessions, expiredSessions],
   );
 
-  const visibleRows = useMemo(() => {
-    const filtered =
-      filter === "all"
-        ? allRows
-        : allRows.filter((row) => row.sectionType === filter);
+  const groupedRows = useMemo(
+    () =>
+      STUDY_SECTIONS.map((section) => ({
+        ...section,
+        rows: sortStudyRows(
+          allRows.filter((row) => row.sectionType === section.value),
+          sortMode,
+        ),
+      })),
+    [allRows, sortMode],
+  );
 
-    return [...filtered].sort((a, b) => {
-      if (sortMode === "status") {
-        const statusDiff =
-          STATUS_ORDER[a.sectionType] - STATUS_ORDER[b.sectionType];
-        if (statusDiff !== 0) return statusDiff;
-      }
+  const visibleGroups = useMemo(
+    () =>
+      groupedRows.filter(
+        (group) =>
+          visibleSectionTypes.includes(group.value) && group.rows.length > 0,
+      ),
+    [groupedRows, visibleSectionTypes],
+  );
 
-      return (
-        new Date(a.session.scheduledAt).getTime() -
-        new Date(b.session.scheduledAt).getTime()
-      );
-    });
-  }, [allRows, filter, sortMode]);
+  const visibleRows = useMemo(
+    () => visibleGroups.flatMap((group) => group.rows),
+    [visibleGroups],
+  );
 
   const sentReminders = useRef<Set<string>>(new Set());
 
@@ -369,6 +410,14 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
 
   const deselectAllSessionsGlobal = () => {
     setSelectedSessionIds([]);
+  };
+
+  const toggleSection = (sectionType: StudySectionType) => {
+    setVisibleSectionTypes((current) =>
+      current.includes(sectionType)
+        ? current.filter((type) => type !== sectionType)
+        : [...current, sectionType],
+    );
   };
 
   const markAsDone = async () => {
@@ -501,23 +550,43 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
 
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-          <Tabs
-            value={filter}
-            onValueChange={(value) => setFilter(value as StudyFilter)}
-            className="flex-1"
+          <div
+            aria-label="Study status filters"
+            className="flex flex-1 flex-wrap gap-2"
           >
-            <TabsList className="bg-muted/50">
-              {FILTERS.map((item) => (
-                <TabsTrigger
-                  key={item.value}
-                  value={item.value}
-                  className="font-mono text-xs"
+            {STUDY_SECTIONS.map((section) => {
+              const active = visibleSectionTypes.includes(section.value);
+              const count =
+                groupedRows.find((group) => group.value === section.value)
+                  ?.rows.length ?? 0;
+
+              return (
+                <Button
+                  key={section.value}
+                  type="button"
+                  size="sm"
+                  variant={active ? "default" : "outline"}
+                  aria-pressed={active}
+                  onClick={() => toggleSection(section.value)}
+                  className={cn(
+                    "gap-2 font-mono text-xs",
+                    active
+                      ? "shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
                 >
-                  {item.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+                  <span
+                    aria-hidden="true"
+                    className={cn("h-2 w-2 rounded-full", section.dotClassName)}
+                  />
+                  {section.label}
+                  <span className="rounded-full bg-background/60 px-1.5 py-0.5 text-[10px] text-foreground">
+                    {count}
+                  </span>
+                </Button>
+              );
+            })}
+          </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <Select
@@ -564,91 +633,125 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
           </div>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-4">
           {visibleRows.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border/70 bg-card/70 px-4 py-8 text-sm text-muted-foreground">
               No study sessions found.
             </div>
           ) : (
-            visibleRows.map(({ session, sectionType }) => {
-              const isSelected = selectedSessionIds.includes(session.id);
-              const statusBadge = getStatusBadge(sectionType, session);
-              const scheduledDate = parseISO(session.scheduledAt);
-              const scheduleBadge = getScheduleBadge(scheduledDate, sectionType);
-
-              return (
-                <div
-                  key={session.id}
-                  data-study-row
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg px-4 py-3.5 border-l-4 bg-card",
-                    "hover:bg-card/90 transition-all duration-150 group shadow-sm",
-                    getRowAccent(sectionType),
-                    isSelected && "ring-1 ring-accent/40 bg-card/95",
-                  )}
-                >
-                  <Checkbox
-                    aria-label={`Select ${session.title}`}
-                    checked={isSelected}
-                    onCheckedChange={() => selectSession(session.id)}
-                    className="shrink-0"
+            visibleGroups.map((group) => (
+              <section key={group.value} className="space-y-2">
+                <div className="flex items-center gap-2 px-1">
+                  <span
+                    aria-hidden="true"
+                    className={cn("h-2 w-2 rounded-full", group.dotClassName)}
                   />
-
-                  <button
-                    type="button"
-                    aria-label={`Open ${session.title}`}
-                    onClick={() => openSession(session)}
-                    className="flex-1 flex items-center gap-3 min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 rounded-md"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate text-foreground">
-                        {session.title}
-                      </p>
-                      <div className="mt-1 flex flex-wrap gap-1.5">
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "font-mono text-[10px]",
-                            statusBadge.className,
-                          )}
-                        >
-                          {statusBadge.label}
-                        </Badge>
-                        <Badge variant="secondary" className="font-mono text-[10px]">
-                          {session.focusMinutes}m / {session.breakMinutes}m
-                        </Badge>
-                        <Badge variant="secondary" className="font-mono text-[10px]">
-                          Total {session.totalMinutes}m
-                        </Badge>
-                        {session.notes && (
-                          <Badge variant="secondary" className="font-mono text-[10px]">
-                            Notes
-                          </Badge>
-                        )}
-                        {session.attachments.length > 0 && (
-                          <Badge variant="secondary" className="font-mono text-[10px]">
-                            {session.attachments.length} attachment
-                            {session.attachments.length > 1 ? "s" : ""}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-
-                    <Badge
-                      className={cn(
-                        "shrink-0 font-mono text-xs border",
-                        scheduleBadge.className,
-                      )}
-                      variant="outline"
-                    >
-                      {scheduleBadge.label}
-                    </Badge>
-
-                    <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0 group-hover:text-muted-foreground transition-colors" />
-                  </button>
+                  <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {group.label}
+                  </h2>
+                  <Badge variant="secondary" className="font-mono text-[10px]">
+                    {group.rows.length}
+                  </Badge>
                 </div>
-              );
-            })
+                <div className="space-y-2">
+                  {group.rows.map(({ session, sectionType }) => {
+                    const isSelected = selectedSessionIds.includes(session.id);
+                    const statusBadge = getStatusBadge(sectionType, session);
+                    const scheduledDate = parseISO(session.scheduledAt);
+                    const scheduleBadge = getScheduleBadge(
+                      scheduledDate,
+                      sectionType,
+                    );
+
+                    return (
+                      <div
+                        key={session.id}
+                        data-study-row
+                        className={cn(
+                          "flex items-center gap-3 rounded-lg px-4 py-3.5 border-l-4 bg-card",
+                          "hover:bg-card/90 transition-all duration-150 group shadow-sm",
+                          getRowAccent(sectionType),
+                          isSelected && "ring-1 ring-accent/40 bg-card/95",
+                        )}
+                      >
+                        <Checkbox
+                          aria-label={`Select ${session.title}`}
+                          checked={isSelected}
+                          onCheckedChange={() => selectSession(session.id)}
+                          className="shrink-0"
+                        />
+
+                        <button
+                          type="button"
+                          aria-label={`Open ${session.title}`}
+                          onClick={() => openSession(session)}
+                          className="flex-1 flex items-center gap-3 min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 rounded-md"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate text-foreground">
+                              {session.title}
+                            </p>
+                            <div className="mt-1 flex flex-wrap gap-1.5">
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "font-mono text-[10px]",
+                                  statusBadge.className,
+                                )}
+                              >
+                                {statusBadge.label}
+                              </Badge>
+                              <Badge
+                                variant="secondary"
+                                className="font-mono text-[10px]"
+                              >
+                                {session.focusMinutes}m /{" "}
+                                {session.breakMinutes}m
+                              </Badge>
+                              <Badge
+                                variant="secondary"
+                                className="font-mono text-[10px]"
+                              >
+                                Total {session.totalMinutes}m
+                              </Badge>
+                              {session.notes && (
+                                <Badge
+                                  variant="secondary"
+                                  className="font-mono text-[10px]"
+                                >
+                                  Notes
+                                </Badge>
+                              )}
+                              {session.attachments.length > 0 && (
+                                <Badge
+                                  variant="secondary"
+                                  className="font-mono text-[10px]"
+                                >
+                                  {session.attachments.length} attachment
+                                  {session.attachments.length > 1 ? "s" : ""}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+
+                          <Badge
+                            className={cn(
+                              "shrink-0 font-mono text-xs border",
+                              scheduleBadge.className,
+                            )}
+                            variant="outline"
+                          >
+                            {scheduleBadge.label}
+                          </Badge>
+
+                          <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0 group-hover:text-muted-foreground transition-colors" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            ))
           )}
         </div>
       </div>

@@ -14,9 +14,19 @@ interface TaskCardProps {
   task: Task;
   selected: boolean;
   onToggleSelect: () => void;
+  href?: string;
+  isProjectTask?: boolean;
+  projectName?: string | null;
 }
 
-export function TaskCard({ task, selected, onToggleSelect }: TaskCardProps) {
+export function TaskCard({
+  task,
+  selected,
+  onToggleSelect,
+  href,
+  isProjectTask = false,
+  projectName,
+}: TaskCardProps) {
   const deadlineDate = new Date(task.deadline);
   const isCompleted = task.status === "Completed";
 
@@ -50,7 +60,7 @@ export function TaskCard({ task, selected, onToggleSelect }: TaskCardProps) {
       />
 
       <Link
-        href={`/tasks/${task.id}`}
+        href={href ?? `/tasks/${task.id}`}
         className="flex-1 flex items-center gap-3 min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 rounded-md"
       >
         <div className="flex-1 min-w-0">
@@ -73,6 +83,16 @@ export function TaskCard({ task, selected, onToggleSelect }: TaskCardProps) {
             >
               {taskStatusLabels[task.status]}
             </Badge>
+            {isProjectTask && (
+              <Badge variant="secondary" className="font-mono text-[10px]">
+                Project task
+              </Badge>
+            )}
+            {projectName && (
+              <Badge variant="secondary" className="font-mono text-[10px]">
+                {projectName}
+              </Badge>
+            )}
           </div>
         </div>
 
