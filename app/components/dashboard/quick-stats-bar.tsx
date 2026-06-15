@@ -25,7 +25,7 @@ export function QuickStatsBar({ data }: { data: AnalyticsData }) {
 
   const stats = [
     {
-      icon: <Flame className="h-5 w-5 text-accent" />,
+      icon: <Flame className="h-5 w-5 text-red-400" />,
       label: "Streak",
       value: `${streak} days`,
     },
