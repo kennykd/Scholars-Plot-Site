@@ -3,12 +3,17 @@ import { z } from 'zod';
 import { getSession } from '@/lib/firebase/auth';
 import { createProjectTaskSchema } from '../../../../lib/validation/project';
 import { createProjectTask, ProjectServiceError } from '@/lib/services/projectService';
+import { ensureUserRecordForSession } from '@/lib/services/userService';
+import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services/prismaErrors';
 
 /**
  * @swagger
  * /api/project/task:
  *   post:
  *     summary: Create a new task within a project
+ *     description: >
+ *       Requires the session cookie. Only the project owner can create project tasks.
+ *       Optionally assigns a user and attaches draft attachment IDs owned by the caller.
  *     tags:
  *       - Projects
  *     requestBody:
@@ -20,14 +25,15 @@ import { createProjectTask, ProjectServiceError } from '@/lib/services/projectSe
  *             required:
  *               - projectId
  *               - title
+ *               - deadline
  *               - priority
  *               - status
  *             properties:
  *               projectId:
- *                 type: string
- *                 minLength: 1
+ *                 type: integer
+ *                 minimum: 1
  *                 description: ID of the project to add the task to
- *                 example: "project-001"
+ *                 example: 1
  *               title:
  *                 type: string
  *                 minLength: 1
@@ -36,14 +42,19 @@ import { createProjectTask, ProjectServiceError } from '@/lib/services/projectSe
  *               description:
  *                 type: string
  *                 example: "Lock requirements and success criteria for the MVP."
- *               priority:
+ *               deadline:
  *                 type: string
- *                 enum: [low, medium, high]
- *                 example: high
+ *                 format: date-time
+ *                 description: Must be in the future.
+ *               priority:
+ *                 type: number
+ *                 minimum: 0.5
+ *                 maximum: 5
+ *                 example: 3
  *               status:
  *                 type: string
- *                 enum: [not-done, pending, done]
- *                 example: not-done
+ *                 enum: [Pending, In_Progress, Completed]
+ *                 example: Pending
  *               assignedTo:
  *                 type: string
  *                 description: Member ID to assign the task to
@@ -53,10 +64,12 @@ import { createProjectTask, ProjectServiceError } from '@/lib/services/projectSe
  *                 items:
  *                   type: string
  *                 example: ["spec.pdf"]
- *               reminder:
- *                 type: string
- *                 enum: [daily, every-3-days, weekly, none]
- *                 example: daily
+ *               attachmentIds:
+ *                 type: array
+ *                 maxItems: 20
+ *                 items:
+ *                   type: integer
+ *                   minimum: 1
  *     responses:
  *       201:
  *         description: Project task created successfully
@@ -71,7 +84,7 @@ import { createProjectTask, ProjectServiceError } from '@/lib/services/projectSe
  *                 task:
  *                   $ref: '#/components/schemas/ProjectTask'
  *       400:
- *         description: Validation failed or invalid JSON
+ *         description: Invalid JSON, validation failed, assigned user does not exist, or draft attachments are unavailable
  *         content:
  *           application/json:
  *             schema:
@@ -86,6 +99,10 @@ import { createProjectTask, ProjectServiceError } from '@/lib/services/projectSe
  *                     type: array
  *                     items:
  *                       type: string
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Only the project owner can create project tasks
  *       404:
  *         description: Project not found
  *         content:
@@ -96,6 +113,8 @@ import { createProjectTask, ProjectServiceError } from '@/lib/services/projectSe
  *                 message:
  *                   type: string
  *                   example: Project not found
+ *       409:
+ *         description: Account record needs repair (foreign key error)
  *       500:
  *         description: Internal server error
  *         content:
@@ -115,6 +134,8 @@ export async function POST(request: Request) {
     if (!session) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
+
+    await ensureUserRecordForSession(session);
 
     let body: unknown;
 
@@ -144,6 +165,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: error.message }, { status: error.status });
     }
 
-    return NextResponse.json({ message: 'Error creating project task', error }, { status: 500 });
+    if (isPrismaForeignKeyError(error)) {
+      console.error('[api/project/task] Foreign key error while creating project task:', error);
+      return NextResponse.json({ message: foreignKeyRepairMessage() }, { status: 409 });
+    }
+
+    console.error('[api/project/task] Error creating project task:', error);
+    return NextResponse.json({ message: 'Error creating project task' }, { status: 500 });
   }
 }

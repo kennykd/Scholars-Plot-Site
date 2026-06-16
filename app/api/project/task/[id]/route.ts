@@ -7,6 +7,8 @@ import {
   ProjectServiceError,
   updateProjectTaskById,
 } from '@/lib/services/projectService';
+import { ensureUserRecordForSession } from '@/lib/services/userService';
+import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services/prismaErrors';
 
 /**
  * @swagger
@@ -20,10 +22,9 @@ import {
  *         name: id
  *         required: true
  *         schema:
- *           type: string
- *           format: uuid
- *         description: The unique ID of the project task to update
- *         example: "123e4567-e89b-12d3-a456-426614174000"
+ *           type: integer
+ *           minimum: 1
+ *         description: Numeric project task ID.
  *     requestBody:
  *       required: true
  *       content:
@@ -40,14 +41,18 @@ import {
  *               description:
  *                 type: string
  *                 example: "Updated task description."
- *               priority:
+ *               deadline:
  *                 type: string
- *                 enum: [low, medium, high]
- *                 example: medium
+ *                 format: date-time
+ *               priority:
+ *                 type: number
+ *                 minimum: 0.5
+ *                 maximum: 5
+ *                 example: 3
  *               status:
  *                 type: string
- *                 enum: [not-done, pending, done]
- *                 example: pending
+ *                 enum: [Pending, In_Progress, Completed]
+ *                 example: In_Progress
  *               assignedTo:
  *                 type: string
  *                 example: "member-002"
@@ -56,10 +61,6 @@ import {
  *                 items:
  *                   type: string
  *                 example: ["updated-spec.pdf"]
- *               reminder:
- *                 type: string
- *                 enum: [daily, every-3-days, weekly, none]
- *                 example: weekly
  *     responses:
  *       200:
  *         description: Project task updated successfully
@@ -74,7 +75,7 @@ import {
  *                 task:
  *                   $ref: '#/components/schemas/ProjectTask'
  *       400:
- *         description: Validation failed, invalid JSON, or no fields provided
+ *         description: Invalid task id, invalid JSON, validation failed, no fields provided, or assigned user does not exist
  *         content:
  *           application/json:
  *             schema:
@@ -89,6 +90,10 @@ import {
  *                     type: array
  *                     items:
  *                       type: string
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: User is not allowed to make the requested task change
  *       404:
  *         description: Project task not found
  *         content:
@@ -99,6 +104,8 @@ import {
  *                 message:
  *                   type: string
  *                   example: Project task not found
+ *       409:
+ *         description: Account record needs repair (foreign key error)
  *       500:
  *         description: Internal server error
  *         content:
@@ -118,10 +125,9 @@ import {
  *         name: id
  *         required: true
  *         schema:
- *           type: string
- *           format: uuid
- *         description: The unique ID of the project task to delete
- *         example: "123e4567-e89b-12d3-a456-426614174000"
+ *           type: integer
+ *           minimum: 1
+ *         description: Numeric project task ID.
  *     responses:
  *       200:
  *         description: Project task deleted successfully
@@ -133,6 +139,12 @@ import {
  *                 message:
  *                   type: string
  *                   example: Project task deleted successfully
+ *       400:
+ *         description: Invalid project task id
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Only the project owner can delete project tasks
  *       404:
  *         description: Project task not found
  *         content:
@@ -143,6 +155,8 @@ import {
  *                 message:
  *                   type: string
  *                   example: Project task not found
+ *       409:
+ *         description: Account record needs repair (foreign key error)
  *       500:
  *         description: Internal server error
  *         content:
@@ -169,6 +183,8 @@ export async function DELETE(_: Request, context: RouteContext) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
+    await ensureUserRecordForSession(session);
+
     const { id } = await context.params;
     const parsedTaskId = z.coerce.number().int().positive().safeParse(id);
 
@@ -184,7 +200,13 @@ export async function DELETE(_: Request, context: RouteContext) {
       return NextResponse.json({ message: error.message }, { status: error.status });
     }
 
-    return NextResponse.json({ message: 'Error deleting project task', error }, { status: 500 });
+    if (isPrismaForeignKeyError(error)) {
+      console.error('[api/project/task/:id] Foreign key error while deleting project task:', error);
+      return NextResponse.json({ message: foreignKeyRepairMessage() }, { status: 409 });
+    }
+
+    console.error('[api/project/task/:id] Error deleting project task:', error);
+    return NextResponse.json({ message: 'Error deleting project task' }, { status: 500 });
   }
 }
 
@@ -195,6 +217,8 @@ export async function PATCH(request: Request, context: RouteContext) {
     if (!session) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
+
+    await ensureUserRecordForSession(session);
 
     const { id } = await context.params;
     const parsedTaskId = z.coerce.number().int().positive().safeParse(id);
@@ -235,6 +259,12 @@ export async function PATCH(request: Request, context: RouteContext) {
       return NextResponse.json({ message: error.message }, { status: error.status });
     }
 
-    return NextResponse.json({ message: 'Error updating project task', error }, { status: 500 });
+    if (isPrismaForeignKeyError(error)) {
+      console.error('[api/project/task/:id] Foreign key error while updating project task:', error);
+      return NextResponse.json({ message: foreignKeyRepairMessage() }, { status: 409 });
+    }
+
+    console.error('[api/project/task/:id] Error updating project task:', error);
+    return NextResponse.json({ message: 'Error updating project task' }, { status: 500 });
   }
 }

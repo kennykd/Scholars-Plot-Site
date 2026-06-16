@@ -7,12 +7,15 @@ import {
 } from '@/lib/services/attachmentService';
 import { TaskServiceError } from '@/lib/services/taskService';
 import { getSession } from '@/lib/firebase/auth';
+import { ensureUserRecordForSession } from '@/lib/services/userService';
+import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services/prismaErrors';
 
 /**
  * @swagger
  * /api/task/{id}/attachment:
  *   get:
  *     summary: List attachments for a task (owner only)
+ *     description: Requires the session cookie and access to the personal task.
  *     tags:
  *       - Tasks
  *     parameters:
@@ -24,8 +27,30 @@ import { getSession } from '@/lib/firebase/auth';
  *     responses:
  *       200:
  *         description: Attachments retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 attachments:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       400:
+ *         description: Invalid task id
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: No access to this task
+ *       404:
+ *         description: Task not found
+ *       500:
+ *         description: Error retrieving attachments
  *   post:
  *     summary: Upload an attachment for a task (multipart/form-data with `file`)
+ *     description: Requires the session cookie and task ownership. Uploads the file to storage and creates a task attachment record.
  *     tags:
  *       - Tasks
  *     parameters:
@@ -44,9 +69,22 @@ import { getSession } from '@/lib/firebase/auth';
  *               file:
  *                 type: string
  *                 format: binary
+ *                 description: Required file, maximum 10MB.
  *     responses:
  *       201:
  *         description: Attachment uploaded successfully
+ *       400:
+ *         description: Invalid task id, invalid form data, missing file, or file exceeds 10MB
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: No access to this task
+ *       404:
+ *         description: Task not found
+ *       409:
+ *         description: Account record needs repair (foreign key error)
+ *       500:
+ *         description: Error uploading attachment
  */
 
 type RouteContext = {
@@ -117,6 +155,8 @@ export async function POST(request: Request, context: RouteContext) {
       );
     }
 
+    await ensureUserRecordForSession(session);
+
     const buffer = Buffer.from(await file.arrayBuffer());
     const attachment = await addAttachmentToTask(parsedId.data, session.id, {
       name: file.name,
@@ -132,6 +172,12 @@ export async function POST(request: Request, context: RouteContext) {
     if (error instanceof AttachmentServiceError || error instanceof TaskServiceError) {
       return NextResponse.json({ message: error.message }, { status: error.status });
     }
-    return NextResponse.json({ message: 'Error uploading attachment', error }, { status: 500 });
+    if (isPrismaForeignKeyError(error)) {
+      console.error('[api/task/attachment] Foreign key error while uploading attachment:', error);
+      return NextResponse.json({ message: foreignKeyRepairMessage() }, { status: 409 });
+    }
+
+    console.error('[api/task/attachment] Error uploading attachment:', error);
+    return NextResponse.json({ message: 'Error uploading attachment' }, { status: 500 });
   }
 }

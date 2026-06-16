@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { signOut } from "firebase/auth";
 import { Button } from "@/components/ui/button";
+import { auth } from "@/lib/firebase/firebase";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,8 +25,11 @@ export default function LogoutButton() {
   const handleLogout = async () => {
     try {
       setLoading(true);
+      await signOut(auth).catch((error) => {
+        console.error("Failed to clear Firebase client auth during logout:", error);
+      });
 
-      const res = await fetch("/api/logout", {
+      const res = await fetch("/api/auth/logout", {
         method: "POST",
       });
 
@@ -35,7 +40,7 @@ export default function LogoutButton() {
       router.push("/login");
       router.refresh();
     } catch (error: unknown) {
-      toast.error((error as {message?: string})?.message || "Errors");
+      toast.error((error as { message?: string })?.message || "Errors");
     } finally {
       setLoading(false);
     }

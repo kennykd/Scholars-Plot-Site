@@ -15,15 +15,25 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
+import { cn, openNativePicker } from "@/lib/utils";
+import { AiSuggestionsButton } from "@/app/components/common/ai-suggestions-button";
 import { toast } from "sonner";
 import {
   ArrowLeft,
   CalendarIcon,
+  Check,
+  ChevronsUpDown,
   Paperclip,
   Plus,
-  Sparkles,
   Trash2,
   X,
 } from "lucide-react";
@@ -36,6 +46,7 @@ import {
 } from "@/components/ui/select";
 import { format } from "date-fns";
 import { StudyReminderOffset, StudyReminderValueUnit, type Task } from "@/types";
+import { AI_READABLE_ATTACHMENT_HELPER_TEXT } from "@/lib/ai/attachmentSupport";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
@@ -43,7 +54,9 @@ type StudyTrack = {
   id: string;
   title: string;
   startDate: string;
-  repeat: "none" | "weekly" | "biweekly";
+  repeatEnabled: boolean;
+  repeatEvery: number;
+  repeatUnit: "days" | "weeks";
   time: string;
   focusMinutes: number;
   breakMinutes: number;
@@ -53,12 +66,39 @@ type StudyTrack = {
   attachments: File[];
 };
 
+type StudyTrackDraft = {
+  title: string;
+  start_date: string;
+  repeat_enabled: boolean;
+  repeat_every: number;
+  repeat_unit: "days" | "weeks";
+  time: string;
+  focus_minutes: number;
+  break_minutes: number;
+  total_pomodoros: number;
+  notes: string;
+  description_as_checklist: boolean;
+};
+
+type StudyTrackDraftPreview = {
+  tracks: StudyTrackDraft[];
+  warnings?: string[];
+  reasoning?: string;
+  skippedAttachments?: {
+    fileName: string;
+    fileType: string;
+    reason: string;
+  }[];
+};
+
 function createEmptyTrack(title = ""): StudyTrack {
   return {
     id: crypto.randomUUID(),
     title,
     startDate: "",
-    repeat: "none",
+    repeatEnabled: false,
+    repeatEvery: 1,
+    repeatUnit: "weeks",
     time: "15:00",
     focusMinutes: 25,
     breakMinutes: 5,
@@ -77,6 +117,130 @@ const combineDateTime = (date: Date, time: string) => {
   next.setSeconds(0, 0);
   return next;
 };
+
+const parseStudyTrackDate = (dateValue: string) => {
+  const [year, month, day] = dateValue.split("-").map(Number);
+  if (!year || !month || !day) return undefined;
+
+  const parsed = new Date(year, month - 1, day);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+};
+
+const localDateValue = (date = new Date()) => format(date, "yyyy-MM-dd");
+
+type RepeatControlsProps = {
+  idPrefix: string;
+  checked: boolean;
+  every: number;
+  unit: "days" | "weeks";
+  disabled?: boolean;
+  label: string;
+  description: string;
+  onCheckedChange: (checked: boolean) => void;
+  onEveryChange: (value: number) => void;
+  onUnitChange: (unit: "days" | "weeks", every: number) => void;
+};
+
+function RepeatControls({
+  idPrefix,
+  checked,
+  every,
+  unit,
+  disabled = false,
+  label,
+  description,
+  onCheckedChange,
+  onEveryChange,
+  onUnitChange,
+}: RepeatControlsProps) {
+  const repeatEveryId = `${idPrefix}-repeat-every`;
+
+  return (
+    <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <Label className="font-mono text-xs tracking-wider">REPEAT</Label>
+          <p className="text-xs text-muted-foreground mt-1">{description}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id={`${idPrefix}-repeat-enabled`}
+            checked={checked}
+            disabled={disabled}
+            onCheckedChange={(next) => onCheckedChange(next === true)}
+          />
+          <Label
+            htmlFor={`${idPrefix}-repeat-enabled`}
+            className="font-mono text-xs tracking-wider"
+          >
+            {label}
+          </Label>
+        </div>
+      </div>
+
+      {checked ? (
+        <div className="grid grid-cols-[minmax(0,1fr)_160px] gap-2">
+          <div className="space-y-1.5">
+            <Label
+              htmlFor={repeatEveryId}
+              className="font-mono text-xs tracking-wider"
+            >
+              REPEAT EVERY
+            </Label>
+            <Input
+              id={repeatEveryId}
+              type="number"
+              min={1}
+              max={unit === "days" ? 30 : 12}
+              value={every}
+              disabled={disabled}
+              onChange={(event) => onEveryChange(Number(event.target.value))}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="font-mono text-xs tracking-wider">UNIT</Label>
+            <div
+              role="group"
+              aria-label="Repeat unit"
+              className="grid grid-cols-2 gap-1"
+            >
+              <Button
+                type="button"
+                size="sm"
+                variant={unit === "days" ? "default" : "outline"}
+                disabled={disabled}
+                aria-pressed={unit === "days"}
+                onClick={() =>
+                  onUnitChange(
+                    "days",
+                    Math.min(Math.max(1, Number(every) || 1), 30),
+                  )
+                }
+              >
+                Days
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={unit === "weeks" ? "default" : "outline"}
+                disabled={disabled}
+                aria-pressed={unit === "weeks"}
+                onClick={() =>
+                  onUnitChange(
+                    "weeks",
+                    Math.min(Math.max(1, Number(every) || 1), 12),
+                  )
+                }
+              >
+                Weeks
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 export default function StudyNewPage() {
   const router = useRouter();
@@ -100,6 +264,14 @@ export default function StudyNewPage() {
     { unit: "minutes", value: 5 },
     { unit: "minutes", value: 0, atStart: true },
   ]);
+  // Standalone-form only: optional task link + batch-style repeat.
+  const [selectedTaskId, setSelectedTaskId] = useState<string>("none");
+  const [taskOptions, setTaskOptions] = useState<Task[]>([]);
+  const [taskPickerOpen, setTaskPickerOpen] = useState(false);
+  const [repeatEnabled, setRepeatEnabled] = useState(false);
+  const [repeatEvery, setRepeatEvery] = useState(1);
+  const [repeatUnit, setRepeatUnit] = useState<"days" | "weeks">("weeks");
+  const [creating, setCreating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [taskContext, setTaskContext] = useState<Task | null>(null);
   const [taskLoading, setTaskLoading] = useState(Boolean(taskId));
@@ -107,6 +279,8 @@ export default function StudyNewPage() {
   const [tracks, setTracks] = useState<StudyTrack[]>([createEmptyTrack()]);
   const [savingBatch, setSavingBatch] = useState(false);
   const [plannerError, setPlannerError] = useState<string | null>(null);
+  const [studyDraftLoading, setStudyDraftLoading] = useState(false);
+  const [studyDraft, setStudyDraft] = useState<StudyTrackDraftPreview | null>(null);
 
   useEffect(() => {
     if (!taskId || !Number.isInteger(taskId) || taskId <= 0) {
@@ -150,6 +324,29 @@ export default function StudyNewPage() {
     };
   }, [taskId]);
 
+  // The standalone form (no task in the URL) lets the user optionally link a task.
+  useEffect(() => {
+    if (taskId) return;
+
+    let isMounted = true;
+    fetch("/api/task")
+      .then(async (response) => {
+        const data = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(data?.message ?? "Could not load tasks");
+        return (data?.tasks as Task[]) ?? [];
+      })
+      .then((tasks) => {
+        if (isMounted) setTaskOptions(tasks);
+      })
+      .catch(() => {
+        // Linking a task is optional, so a failed fetch is non-fatal.
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [taskId]);
+
   const totalMinutesComputed =
     (Math.max(1, Number(focusMinutes) || 0) +
       Math.max(1, Number(breakMinutes) || 0)) *
@@ -161,6 +358,20 @@ export default function StudyNewPage() {
     const value = Math.max(1, Number(reminder.value) || 1);
     return reminder.unit === "hours" ? value * 60 : value;
   });
+
+  const selectedTask = useMemo(
+    () => taskOptions.find((task) => String(task.id) === selectedTaskId) ?? null,
+    [selectedTaskId, taskOptions],
+  );
+
+  const handleStandaloneTaskSelect = (taskIdValue: string) => {
+    setSelectedTaskId(taskIdValue);
+    setTaskPickerOpen(false);
+
+    if (taskIdValue === "none") {
+      setRepeatEnabled(false);
+    }
+  };
 
   const taskDeadline = useMemo(() => {
     if (!taskContext?.deadline) return null;
@@ -263,18 +474,30 @@ export default function StudyNewPage() {
           task_id: taskId,
           reminder_enabled: reminderEnabled,
           reminders: reminderEnabled ? reminderOffsetsInMinutes : [],
-          plans: tracks.map((track) => ({
-            client_plan_id: track.id,
-            title: track.title.trim(),
-            start_date: track.startDate,
-            repeat: track.repeat,
-            time: track.time,
-            focus_minutes: Math.max(1, Number(track.focusMinutes) || 25),
-            break_minutes: Math.max(0, Number(track.breakMinutes) || 0),
-            total_pomodoros: Math.max(1, Number(track.totalPomodoro) || 1),
-            notes: track.notes.trim() || undefined,
-            description_as_checklist: track.descriptionAsChecklist,
-          })),
+          plans: tracks.map((track) => {
+            const repeatEvery = Math.max(
+              1,
+              Math.min(
+                track.repeatUnit === "days" ? 30 : 12,
+                Math.round(Number(track.repeatEvery) || 1),
+              ),
+            );
+
+            return {
+              client_plan_id: track.id,
+              title: track.title.trim(),
+              start_date: track.startDate,
+              repeat_enabled: track.repeatEnabled,
+              repeat_every: repeatEvery,
+              repeat_unit: track.repeatUnit,
+              time: track.time,
+              focus_minutes: Math.max(1, Number(track.focusMinutes) || 25),
+              break_minutes: Math.max(0, Number(track.breakMinutes) || 0),
+              total_pomodoros: Math.max(1, Number(track.totalPomodoro) || 1),
+              notes: track.notes.trim() || undefined,
+              description_as_checklist: track.descriptionAsChecklist,
+            };
+          }),
         }),
       });
 
@@ -381,6 +604,118 @@ export default function StudyNewPage() {
     );
   };
 
+  const requestStudyTrackDraft = async () => {
+    if (!taskId || !taskContext) return;
+
+    setStudyDraftLoading(true);
+    setPlannerError(null);
+    try {
+      const response = await fetch("/api/ai/study-track-draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskId }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.message ?? "Could not generate study plan");
+      }
+
+      setStudyDraft(data.draft);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Could not generate study plan";
+      setPlannerError(message);
+      toast.error(message);
+    } finally {
+      setStudyDraftLoading(false);
+    }
+  };
+
+  const applyStudyTrackDraft = () => {
+    if (!studyDraft?.tracks?.length) return;
+
+    setTracks(
+      studyDraft.tracks.map((track) => ({
+        id: crypto.randomUUID(),
+        title: track.title,
+        startDate: track.start_date,
+        repeatEnabled: track.repeat_enabled,
+        repeatEvery: track.repeat_every,
+        repeatUnit: track.repeat_unit,
+        time: track.time,
+        focusMinutes: track.focus_minutes,
+        breakMinutes: track.break_minutes,
+        totalPomodoro: track.total_pomodoros,
+        notes: track.notes,
+        descriptionAsChecklist: track.description_as_checklist,
+        attachments: [],
+      })),
+    );
+    setPlannerError(null);
+    toast.success("AI study plan applied");
+  };
+
+  const applyStudyTrackToSingleSession = (track: StudyTrackDraft) => {
+    setTitle(track.title);
+    setNotes(track.notes);
+    setScheduledTime(track.time);
+    setFocusMinutes(track.focus_minutes);
+    setBreakMinutes(track.break_minutes);
+    setTotalPomodoro(track.total_pomodoros);
+    setDescriptionAsChecklist(track.description_as_checklist);
+    setRepeatEnabled(track.repeat_enabled);
+    setRepeatEvery(track.repeat_every);
+    setRepeatUnit(track.repeat_unit);
+
+    const draftDate = parseStudyTrackDate(track.start_date);
+    if (draftDate) setScheduledDate(draftDate);
+  };
+
+  const buildSingleStudyDraftPayload = () => ({
+    ...(selectedTask ? { taskId: selectedTask.id } : {}),
+    title: title.trim(),
+    notes: notes.trim(),
+    scheduledDate: scheduledDate ? localDateValue(scheduledDate) : null,
+    scheduledTime: scheduledTime || null,
+    focusMinutes: Math.max(1, Number(focusMinutes) || 25),
+    breakMinutes: Math.max(0, Number(breakMinutes) || 5),
+    totalPomodoro: Math.max(1, Number(totalPomodoro) || 2),
+    descriptionAsChecklist,
+  });
+
+  const requestSingleStudySessionDraft = async () => {
+    setStudyDraftLoading(true);
+    try {
+      const response = await fetch("/api/ai/study-track-draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildSingleStudyDraftPayload()),
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message ?? "Could not generate study session");
+      }
+
+      const firstTrack = (data?.draft as StudyTrackDraftPreview | undefined)
+        ?.tracks?.[0];
+      if (!firstTrack) {
+        throw new Error("AI did not return a study session suggestion");
+      }
+
+      applyStudyTrackToSingleSession(firstTrack);
+      toast.success("AI study session applied");
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Could not generate study session";
+      toast.error(message);
+    } finally {
+      setStudyDraftLoading(false);
+    }
+  };
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
@@ -408,6 +743,7 @@ export default function StudyNewPage() {
 
   const handleCreateSession = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (creating) return;
     if (!title.trim()) {
       toast.error("Session title is required");
       return;
@@ -417,6 +753,7 @@ export default function StudyNewPage() {
       return;
     }
 
+    setCreating(true);
     const sessionScheduledAt = combineDateTime(scheduledDate, scheduledTime);
 
     const payload = {
@@ -428,18 +765,24 @@ export default function StudyNewPage() {
       total_minutes: totalMinutesComputed,
       checklist_json: descriptionAsChecklist
         ? notes
-            .split("\n")
-            .map((line) => line.trim())
-            .filter(Boolean)
-            .map((text) => ({
-              id: crypto.randomUUID(),
-              text,
-              completed: false,
-            }))
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .map((text) => ({
+            id: crypto.randomUUID(),
+            text,
+            completed: false,
+          }))
         : null,
       study_session_scheduled_at: sessionScheduledAt.toISOString(),
       reminders: reminderEnabled ? reminderOffsetsInMinutes : [],
       reminder_enabled: reminderEnabled,
+      task_id: selectedTask ? selectedTask.id : null,
+      repeat_enabled: repeatEnabled && Boolean(selectedTask),
+      repeat_every: repeatEnabled && selectedTask
+        ? Math.max(1, Math.min(repeatUnit === "days" ? 30 : 12, Math.round(Number(repeatEvery) || 1)))
+        : undefined,
+      repeat_unit: repeatEnabled && selectedTask ? repeatUnit : undefined,
     };
 
     try {
@@ -455,16 +798,25 @@ export default function StudyNewPage() {
 
       if (!response.ok) {
         toast.error(data?.message ?? "Failed to create study session");
+        setCreating(false);
         return;
       }
 
-      const studySessionId = data?.studySession?.study_session_id ?? data?.studySession?.id;
+      const fallbackId =
+        data?.studySession?.study_session_id ?? data?.studySession?.id;
+      const sessionIds: number[] =
+        Array.isArray(data?.sessionIds) && data.sessionIds.length > 0
+          ? data.sessionIds
+          : fallbackId
+            ? [fallbackId]
+            : [];
       const failures: string[] = [];
-      if (studySessionId && attachments.length > 0) {
+      if (sessionIds.length > 0 && attachments.length > 0) {
         for (const file of attachments) {
           const formData = new FormData();
           formData.append("file", file);
-          formData.append("studySessionIds", JSON.stringify([studySessionId]));
+          // Attach each file to every generated occurrence (matches batch).
+          formData.append("studySessionIds", JSON.stringify(sessionIds));
           const uploadResponse = await fetch("/api/study/attachment", {
             method: "POST",
             body: formData,
@@ -478,18 +830,23 @@ export default function StudyNewPage() {
           `Study session created. Some files failed: ${failures.join(", ")}`,
         );
       } else {
-        toast.success("Study session created");
+        toast.success(
+          sessionIds.length > 1
+            ? `Created ${sessionIds.length} study sessions`
+            : "Study session created",
+        );
       }
       router.push("/study");
     } catch {
       toast.error("Network error while creating study session");
+      setCreating(false);
     }
   };
 
   if (taskId) {
     if (taskLoading) {
       return (
-        <div className="p-6 max-w-2xl mx-auto space-y-6">
+        <div className="p-6 space-y-6">
           <p className="text-sm text-muted-foreground">Loading task...</p>
         </div>
       );
@@ -497,7 +854,7 @@ export default function StudyNewPage() {
 
     if (taskLoadError || !taskContext || !taskDeadline) {
       return (
-        <div className="p-6 max-w-2xl mx-auto space-y-4">
+        <div className="p-6 space-y-4">
           <h1 className="font-display text-2xl font-bold text-foreground">
             Task not available
           </h1>
@@ -512,7 +869,7 @@ export default function StudyNewPage() {
     }
 
     return (
-      <div className="p-6 max-w-2xl mx-auto space-y-6">
+      <div className="p-6 space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">
@@ -623,11 +980,13 @@ export default function StudyNewPage() {
                         onChange={(event) =>
                           updateTrack(track.id, { time: event.target.value })
                         }
+                        onClick={openNativePicker}
+                        onFocus={openNativePicker}
                       />
                     </div>
                   </div>
 
-                  <div className="grid gap-4 md:grid-cols-[1fr_180px]">
+                  <div className="space-y-4">
                     <div className="space-y-1.5">
                       <Label
                         htmlFor={`track-start-date-${track.id}`}
@@ -635,7 +994,7 @@ export default function StudyNewPage() {
                       >
                         START DATE
                       </Label>
-                      <div className="flex gap-2">
+                      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
                         <Input
                           id={`track-start-date-${track.id}`}
                           type="date"
@@ -649,12 +1008,22 @@ export default function StudyNewPage() {
                         <Button
                           type="button"
                           variant="outline"
+                          onClick={() =>
+                            updateTrack(track.id, { startDate: localDateValue() })
+                          }
+                          className="shrink-0"
+                        >
+                          Today
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
                           disabled={!taskDeadlineDateValue}
                           onClick={() =>
                             taskDeadlineDateValue &&
                             updateTrack(track.id, {
                               startDate: taskDeadlineDateValue,
-                              repeat: "none",
+                              repeatEnabled: false,
                             })
                           }
                           className="shrink-0"
@@ -664,28 +1033,23 @@ export default function StudyNewPage() {
                       </div>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <Label className="font-mono text-xs tracking-wider">
-                        REPEAT
-                      </Label>
-                      <Select
-                        value={track.repeat}
-                        onValueChange={(value) =>
-                          updateTrack(track.id, {
-                            repeat: value as StudyTrack["repeat"],
-                          })
-                        }
-                      >
-                        <SelectTrigger className="font-mono text-sm">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">None</SelectItem>
-                          <SelectItem value="weekly">Every week</SelectItem>
-                          <SelectItem value="biweekly">Every 2 weeks</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    <RepeatControls
+                      idPrefix={`track-${track.id}`}
+                      checked={track.repeatEnabled}
+                      every={track.repeatEvery}
+                      unit={track.repeatUnit}
+                      label="Repeat this track"
+                      description="Repeats on this cadence until the task deadline."
+                      onCheckedChange={(checked) =>
+                        updateTrack(track.id, { repeatEnabled: checked })
+                      }
+                      onEveryChange={(value) =>
+                        updateTrack(track.id, { repeatEvery: value })
+                      }
+                      onUnitChange={(unit, every) =>
+                        updateTrack(track.id, { repeatUnit: unit, repeatEvery: every })
+                      }
+                    />
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-3">
@@ -768,6 +1132,9 @@ export default function StudyNewPage() {
                     <Label className="font-mono text-xs tracking-wider">
                       SESSION ATTACHMENTS
                     </Label>
+                    <p className="font-mono text-[10px] text-muted-foreground">
+                      {AI_READABLE_ATTACHMENT_HELPER_TEXT}
+                    </p>
                     {track.attachments.length > 0 && (
                       <div className="space-y-2">
                         {track.attachments.map((file, fileIndex) => (
@@ -956,6 +1323,83 @@ export default function StudyNewPage() {
               ) : null}
             </div>
 
+            <AiSuggestionsButton
+              description="Suggest a study plan from this task's deadline and topics."
+              loading={studyDraftLoading}
+              onClick={requestStudyTrackDraft}
+            />
+
+            {studyDraft && (
+              <div className="space-y-3 rounded-lg border border-accent/30 bg-accent/5 p-4">
+                <div>
+                  <p className="font-mono text-xs tracking-wider text-muted-foreground">
+                    AI STUDY PLAN
+                  </p>
+                  {studyDraft.reasoning ? (
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {studyDraft.reasoning}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="space-y-2">
+                  {studyDraft.tracks.map((track, index) => (
+                    <div
+                      key={`${track.title}-${index}`}
+                      className="rounded-md border border-border/60 bg-background/60 p-3"
+                    >
+                      <p className="text-sm font-semibold">{track.title}</p>
+                      <p className="font-mono text-xs text-muted-foreground">
+                        {track.start_date} at {track.time} · {track.focus_minutes}m x{" "}
+                        {track.total_pomodoros}
+                      </p>
+                      {track.notes ? (
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          {track.notes}
+                        </p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+                {studyDraft.warnings?.length ? (
+                  <div className="space-y-1 rounded-md border border-border/60 bg-background/60 p-3">
+                    {studyDraft.warnings.map((warning) => (
+                      <p key={warning} className="text-xs text-muted-foreground">
+                        {warning}
+                      </p>
+                    ))}
+                  </div>
+                ) : null}
+                {studyDraft.skippedAttachments?.length ? (
+                  <div className="space-y-1 rounded-md border border-border/60 bg-background/60 p-3">
+                    <p className="font-mono text-[10px] tracking-wider text-muted-foreground">
+                      SKIPPED FILES
+                    </p>
+                    {studyDraft.skippedAttachments.map((attachment) => (
+                      <p
+                        key={`${attachment.fileName}-${attachment.reason}`}
+                        className="text-xs text-muted-foreground"
+                      >
+                        {attachment.fileName}: {attachment.reason}
+                      </p>
+                    ))}
+                  </div>
+                ) : null}
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" size="sm" onClick={applyStudyTrackDraft}>
+                    Apply study plan
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setStudyDraft(null)}
+                  >
+                    Dismiss
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-3 pt-2">
               <Button
                 type="button"
@@ -976,7 +1420,7 @@ export default function StudyNewPage() {
   }
 
   return (
-    <div className="p-6 max-w-2xl mx-auto space-y-6">
+    <div className="p-6 space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">
@@ -1008,8 +1452,8 @@ export default function StudyNewPage() {
               />
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-1.5">
+            <div className="flex min-w-full gap-4 md:flex-row flex-col">
+              <div className="space-y-1.5 flex-1">
                 <Label className="font-mono text-xs tracking-wider">
                   SCHEDULE DATE
                 </Label>
@@ -1041,22 +1485,112 @@ export default function StudyNewPage() {
                 </Popover>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 flex-1">
                 <Label className="font-mono text-xs tracking-wider">TIME</Label>
                 <Input
                   type="time"
                   value={scheduledTime}
                   onChange={(e) => setScheduledTime(e.target.value)}
+                  onClick={openNativePicker}
+                  onFocus={openNativePicker}
                 />
               </div>
             </div>
 
+            <div className="space-y-1.5">
+              <Label className="font-mono text-xs tracking-wider">
+                LINKED TASK
+              </Label>
+              <Popover open={taskPickerOpen} onOpenChange={setTaskPickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    aria-expanded={taskPickerOpen}
+                    className="w-full justify-between font-mono text-sm"
+                  >
+                    <span className="truncate">
+                      {selectedTask ? selectedTask.title : "No task"}
+                    </span>
+                    <ChevronsUpDown className="h-4 w-4 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search tasks..." />
+                    <CommandList>
+                      <CommandEmpty>No matching task.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          value="No task"
+                          onSelect={() => handleStandaloneTaskSelect("none")}
+                          onClick={() => handleStandaloneTaskSelect("none")}
+                        >
+                          <Check
+                            className={cn(
+                              "h-4 w-4",
+                              selectedTaskId === "none" ? "opacity-100" : "opacity-0",
+                            )}
+                          />
+                          No task
+                        </CommandItem>
+                        {taskOptions.map((task) => (
+                          <CommandItem
+                            key={task.id}
+                            value={task.title}
+                            onSelect={() => handleStandaloneTaskSelect(String(task.id))}
+                            onClick={() => handleStandaloneTaskSelect(String(task.id))}
+                          >
+                            <Check
+                              className={cn(
+                                "h-4 w-4",
+                                selectedTaskId === String(task.id)
+                                  ? "opacity-100"
+                                  : "opacity-0",
+                              )}
+                            />
+                            <span className="flex-1 truncate">{task.title}</span>
+                            <span className="font-mono text-[10px] text-muted-foreground">
+                              {format(new Date(task.deadline), "MMM d")}
+                            </span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              <p className="font-mono text-[10px] text-muted-foreground">
+                Link this session to an existing task to unlock repeat.
+              </p>
+            </div>
+
+            {/* Repeat only applies to task-linked sessions, so hide it entirely
+                until a task is chosen to keep the form uncluttered. */}
+            {selectedTask && (
+              <RepeatControls
+                idPrefix="study"
+                checked={repeatEnabled}
+                every={repeatEvery}
+                unit={repeatUnit}
+                label="Enable repeat"
+                description="Repeats on this cadence until the linked task's deadline."
+                onCheckedChange={setRepeatEnabled}
+                onEveryChange={setRepeatEvery}
+                onUnitChange={(unit, every) => {
+                  setRepeatUnit(unit);
+                  setRepeatEvery(every);
+                }}
+              />
+            )}
+
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1.5">
-                <Label className="font-mono text-xs tracking-wider">
+                <Label htmlFor="focusMinutes" className="font-mono text-xs tracking-wider">
                   FOCUS MINUTES
                 </Label>
                 <Input
+                  id="focusMinutes"
                   type="number"
                   min={1}
                   value={focusMinutes}
@@ -1127,6 +1661,9 @@ export default function StudyNewPage() {
               <Label className="font-mono text-xs tracking-wider">
                 ATTACHMENTS
               </Label>
+              <p className="font-mono text-[10px] text-muted-foreground">
+                {AI_READABLE_ATTACHMENT_HELPER_TEXT}
+              </p>
               {attachments.length ? (
                 <div className="space-y-2">
                   {attachments.map((file, index) => (
@@ -1301,32 +1838,19 @@ export default function StudyNewPage() {
               ) : null}
             </div>
 
-            <div className="flex items-center justify-between rounded-lg border border-accent/20 bg-accent/5 px-4 py-3">
-              <div>
-                <p className="text-sm font-medium text-foreground">
-                  AI Suggestions
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Get session ideas based on your title and attachments.
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                className="gap-1.5 font-mono text-xs border-accent/40 text-accent hover:bg-accent/10 hover:text-accent"
-                onClick={() => toast.info("AI suggestions coming soon!")}
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                AI Suggestions
-              </Button>
-            </div>
+            <AiSuggestionsButton
+              description="Generate one study session from this form and optional linked task."
+              loading={studyDraftLoading}
+              onClick={requestSingleStudySessionDraft}
+            />
 
             <div className="flex gap-3 pt-2">
               <Button
                 type="submit"
+                disabled={creating}
                 className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground font-semibold"
               >
-                Create Session
+                {creating ? "Creating..." : "Create Session"}
               </Button>
               <Button variant="outline" asChild>
                 <Link href="/study">Cancel</Link>

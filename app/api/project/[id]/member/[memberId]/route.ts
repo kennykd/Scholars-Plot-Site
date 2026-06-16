@@ -7,6 +7,8 @@ import {
   ProjectServiceError,
   updateProjectMemberById,
 } from '@/lib/services/projectService';
+import { ensureUserRecordForSession } from '@/lib/services/userService';
+import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services/prismaErrors';
 
 /**
  * @swagger
@@ -20,10 +22,9 @@ import {
  *         name: id
  *         required: true
  *         schema:
- *           type: string
- *           format: uuid
- *         description: The unique ID of the project
- *         example: "123e4567-e89b-12d3-a456-426614174000"
+ *           type: integer
+ *           minimum: 1
+ *         description: Numeric project ID.
  *       - in: path
  *         name: memberId
  *         required: true
@@ -42,7 +43,7 @@ import {
  *             properties:
  *               role:
  *                 type: string
- *                 enum: [owner, moderator, member]
+ *                 enum: [owner, moderator, collaborator, member]
  *                 example: moderator
  *     responses:
  *       200:
@@ -58,7 +59,7 @@ import {
  *                 member:
  *                   $ref: '#/components/schemas/ProjectMember'
  *       400:
- *         description: Validation failed or invalid JSON
+ *         description: Invalid project id, invalid JSON, or validation failed
  *         content:
  *           application/json:
  *             schema:
@@ -73,6 +74,10 @@ import {
  *                     type: array
  *                     items:
  *                       type: string
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Only the project owner can manage members
  *       404:
  *         description: Project or member not found
  *         content:
@@ -83,6 +88,8 @@ import {
  *                 message:
  *                   type: string
  *                   example: Member not found
+ *       409:
+ *         description: Account record needs repair (foreign key error)
  *       500:
  *         description: Internal server error
  *         content:
@@ -102,10 +109,9 @@ import {
  *         name: id
  *         required: true
  *         schema:
- *           type: string
- *           format: uuid
- *         description: The unique ID of the project
- *         example: "123e4567-e89b-12d3-a456-426614174000"
+ *           type: integer
+ *           minimum: 1
+ *         description: Numeric project ID.
  *       - in: path
  *         name: memberId
  *         required: true
@@ -124,8 +130,12 @@ import {
  *                 message:
  *                   type: string
  *                   example: Member removed successfully
+ *       400:
+ *         description: Invalid project id
+ *       401:
+ *         description: Unauthorized
  *       403:
- *         description: Cannot remove the project owner
+ *         description: Cannot remove the project owner or only the project owner can manage members
  *         content:
  *           application/json:
  *             schema:
@@ -144,6 +154,8 @@ import {
  *                 message:
  *                   type: string
  *                   example: Member not found
+ *       409:
+ *         description: Account record needs repair (foreign key error)
  *       500:
  *         description: Internal server error
  *         content:
@@ -171,6 +183,8 @@ export async function DELETE(_: Request, context: RouteContext) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
+    await ensureUserRecordForSession(session);
+
     const { id, memberId } = await context.params;
     const parsedProjectId = z.coerce.number().int().positive().safeParse(id);
 
@@ -186,7 +200,13 @@ export async function DELETE(_: Request, context: RouteContext) {
       return NextResponse.json({ message: error.message }, { status: error.status });
     }
 
-    return NextResponse.json({ message: 'Error removing member', error }, { status: 500 });
+    if (isPrismaForeignKeyError(error)) {
+      console.error('[api/project/:id/member/:memberId] Foreign key error while removing member:', error);
+      return NextResponse.json({ message: foreignKeyRepairMessage() }, { status: 409 });
+    }
+
+    console.error('[api/project/:id/member/:memberId] Error removing member:', error);
+    return NextResponse.json({ message: 'Error removing member' }, { status: 500 });
   }
 }
 
@@ -197,6 +217,8 @@ export async function PATCH(request: Request, context: RouteContext) {
     if (!session) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
+
+    await ensureUserRecordForSession(session);
 
     const { id, memberId } = await context.params;
     const parsedProjectId = z.coerce.number().int().positive().safeParse(id);
@@ -233,6 +255,12 @@ export async function PATCH(request: Request, context: RouteContext) {
       return NextResponse.json({ message: error.message }, { status: error.status });
     }
 
-    return NextResponse.json({ message: 'Error updating member', error }, { status: 500 });
+    if (isPrismaForeignKeyError(error)) {
+      console.error('[api/project/:id/member/:memberId] Foreign key error while updating member:', error);
+      return NextResponse.json({ message: foreignKeyRepairMessage() }, { status: 409 });
+    }
+
+    console.error('[api/project/:id/member/:memberId] Error updating member:', error);
+    return NextResponse.json({ message: 'Error updating member' }, { status: 500 });
   }
 }

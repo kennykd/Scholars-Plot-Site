@@ -95,6 +95,11 @@ export const mockAnalytics: AnalyticsData = {
     { subject: "English Composition", hours: 5.0 },
     { subject: "Web Development", hours: 14.0 },
   ],
+  timeByTask: [
+    { taskName: "Data Structures", minutes: 750 },
+    { taskName: "Calculus II", minutes: 540 },
+    { taskName: "Physics Lab", minutes: 450 },
+  ],
   productivityByDay: [
     { day: "Mon", score: 85, tasksCompleted: 3 },
     { day: "Tue", score: 60, tasksCompleted: 2 },
@@ -229,6 +234,7 @@ export const mockProjects: Project[] = [
         priority: 5,
         status: "pending",
         assignedTo: "00000000-0000-4000-8000-000000000603",
+        deadline: daysFromNow(12),
         createdAt: daysFromNowDate(-5),
       },
       {
@@ -239,6 +245,7 @@ export const mockProjects: Project[] = [
         priority: 3,
         status: "not-done",
         assignedTo: "00000000-0000-4000-8000-000000000602",
+        deadline: daysFromNow(18),
         createdAt: daysFromNowDate(-4),
       },
       {
@@ -249,6 +256,7 @@ export const mockProjects: Project[] = [
         priority: 1.5,
         status: "done",
         assignedTo: "00000000-0000-4000-8000-000000000601",
+        deadline: daysFromNow(7),
         createdAt: daysFromNowDate(-8),
       },
     ],
@@ -285,6 +293,7 @@ export const mockProjects: Project[] = [
 
         priority: 3,
         status: "pending",
+        deadline: daysFromNow(5),
         createdAt: daysFromNowDate(-1),
       },
       {
@@ -295,6 +304,7 @@ export const mockProjects: Project[] = [
         priority: 1.5,
         status: "not-done",
         assignedTo: "00000000-0000-4000-8000-000000000607",
+        deadline: daysFromNow(9),
         createdAt: daysFromNowDate(-2),
       },
       {
@@ -305,6 +315,7 @@ export const mockProjects: Project[] = [
         priority: 5,
         status: "done",
         assignedTo: "00000000-0000-4000-8000-000000000606",
+        deadline: daysFromNow(3),
         createdAt: daysFromNowDate(-4),
       },
     ],

@@ -1,41 +1,15 @@
 import prisma from '@/lib/prisma';
 import type { Task as PrismaTask } from '@/lib/generated/prisma/client';
-import type { CreateTaskInput, ReminderOption, UpdateTaskInput } from '@/lib/validation/task';
+import type { CreateTaskInput, UpdateTaskInput } from '@/lib/validation/task';
 import type { Attachment, Task, TaskStatus } from '@/types';
-
-type ReminderInterval = { interval_type: 'days' | 'weeks' | 'months'; interval_value: number };
-
-function reminderOptionToInterval(option: ReminderOption | undefined): ReminderInterval | null {
-  switch (option) {
-    case 'daily': return { interval_type: 'days', interval_value: 1 };
-    case 'every-3-days': return { interval_type: 'days', interval_value: 3 };
-    case 'weekly': return { interval_type: 'weeks', interval_value: 1 };
-    case 'biweekly': return { interval_type: 'weeks', interval_value: 2 };
-    case 'monthly': return { interval_type: 'months', interval_value: 1 };
-    default: return null;
-  }
-}
-
-function intervalToMs({ interval_type, interval_value }: ReminderInterval): number {
-  const day = 24 * 60 * 60 * 1000;
-  const unit = interval_type === 'weeks' ? 7 * day : interval_type === 'months' ? 30 * day : day;
-  return interval_value * unit;
-}
-
-async function replaceTaskReminder(taskId: number, option: ReminderOption | undefined) {
-  if (option === undefined) return;
-  await prisma.taskReminder.deleteMany({ where: { task_id: taskId } });
-  const interval = reminderOptionToInterval(option);
-  if (!interval) return;
-  await prisma.taskReminder.create({
-    data: {
-      task_id: taskId,
-      interval_type: interval.interval_type,
-      interval_value: interval.interval_value,
-      remind_at: new Date(Date.now() + intervalToMs(interval)),
-    },
-  });
-}
+import { TaskAttachment } from '@/lib/ai/taskAnalyzer';
+import { getFileUrl } from '@/lib/bucket';
+import { incrementTasksSinceLast, shouldRunAdapter } from "@/lib/services/weightService";
+import { getAnalyticsByUserId, updateAnalyticsByUserId } from "@/lib/services/analyticService";
+import {
+  getTaskStatusAnalyticsUpdate,
+  isCompletionStatusTransition,
+} from "@/lib/services/taskStatusAnalytics";
 
 export function serializeTask(row: PrismaTask, attachments?: Attachment[]): Task {
   return {
@@ -88,7 +62,6 @@ export async function requireTaskAccess(taskId: number, userId: string) {
 // ─── User-scoped CRUD ────────────────────────────────────────────────────────
 
 export async function getTasks(userId: string) {
-  // 7-day overdue cutoff: hide uncompleted tasks whose deadline is older than 7 days.
   const overdueCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   return prisma.task.findMany({
     where: {
@@ -101,6 +74,38 @@ export async function getTasks(userId: string) {
     },
     orderBy: { task_created_at: 'desc' },
   });
+}
+
+export async function getProjectTask(userId: string) {
+  return prisma.task.findMany({
+    where: {
+      project_id: { not: null },
+      task_users: { some: { user_id: userId } },
+    },
+    include: {
+      project: {
+        select: { project_name: true, project_id: true }
+      },
+    },
+    orderBy: { task_created_at: 'desc' },
+  });
+}
+
+export async function getTaskAttachments(
+  task_id: number
+): Promise<TaskAttachment[]> {
+  const attachments = await prisma.attachment.findMany({
+    where: { task_id },
+    orderBy: { attachment_uploaded_at: 'asc' },
+  });
+
+  return Promise.all(
+    attachments.map(async (attachment) => ({
+      file_path: await getFileUrl(attachment.file_path),
+      file_type: attachment.file_type,
+      file_name: attachment.file_name,
+    })),
+  );
 }
 
 export async function getTaskById(taskId: number, userId: string) {
@@ -117,29 +122,53 @@ export async function getStudySessionsForTask(taskId: number, userId: string) {
 }
 
 export async function createTask(userId: string, data: CreateTaskInput) {
-  const reminderInterval = reminderOptionToInterval(data.reminder);
-  return prisma.task.create({
-    data: {
-      task_name: data.title,
-      task_description: data.description,
-      task_deadline: data.deadline,
-      task_priority: data.priority ?? 3,
-      task_status: data.status,
-      project_id: null,
-      task_users: { create: { user_id: userId } },
-      ...(reminderInterval
-        ? {
-            task_reminders: {
-              create: {
-                interval_type: reminderInterval.interval_type,
-                interval_value: reminderInterval.interval_value,
-                remind_at: new Date(Date.now() + intervalToMs(reminderInterval)),
-              },
-            },
-          }
-        : {}),
-    },
+  return prisma.$transaction(async (tx) => {
+    const task = await tx.task.create({
+      data: {
+        task_name: data.title,
+        task_description: data.description,
+        task_deadline: data.deadline,
+        task_priority: data.priority ?? 3,
+        task_status: data.status,
+        project_id: null,
+        task_users: { create: { user_id: userId } },
+      },
+    });
+
+    if (data.attachmentIds?.length) {
+      const attachmentIds = [...new Set(data.attachmentIds)];
+      const attachments = await tx.attachment.findMany({
+        where: { attachment_id: { in: attachmentIds } },
+        select: { attachment_id: true, user_id: true, task_id: true },
+      });
+
+      if (
+        attachments.length !== attachmentIds.length ||
+        attachments.some(
+          (attachment) => attachment.user_id !== userId || attachment.task_id !== null,
+        )
+      ) {
+        throw new TaskServiceError(400, 'Some draft attachments are unavailable');
+      }
+
+      await tx.attachment.updateMany({
+        where: { attachment_id: { in: attachmentIds } },
+        data: { task_id: task.task_id },
+      });
+    }
+
+    const currentAnalytics = await getAnalyticsByUserId(userId);
+    if (currentAnalytics) {
+      await updateAnalyticsByUserId(userId, {
+        tasks_pending: currentAnalytics.completionStats.pending + 1,
+      });
+    }
+
+    return task;
   });
+
+
+
 }
 
 export async function updateTaskById(
@@ -148,8 +177,13 @@ export async function updateTaskById(
   data: UpdateTaskInput,
 ) {
   const existing = await requireTaskAccess(taskId, userId);
-
-  const statusChanging = data.status !== undefined && data.status !== existing.task_status;
+  const previousStatus = existing.task_status as TaskStatus;
+  const nextStatus = data.status as TaskStatus | undefined;
+  const statusChanging = nextStatus !== undefined && nextStatus !== previousStatus;
+  const completionDate = statusChanging && nextStatus === 'Completed' ? new Date() : null;
+  const currentAnalytics = isCompletionStatusTransition(previousStatus, nextStatus)
+    ? await getAnalyticsByUserId(userId)
+    : null;
 
   const updated = await prisma.task.update({
     where: { task_id: taskId },
@@ -158,27 +192,122 @@ export async function updateTaskById(
       ...(data.description !== undefined ? { task_description: data.description } : {}),
       ...(data.deadline !== undefined ? { task_deadline: data.deadline } : {}),
       ...(data.priority !== undefined ? { task_priority: data.priority } : {}),
-      ...(data.status !== undefined ? { task_status: data.status } : {}),
+      ...(nextStatus !== undefined ? { task_status: nextStatus } : {}),
       ...(statusChanging
-        ? { task_completed_at: data.status === 'Completed' ? new Date() : null }
+        ? { task_completed_at: nextStatus === 'Completed' ? completionDate : null }
         : {}),
     },
   });
 
-  await replaceTaskReminder(taskId, data.reminder);
+  if (currentAnalytics && nextStatus) {
+    const analyticsUpdate = getTaskStatusAnalyticsUpdate({
+      currentAnalytics,
+      previousStatus,
+      nextStatus,
+      deadline: existing.task_deadline,
+      completionDate: completionDate ?? new Date(),
+      previousCompletedAt: existing.task_completed_at,
+    });
 
-  return updated;
+    if (analyticsUpdate) {
+      await updateAnalyticsByUserId(userId, analyticsUpdate);
+    }
+  }
+
+  return {
+    task: updated,
+    becameCompleted: previousStatus !== "Completed" && nextStatus === "Completed",
+  };
 }
 
+export async function recordTaskCompletion(user_id: string) {
+  await incrementTasksSinceLast(user_id);
+  return shouldRunAdapter(user_id);
+}
+
+
 export async function deleteTaskById(taskId: number, userId: string) {
-  await requireTaskAccess(taskId, userId);
+  const taskToDelete = await requireTaskAccess(taskId, userId);
 
   await prisma.task.delete({
     where: { task_id: taskId },
   });
+
+  const currentAnalytics = await getAnalyticsByUserId(userId);
+  if (currentAnalytics) {
+    if (taskToDelete.task_status === "Completed") {
+      const completedAt = taskToDelete.task_completed_at ? new Date(taskToDelete.task_completed_at) : new Date();
+      const deadline = new Date(taskToDelete.task_deadline);
+
+      let earlyDelta = 0;
+      let onTimeDelta = 0;
+      let lateDelta = 0;
+
+      if (completedAt < deadline) earlyDelta = -1;
+      else if (completedAt > deadline) lateDelta = -1;
+      else onTimeDelta = -1;
+
+      await updateAnalyticsByUserId(userId, {
+        total_tasks_completed: Math.max(0, currentAnalytics.totalTasksCompleted - 1),
+        tasks_completed_early: Math.max(0, currentAnalytics.completionStats.early + earlyDelta),
+        tasks_completed_on_time: Math.max(0, currentAnalytics.completionStats.onTime + onTimeDelta),
+        tasks_completed_late: Math.max(0, currentAnalytics.completionStats.late + lateDelta),
+      });
+    } else {
+      await updateAnalyticsByUserId(userId, {
+        tasks_pending: Math.max(0, currentAnalytics.completionStats.pending - 1),
+      });
+    }
+  }
 }
 
-// ─── AI helpers (used by lib/services/aiService.ts) ──────────────────────────
+export async function completeTask(task_id: number, user_id: string) {
+  const existingTask = await prisma.task.findUnique({
+    where: { task_id },
+  });
+
+  const isAlreadyCompleted = existingTask?.task_status === "Completed";
+
+  const task = await prisma.task.update({
+    where: { task_id },
+    data: {
+      task_status: "Completed",
+      task_completed_at: new Date(),
+    },
+  });
+
+  if (existingTask && !isAlreadyCompleted) {
+    const currentAnalytics = await getAnalyticsByUserId(user_id);
+    if (currentAnalytics) {
+      const now = new Date();
+      const deadline = new Date(existingTask.task_deadline);
+
+      let earlyDelta = 0;
+      let onTimeDelta = 0;
+      let lateDelta = 0;
+
+      if (now < deadline) earlyDelta = 1;
+      else if (now > deadline) lateDelta = 1;
+      else onTimeDelta = 1;
+
+      await updateAnalyticsByUserId(user_id, {
+        tasks_pending: Math.max(0, currentAnalytics.completionStats.pending - 1),
+        total_tasks_completed: currentAnalytics.totalTasksCompleted + 1,
+        tasks_completed_early: Math.max(0, currentAnalytics.completionStats.early + earlyDelta),
+        tasks_completed_on_time: Math.max(0, currentAnalytics.completionStats.onTime + onTimeDelta),
+        tasks_completed_late: Math.max(0, currentAnalytics.completionStats.late + lateDelta),
+        streak_activity: true, // signal the streak activity when task is completed
+      });
+    }
+  }
+
+  await incrementTasksSinceLast(user_id);
+  const shouldAdapt = await shouldRunAdapter(user_id);
+
+  return { task, shouldAdapt };
+}
+
+// ─── AI helpers ──────────────────────────────────────────────────────────────
 
 export async function getTaskWithProject(task_id: number) {
   return prisma.task.findUnique({
@@ -208,6 +337,6 @@ export async function updateTaskAIFields(task_id: number, fields: {
   });
 }
 
-export async function getUserFormulaWeights(user_id: number) {
+export async function getUserFormulaWeights(user_id: string) {
   return prisma.userFormulaWeights.findUnique({ where: { user_id } });
 }

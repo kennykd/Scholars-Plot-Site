@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { getSession } from '@/lib/firebase/auth';
 import { addProjectMemberSchema } from '../../../../../lib/validation/project';
 import { addProjectMember, ProjectServiceError } from '@/lib/services/projectService';
+import { ensureUserRecordForSession } from '@/lib/services/userService';
+import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services/prismaErrors';
 
 /**
  * @swagger
@@ -16,10 +18,9 @@ import { addProjectMember, ProjectServiceError } from '@/lib/services/projectSer
  *         name: id
  *         required: true
  *         schema:
- *           type: string
- *           format: uuid
- *         description: The unique ID of the project
- *         example: "123e4567-e89b-12d3-a456-426614174000"
+ *           type: integer
+ *           minimum: 1
+ *         description: Numeric project ID.
  *     requestBody:
  *       required: true
  *       content:
@@ -45,7 +46,7 @@ import { addProjectMember, ProjectServiceError } from '@/lib/services/projectSer
  *                 example: "jordan@scholar.plot"
  *               role:
  *                 type: string
- *                 enum: [owner, moderator, member]
+ *                 enum: [owner, moderator, collaborator, member]
  *                 example: member
  *     responses:
  *       201:
@@ -61,7 +62,7 @@ import { addProjectMember, ProjectServiceError } from '@/lib/services/projectSer
  *                 member:
  *                   $ref: '#/components/schemas/ProjectMember'
  *       400:
- *         description: Validation failed or invalid JSON
+ *         description: Invalid project id, invalid JSON, validation failed, or referenced member does not exist
  *         content:
  *           application/json:
  *             schema:
@@ -76,6 +77,10 @@ import { addProjectMember, ProjectServiceError } from '@/lib/services/projectSer
  *                     type: array
  *                     items:
  *                       type: string
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Only the project owner can manage members
  *       404:
  *         description: Project not found
  *         content:
@@ -87,7 +92,7 @@ import { addProjectMember, ProjectServiceError } from '@/lib/services/projectSer
  *                   type: string
  *                   example: Project not found
  *       409:
- *         description: Member already in project
+ *         description: Member already in project or account record needs repair
  *         content:
  *           application/json:
  *             schema:
@@ -121,6 +126,8 @@ export async function POST(request: Request, context: RouteContext) {
     if (!session) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
+
+    await ensureUserRecordForSession(session);
 
     const { id } = await context.params;
     const parsedProjectId = z.coerce.number().int().positive().safeParse(id);
@@ -157,6 +164,12 @@ export async function POST(request: Request, context: RouteContext) {
       return NextResponse.json({ message: error.message }, { status: error.status });
     }
 
-    return NextResponse.json({ message: 'Error adding member', error }, { status: 500 });
+    if (isPrismaForeignKeyError(error)) {
+      console.error('[api/project/:id/member] Foreign key error while adding member:', error);
+      return NextResponse.json({ message: foreignKeyRepairMessage() }, { status: 409 });
+    }
+
+    console.error('[api/project/:id/member] Error adding member:', error);
+    return NextResponse.json({ message: 'Error adding member' }, { status: 500 });
   }
 }

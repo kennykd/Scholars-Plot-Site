@@ -7,6 +7,7 @@ type StudySelectionToolbarProps = {
   allCount: number;
   isDeleting: boolean;
   canEdit: boolean;
+  showMarkDone: boolean;
   onSelectAll: () => void;
   onDeselectAll: () => void;
   onEditSelected: () => void;
@@ -19,6 +20,7 @@ export function StudySelectionToolbar({
   allCount,
   isDeleting,
   canEdit,
+  showMarkDone,
   onSelectAll,
   onDeselectAll,
   onEditSelected,
@@ -63,13 +65,15 @@ export function StudySelectionToolbar({
             Edit Study Session
           </Button>
         )}
-        <Button
-          size="sm"
-          className="bg-green-600 hover:bg-green-700 text-white font-semibold"
-          onClick={onMarkDone}
-        >
-          Mark as Done
-        </Button>
+        {showMarkDone && (
+          <Button
+            size="sm"
+            className="bg-green-600 hover:bg-green-700 text-white font-semibold"
+            onClick={onMarkDone}
+          >
+            Mark as Done
+          </Button>
+        )}
         <Button
           size="sm"
           variant="destructive"

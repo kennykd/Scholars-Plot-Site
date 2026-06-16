@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 // Pages where a logged-in user should be bounced to /dashboard
 const AUTH_PAGES = ["/login", "/register"];
 // All paths that don't require authentication (includes API routes)
-const PUBLIC_PATHS = ["/login", "/register", "/api/auth"];
+// const PUBLIC_PATHS = ["/login", "/register", "/api/auth"];
 const PROTECTED_PREFIXES = [
   "/dashboard",
   "/tasks",
@@ -14,11 +14,10 @@ const PROTECTED_PREFIXES = [
   "/analytics",
   "/settings",
 ];
-
 const HIDDEN_PATHS = ["/docs", "/api/docs"];
 
 // TODO: add production domain later for CORS.
-const ALLOWED_ORIGINS = ["http://localhost:3000"];
+const ALLOWED_ORIGINS = ["http://localhost:3000", "https://e2526-wads-b4bc-05.csbihub.id/"];
 const BLOCKED_UA_PATTERNS = ["python-requests", "scrapy", "wget"];
 
 function getCorsHeaders(origin: string | null): Record<string, string> {
@@ -44,10 +43,10 @@ export function proxy(request: NextRequest) {
   const origin = request.headers.get("origin");
 
   // // Hidden / blocked routes, comment them out if you want to use them
-  // const isHidden = HIDDEN_PATHS.some((p) => pathname.startsWith(p));
-  // if (isHidden) {
-  //   return NextResponse.rewrite(new URL("/_not-found", request.url));
-  // }
+  const isHidden = HIDDEN_PATHS.some((p) => pathname.startsWith(p));
+  if (isHidden) {
+    return NextResponse.rewrite(new URL("/_not-found", request.url));
+  }
 
   // CORS Options
   if (request.method === "OPTIONS") {
@@ -70,7 +69,7 @@ export function proxy(request: NextRequest) {
   const session = request.cookies.get("session")?.value;
   const isLoggedIn = Boolean(session);
 
-  const isPublicPath = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
+  // const isPublicPath = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
   const isAuthPage = AUTH_PAGES.some((p) => pathname.startsWith(p));
   if (isLoggedIn && isAuthPage) {
     return NextResponse.redirect(new URL("/dashboard", request.url));

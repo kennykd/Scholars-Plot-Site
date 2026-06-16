@@ -1,48 +1,42 @@
 "use client";
 
-import { useState, useTransition } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { StarRating } from "@/app/components/common/star-rating";
 import { ChevronRight } from "lucide-react";
-import { toast } from "sonner";
 import type { Task } from "@/types";
 import { cn } from "@/lib/utils";
 import { format, isPast, isToday, isTomorrow } from "date-fns";
+import { taskStatusColors, taskStatusLabels } from "@/lib/tasks/task-status";
 
 interface TaskCardProps {
   task: Task;
+  selected: boolean;
+  onToggleSelect: () => void;
+  href?: string;
+  isProjectTask?: boolean;
+  projectName?: string | null;
 }
 
-export function TaskCard({ task }: TaskCardProps) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  const [done, setDone] = useState(task.status === "Completed");
-
+export function TaskCard({
+  task,
+  selected,
+  onToggleSelect,
+  href,
+  isProjectTask = false,
+  projectName,
+}: TaskCardProps) {
   const deadlineDate = new Date(task.deadline);
-
-  const handleToggle = async (checked: boolean) => {
-    setDone(checked);
-    try {
-      const res = await fetch(`/api/task/${task.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: checked ? "Completed" : "Pending" }),
-      });
-      if (!res.ok) throw new Error("Failed");
-      startTransition(() => router.refresh());
-    } catch {
-      setDone(!checked);
-      toast.error("Could not update task");
-    }
-  };
+  const isCompleted = task.status === "Completed";
 
   const getDeadlineBadge = (date: Date) => {
-    if (isPast(date) && !isToday(date)) return { label: "Overdue", cls: "bg-red-500/20 text-red-400 border-red-500/30" };
-    if (isToday(date)) return { label: "Today", cls: "bg-orange-500/20 text-orange-400 border-orange-500/30" };
-    if (isTomorrow(date)) return { label: "Tomorrow", cls: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" };
+    if (isPast(date) && !isToday(date))
+      return { label: "Overdue", cls: "bg-red-500/20 text-red-400 border-red-500/30" };
+    if (isToday(date))
+      return { label: "Today", cls: "bg-orange-500/20 text-orange-400 border-orange-500/30" };
+    if (isTomorrow(date))
+      return { label: "Tomorrow", cls: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" };
     return { label: format(date, "MMM d"), cls: "bg-muted text-muted-foreground border-border" };
   };
 
@@ -54,26 +48,52 @@ export function TaskCard({ task }: TaskCardProps) {
         "flex items-center gap-3 rounded-lg px-4 py-3.5 border-l-4 bg-card",
         "hover:bg-card/90 transition-all duration-150 group shadow-sm",
         `priority-${Math.round(task.priority)}`,
-        done && "opacity-60"
+        selected && "ring-1 ring-accent/40 bg-card/95",
+        isCompleted && "opacity-60",
       )}
     >
       <Checkbox
-        checked={done}
-        disabled={pending}
-        onCheckedChange={(v) => handleToggle(Boolean(v))}
+        aria-label={`Select ${task.title}`}
+        checked={selected}
+        onCheckedChange={onToggleSelect}
         className="shrink-0"
-        onClick={(e) => e.stopPropagation()}
       />
 
-      <Link href={`/tasks/${task.id}`} className="flex-1 flex items-center gap-3 min-w-0">
+      <Link
+        href={href ?? `/tasks/${task.id}`}
+        className="flex-1 flex items-center gap-3 min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 rounded-md"
+      >
         <div className="flex-1 min-w-0">
-          <p className={cn(
-            "text-sm font-medium truncate",
-            done && "line-through text-muted-foreground"
-          )}>
+          <p
+            className={cn(
+              "text-sm font-medium truncate text-foreground",
+              isCompleted && "line-through text-muted-foreground",
+            )}
+          >
             {task.title}
           </p>
-          <StarRating value={task.priority} size="sm" readOnly />
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <StarRating value={task.priority} size="sm" readOnly />
+            <Badge
+              variant="outline"
+              className={cn(
+                "font-mono text-[10px] border",
+                taskStatusColors[task.status],
+              )}
+            >
+              {taskStatusLabels[task.status]}
+            </Badge>
+            {isProjectTask && (
+              <Badge variant="secondary" className="font-mono text-[10px]">
+                Project task
+              </Badge>
+            )}
+            {projectName && (
+              <Badge variant="secondary" className="font-mono text-[10px]">
+                {projectName}
+              </Badge>
+            )}
+          </div>
         </div>
 
         <Badge

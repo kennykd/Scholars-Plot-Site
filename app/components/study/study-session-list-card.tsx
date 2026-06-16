@@ -20,6 +20,7 @@ type StudySessionListCardProps = {
   onDeselectAll: () => void;
   onSelectSession: (id: string) => void;
   onOpenSession?: (session: StudySession) => void;
+  emptyPlaceholder?: string;
 };
 
 function getSubtitle(sectionType: StudySectionType, session: StudySession) {

@@ -2,7 +2,8 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+/* Match variants to our theme data-attributes */
+@custom-variant dark (&:is([data-theme="blueprint"] *, [data-theme="gray"] *, [data-theme="emerald"] *));
 
 @theme inline {
   /* Font mappings */
@@ -59,126 +60,186 @@
 }
 
 /* ============================================================
-   BRAND PALETTE VARIABLES (raw hex references)
-   Blueprint Blue: #1A2DAB | Safety Orange: #FF4D2E
-   ============================================================ */
+  BRAND PALETTE VARIABLES (raw hex references)
+  ============================================================ */
 
 :root {
   /* Border radius */
   --radius: 0.625rem;
 
-  /* Raw brand palette */
-  --blueprint-blue: #1A2DAB;
   --blueprint-blue-dark: #0f1a66;
-  --safety-orange: #FF4D2E;
-  --safety-orange-dark: #e04327;
   --off-white: #F2F2F2;
   --text-primary: #111111;
   --text-secondary: #6D6D6D;
 
-  /* ── LIGHT MODE semantic tokens ── */
-  --background: oklch(0.96 0 0);           /* #F2F2F2 off-white */
-  --foreground: oklch(0.12 0 0);           /* #111111 text-primary */
-
-  --card: oklch(1 0 0);                    /* #ffffff pure white */
-  --card-foreground: oklch(0.12 0 0);      /* #111111 */
-
+  /* ── 1. LIGHT THEME (Default) ── */
+  --background: oklch(0.96 0 0);
+  /* #F2F2F2 off-white */
+  --foreground: oklch(0.12 0 0);
+  /* #111111 text-primary */
+  --card: oklch(1 0 0);
+  /* #ffffff pure white */
+  --card-foreground: oklch(0.12 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.12 0 0);
-
-  --primary: oklch(0.38 0.18 264);         /* #1A2DAB blueprint-blue */
-  --primary-foreground: oklch(1 0 0);      /* #ffffff */
-
-  --secondary: oklch(0.91 0 0);            /* light gray */
+  --primary: oklch(0.45 0.14 250);
+  /* Understated Steel Blue */
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.86 0 0);
   --secondary-foreground: oklch(0.12 0 0);
+  --muted: oklch(0.89 0 0);
+  --muted-foreground: oklch(0.44 0 0);
+  /* #6D6D6D text-secondary */
 
-  --muted: oklch(0.91 0 0);
-  --muted-foreground: oklch(0.49 0 0);     /* #6D6D6D text-secondary */
-
-  --accent: oklch(0.65 0.22 28);           /* #FF4D2E safety-orange */
-  --accent-foreground: oklch(1 0 0);       /* #ffffff */
+  /* Accent: Slate Highlight — raised opacity for legible accent text/borders */
+  --accent: oklch(0.55 0.12 245 / 85%);
+  --accent-foreground: oklch(0.25 0.10 245);
 
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(1 0 0);
-
   --border: oklch(0.83 0 0);
   --input: oklch(0.83 0 0);
-  --ring: oklch(0.38 0.18 264);            /* blueprint-blue */
+  --ring: oklch(0.45 0.14 250);
 
-  /* Chart colors — blueprint palette */
-  --chart-1: oklch(0.65 0.22 28);         /* safety-orange */
-  --chart-2: oklch(0.38 0.18 264);        /* blueprint-blue */
-  --chart-3: oklch(0.55 0.18 145);        /* green */
-  --chart-4: oklch(0.75 0.15 84);         /* amber */
-  --chart-5: oklch(0.60 0.20 300);        /* purple */
-
-  /* Sidebar — light mode */
   --sidebar: oklch(1 0 0);
   --sidebar-foreground: oklch(0.12 0 0);
-  --sidebar-primary: oklch(0.38 0.18 264);
+  --sidebar-primary: oklch(0.45 0.14 250);
   --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.38 0.18 264 / 15%);     /* blueprint blue transparent for hover */
-  --sidebar-accent-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.45 0.14 250 / 10%);
+  --sidebar-accent-foreground: oklch(0.45 0.14 250);
   --sidebar-border: oklch(0.83 0 0);
-  --sidebar-ring: oklch(0.38 0.18 264);
+  --sidebar-ring: oklch(0.45 0.14 250);
+
+  /* Charts */
+  --chart-1: oklch(0.45 0.14 250);
+  --chart-2: oklch(0.55 0.12 245);
+  --chart-3: oklch(0.55 0.10 145);
+  --chart-4: oklch(0.70 0.08 84);
+  --chart-5: oklch(0.60 0.10 300);
 }
 
-.dark {
-  /* ── DARK MODE semantic tokens (Blueprint aesthetic) ── */
-  --background: oklch(0.38 0.18 264);      /* #1A2DAB blueprint-blue */
-  --foreground: oklch(1 0 0);              /* #ffffff */
+/* ── 2. BLUEPRINT DARK THEME */
+[data-theme="blueprint"] {
+  /* Consistent background matching your landing page base color philosophy */
+  --background: oklch(32.438% 0.13823 265.143);
+  --foreground: oklch(0.98 0 0);
 
-  --card: oklch(0.27 0.15 264 / 80%);     /* #0f1a66 at 80% opacity */
-  --card-foreground: oklch(1 0 0);
+  --card: oklch(0.22 0.10 260 / 65%);
+  --card-foreground: oklch(0.98 0 0);
+  --popover: oklch(0.24 0.11 260 / 95%);
+  --popover-foreground: oklch(0.98 0 0);
 
-  --popover: oklch(0.27 0.15 264);         /* #0f1a66 */
-  --popover-foreground: oklch(1 0 0);
+  --primary: oklch(0.98 0 0);
+  --primary-foreground: oklch(32.438% 0.13823 265.143);
+  --secondary: oklch(1 0 0 / 18%);
+  --secondary-foreground: oklch(0.98 0 0);
+  --muted: oklch(1 0 0 / 14%);
+  --muted-foreground: oklch(1 0 0 / 65%);
 
-  --primary: oklch(1 0 0);                 /* white (primary actions on dark) */
-  --primary-foreground: oklch(0.38 0.18 264);
-
-  --secondary: oklch(1 0 0 / 10%);        /* subtle white overlay */
-  --secondary-foreground: oklch(1 0 0);
-
-  --muted: oklch(1 0 0 / 10%);
-  --muted-foreground: oklch(1 0 0 / 60%);
-
-  --accent: oklch(0.65 0.22 28);           /* #FF4D2E safety-orange */
+  /* Accent: Dark Orange for high-contrast tab highlights and states */
+  --accent: oklch(0.60 0.20 28);
+  /* Slightly deep, rich safety orange */
   --accent-foreground: oklch(1 0 0);
 
-  --destructive: oklch(0.704 0.191 22.216);
+  --destructive: oklch(0.60 0.14 22);
   --destructive-foreground: oklch(1 0 0);
-
   --border: oklch(1 0 0 / 15%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.65 0.22 28);             /* safety-orange ring in dark */
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.60 0.20 28);
+  /* Input focus rings glow orange */
 
-  /* Chart colors — blueprint dark palette */
-  --chart-1: oklch(0.65 0.22 28);         /* safety-orange */
-  --chart-2: oklch(0.60 0.18 220);        /* lighter blue */
-  --chart-3: oklch(0.769 0.188 70.08);    /* amber */
-  --chart-4: oklch(0.627 0.265 303.9);    /* purple */
-  --chart-5: oklch(0.645 0.246 16.439);   /* red-orange */
-
-  /* Sidebar — dark mode (deeper blue) */
-  --sidebar: oklch(0.27 0.15 264);         /* #0f1a66 blueprint-blue-dark */
-  --sidebar-foreground: oklch(1 0 0);
-  --sidebar-primary: oklch(0.65 0.22 28); /* safety-orange for active */
+  --sidebar: oklch(0.24 0.11 260);
+  --sidebar-foreground: oklch(0.98 0 0);
+  --sidebar-primary: oklch(0.60 0.20 28);
   --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(1 0 0 / 10%);
-  --sidebar-accent-foreground: oklch(1 0 0);
-  --sidebar-border: oklch(1 0 0 / 15%);
-  --sidebar-ring: oklch(0.65 0.22 28);
+  --sidebar-accent: oklch(0.50 0.20 28 / 15%);
+  --sidebar-accent-foreground: oklch(0.50 0.20 28);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: oklch(0.60 0.20 28);
+}
+
+/* ── 3. INDUSTRIAL GRAY THEME (Graphite & Steel Blue Highlights) ── */
+[data-theme="gray"] {
+  --background: oklch(0.22 0.01 240);
+  /* Deep matte graphite */
+  --foreground: oklch(0.92 0.01 240);
+  /* Crisp clean gray white */
+  --card: oklch(0.17 0.01 240 / 85%);
+  /* Balanced dark carbon backing */
+  --card-foreground: oklch(0.92 0.01 240);
+  --popover: oklch(0.17 0.01 240);
+  --popover-foreground: oklch(0.92 0.01 240);
+  --primary: oklch(0.62 0.08 245);
+  /* Technical calm steel blue indicators */
+  --primary-foreground: oklch(0.14 0.01 240);
+  --secondary: oklch(1 0 0 / 16%);
+  --secondary-foreground: oklch(0.92 0.01 240);
+  --muted: oklch(1 0 0 / 12%);
+  --muted-foreground: oklch(0.72 0.01 240);
+
+  /* Complementing Accent: slate blue highlight — raised opacity for contrast */
+  --accent: oklch(0.58 0.09 245 / 60%);
+  --accent-foreground: oklch(0.92 0.04 245);
+
+  --destructive: oklch(0.55 0.12 15);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(1 0 0 / 8%);
+  --input: oklch(1 0 0 / 8%);
+  --ring: oklch(0.62 0.08 245 / 40%);
+
+  --sidebar: oklch(0.14 0.01 240);
+  --sidebar-foreground: oklch(0.92 0.01 240);
+  --sidebar-primary: oklch(0.62 0.08 245);
+  --sidebar-primary-foreground: oklch(0.14 0.01 240);
+  --sidebar-accent: oklch(1 0 0 / 6%);
+  --sidebar-accent-foreground: oklch(0.62 0.08 245);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: oklch(0.62 0.08 245 / 40%);
+}
+
+/* ── 4. EMERALD GRID THEME (Muted Terminal Green) ── */
+[data-theme="emerald"] {
+  --background: oklch(0.18 0.02 150);
+  /* Deep slate-olive green */
+  --foreground: oklch(100% 0.00011 271.152);
+  --card: oklch(0.14 0.02 150 / 80%);
+  --card-foreground: oklch(100% 0.00011 271.152);
+  --popover: oklch(0.14 0.02 150);
+  --popover-foreground: oklch(0.85 0.08 150);
+  --primary: oklch(0.75 0.09 150);
+  --primary-foreground: oklch(0.14 0.02 150);
+  --secondary: oklch(0.85 0.08 150 / 18%);
+  --secondary-foreground: oklch(0.85 0.08 150);
+  --muted: oklch(0.85 0.08 150 / 14%);
+  --muted-foreground: oklch(0.85 0.08 150 / 65%);
+
+  /* Complementing Accent: forest highlight — raised opacity for contrast */
+  --accent: oklch(0.62 0.08 150 / 65%);
+  --accent-foreground: oklch(0.90 0.05 150);
+
+  --destructive: oklch(0.52 0.12 25);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.85 0.08 150 / 12%);
+  --input: oklch(0.85 0.08 150 / 12%);
+  --ring: oklch(0.75 0.09 150 / 40%);
+
+  --sidebar: oklch(0.13 0.02 150);
+  --sidebar-foreground: oklch(0.85 0.08 150);
+  --sidebar-primary: oklch(0.75 0.09 150);
+  --sidebar-primary-foreground: oklch(0.13 0.02 150);
+  --sidebar-accent: oklch(0.85 0.08 150 / 10%);
+  --sidebar-accent-foreground: oklch(0.75 0.09 150);
+  --sidebar-border: oklch(0.85 0.08 150 / 12%);
+  --sidebar-ring: oklch(0.75 0.09 150 / 40%);
 }
 
 /* ============================================================
    BLUEPRINT GRID BACKGROUND
-   Used on dark-mode page backgrounds for the industrial feel
    ============================================================ */
 .blueprint-grid {
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.25) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.25) 1px, transparent 1px);
+    linear-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.12) 1px, transparent 1px);
   background-size: 60px 60px;
 }
 
@@ -188,31 +249,117 @@
   }
 }
 
+/* Fine secondary grid — layered over .blueprint-grid for drafting depth */
+.blueprint-grid-fine {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 15px 15px;
+}
+
+/* ============================================================
+   LANDING / BLUEPRINT DRAFTING UTILITIES
+   ============================================================ */
+
+/* Smooth in-page anchor scrolling (nav links -> sections) */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Offset anchored sections so they clear the sticky nav */
+.section-anchor {
+  scroll-margin-top: 6rem;
+}
+
+/* Drafting corner ticks — wraps a bordered box in surveyor crop marks */
+.blueprint-ticks {
+  position: relative;
+}
+.blueprint-ticks::before,
+.blueprint-ticks::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: rgba(255, 77, 46, 0.6);
+  border-style: solid;
+  pointer-events: none;
+}
+.blueprint-ticks::before {
+  top: -1px;
+  left: -1px;
+  border-width: 2px 0 0 2px;
+}
+.blueprint-ticks::after {
+  bottom: -1px;
+  right: -1px;
+  border-width: 0 2px 2px 0;
+}
+
+/* Dashed dimension/measurement line, drafting style */
+.dimension-line {
+  border-top: 1px dashed rgba(255, 255, 255, 0.25);
+}
+
+/* Slow drift used by blueprint background accents */
+@keyframes blueprint-drift {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(12px, -12px);
+  }
+}
+.blueprint-drift {
+  animation: blueprint-drift 14s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .blueprint-drift {
+    animation: none;
+  }
+}
+
 /* ============================================================
    GRAIN OVERLAY
-   Fixed overlay for subtle texture on dark backgrounds
    ============================================================ */
 .grain-overlay {
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 50;
-  opacity: 0.04;
+  opacity: 0.03;
   mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
 }
 
 /* ============================================================
    PRIORITY COLOR UTILITIES
-   Used on task card left borders for visual priority indication
-   P5 = Critical (red), P4 = High (orange), P3 = Medium (amber)
-   P2 = Low (blue), P1 = Minimal (gray)
    ============================================================ */
-.priority-5 { border-left-color: #ef4444; }
-.priority-4 { border-left-color: #FF4D2E; }
-.priority-3 { border-left-color: #f59e0b; }
-.priority-2 { border-left-color: #3b82f6; }
-.priority-1 { border-left-color: #6b7280; }
+.priority-5 {
+  border-left-color: #ef4444;
+}
+
+.priority-4 {
+  border-left-color: var(--primary);
+}
+
+/* Dynamically falls back to each theme's muted primary text color */
+.priority-3 {
+  border-left-color: #f59e0b;
+}
+
+.priority-2 {
+  border-left-color: #3b82f6;
+}
+
+.priority-1 {
+  border-left-color: #6b7280;
+}
 
 /* ============================================================
    BASE LAYER
@@ -221,19 +368,33 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
 }
 
 /* ============================================================
-   SONNER TOAST — Blueprint theme overrides
+   SONNER TOAST — Dynamic matching layers
    ============================================================ */
 [data-sonner-toaster] [data-sonner-toast] {
-  border-left: 3px solid var(--accent) !important;
+  border-left: 3px solid var(--primary) !important;
 }
-.dark [data-sonner-toaster] [data-sonner-toast] {
-  background: oklch(0.27 0.15 264) !important;
-  color: oklch(1 0 0) !important;
-  border-color: var(--accent) !important;
+
+:root[data-theme="blueprint-dark"] [data-sonner-toaster] [data-sonner-toast] {
+  background: oklch(0.21 0.07 255) !important;
+  color: oklch(0.95 0.01 255) !important;
+  border-color: var(--border) !important;
+}
+
+:root[data-theme="industrial-gray"] [data-sonner-toaster] [data-sonner-toast] {
+  background: oklch(0.17 0.01 240) !important;
+  color: oklch(0.92 0.01 240) !important;
+  border-color: var(--border) !important;
+}
+
+:root[data-theme="emerald-grid"] [data-sonner-toaster] [data-sonner-toast] {
+  background: oklch(0.14 0.02 150) !important;
+  color: oklch(0.85 0.08 150) !important;
+  border-color: var(--border) !important;
 }

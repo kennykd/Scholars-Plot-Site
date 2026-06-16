@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { createProjectSchema } from '../../../lib/validation/project';
 import { createProject, getProjects, ProjectServiceError } from '@/lib/services/projectService';
 import { getSession } from '@/lib/firebase/auth';
+import { ensureUserRecordForSession } from '@/lib/services/userService';
+import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services/prismaErrors';
 
 /**
  * @swagger
@@ -11,77 +13,67 @@ import { getSession } from '@/lib/firebase/auth';
  *     ProjectMember:
  *       type: object
  *       properties:
- *         id:
+ *         project_id:
+ *           type: integer
+ *         user_id:
  *           type: string
- *           example: "member-001"
- *         name:
+ *         project_user_role:
  *           type: string
- *           example: "Alex Scholar"
- *         handle:
- *           type: string
- *           example: "alex@scholar.plot"
- *         role:
- *           type: string
- *           enum: [owner, moderator, member]
- *           example: owner
+ *           enum: [owner, moderator, collaborator, member]
+ *         user:
+ *           type: object
+ *           properties:
+ *             user_name:
+ *               type: string
+ *             user_email:
+ *               type: string
+ *               format: email
  *     ProjectTask:
  *       type: object
  *       properties:
- *         id:
+ *         task_id:
+ *           type: integer
+ *         project_id:
+ *           type: integer
+ *         task_name:
  *           type: string
- *           format: uuid
- *           example: "123e4567-e89b-12d3-a456-426614174000"
- *         title:
+ *         task_description:
  *           type: string
- *           example: "Finalize project scope"
- *         description:
- *           type: string
- *           example: "Lock requirements and success criteria for the MVP."
- *         priority:
- *           type: string
- *           enum: [low, medium, high]
- *           example: high
- *         status:
- *           type: string
- *           enum: [not-done, pending, done]
- *           example: not-done
- *         assignedTo:
- *           type: string
- *           example: "member-003"
- *         attachments:
- *           type: array
- *           items:
- *             type: string
- *           example: ["spec.pdf"]
- *         reminder:
- *           type: string
- *           enum: [daily, every-3-days, weekly, none]
- *           example: daily
- *         createdAt:
+ *           nullable: true
+ *         task_deadline:
  *           type: string
  *           format: date-time
- *           example: "2026-03-12T10:00:00.000Z"
+ *         task_priority:
+ *           type: number
+ *         task_status:
+ *           type: string
+ *           enum: [Pending, In_Progress, Completed]
+ *         task_users:
+ *           type: array
+ *           items:
+ *             type: object
  *     Project:
  *       type: object
  *       properties:
- *         id:
+ *         project_id:
+ *           type: integer
+ *         project_name:
  *           type: string
- *           format: uuid
- *           example: "123e4567-e89b-12d3-a456-426614174000"
- *         name:
+ *         project_description:
  *           type: string
- *           example: "Capstone Collaboration"
- *         description:
+ *           nullable: true
+ *         project_deadline:
  *           type: string
- *           example: "Team coordination for the semester capstone build."
+ *           format: date-time
  *         project_status:
  *           type: string
  *           enum: [active, completed, archived]
- *           example: active
- *         ownerId:
+ *         project_priority:
+ *           type: number
+ *         project_created_at:
  *           type: string
- *           example: "member-001"
- *         members:
+ *           format: date-time
+ *         project_user:
  *           type: array
  *           items:
  *             $ref: '#/components/schemas/ProjectMember'
@@ -89,19 +81,16 @@ import { getSession } from '@/lib/firebase/auth';
  *           type: array
  *           items:
  *             $ref: '#/components/schemas/ProjectTask'
- *         createdAt:
- *           type: string
- *           format: date-time
- *           example: "2026-03-12T10:00:00.000Z"
  *
  * /api/project:
  *   get:
- *     summary: Get all projects
+ *     summary: Get projects visible to the authenticated user
+ *     description: Requires the session cookie and returns projects where the user is a member.
  *     tags:
  *       - Projects
  *     responses:
  *       200:
- *         description: Projects retrieved successfully
+ *         description: Projects retrieved successfully.
  *         content:
  *           application/json:
  *             schema:
@@ -109,23 +98,21 @@ import { getSession } from '@/lib/firebase/auth';
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Projects retrieved successfully
  *                 projects:
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/Project'
+ *       401:
+ *         description: Not authenticated.
+ *       409:
+ *         description: Account record needs repair (foreign key error).
  *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Error retrieving projects
+ *         description: Error retrieving projects.
  *   post:
- *     summary: Create a new project
+ *     summary: Create a new project owned by the authenticated user
+ *     description: >
+ *       Requires the session cookie. The project owner is taken from the session,
+ *       regardless of any ownerId field in the request body.
  *     tags:
  *       - Projects
  *     requestBody:
@@ -134,69 +121,55 @@ import { getSession } from '@/lib/firebase/auth';
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - name
- *               - ownerId
+ *             required: [name, deadline, priority]
  *             properties:
  *               name:
  *                 type: string
  *                 minLength: 1
  *                 maxLength: 100
- *                 example: "Capstone Collaboration"
  *               description:
  *                 type: string
- *                 example: "Team coordination for the semester capstone build."
+ *               deadline:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Must be in the future.
+ *               priority:
+ *                 type: number
+ *                 minimum: 0.5
+ *                 maximum: 5
  *               project_status:
  *                 type: string
  *                 enum: [active, completed, archived]
- *                 example: active
  *               ownerId:
  *                 type: string
- *                 minLength: 1
- *                 example: "member-001"
+ *                 deprecated: true
+ *                 description: Accepted by validation but ignored; the session user is owner.
  *               members:
  *                 type: array
  *                 items:
- *                   $ref: '#/components/schemas/ProjectMember'
+ *                   type: object
+ *                   required: [id, name, role]
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     name:
+ *                       type: string
+ *                     handle:
+ *                       type: string
+ *                     role:
+ *                       type: string
+ *                       enum: [owner, moderator, collaborator, member]
  *     responses:
  *       201:
- *         description: Project created successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Project created successfully
- *                 project:
- *                   $ref: '#/components/schemas/Project'
+ *         description: Project created successfully.
  *       400:
- *         description: Validation failed or invalid JSON
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Validation failed
- *                 errors:
- *                   type: object
- *                   additionalProperties:
- *                     type: array
- *                     items:
- *                       type: string
+ *         description: Invalid JSON, validation failed, or referenced member does not exist.
+ *       401:
+ *         description: Not authenticated.
+ *       409:
+ *         description: Account record needs repair (foreign key error).
  *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Error creating project
+ *         description: Error creating project.
  */
 
 export async function GET() {
@@ -206,6 +179,8 @@ export async function GET() {
     if (!session) {
       return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
     }
+
+    await ensureUserRecordForSession(session);
 
     const projects = await getProjects(session.id);
 
@@ -218,7 +193,13 @@ export async function GET() {
       return NextResponse.json({ message: error.message }, { status: error.status });
     }
 
-    return NextResponse.json({ message: 'Error retrieving projects', error }, { status: 500 });
+    if (isPrismaForeignKeyError(error)) {
+      console.error('[api/project] Foreign key error while retrieving projects:', error);
+      return NextResponse.json({ message: foreignKeyRepairMessage() }, { status: 409 });
+    }
+
+    console.error('[api/project] Error retrieving projects:', error);
+    return NextResponse.json({ message: 'Error retrieving projects' }, { status: 500 });
   }
 }
 
@@ -247,6 +228,8 @@ export async function POST(request: Request) {
       );
     }
 
+    await ensureUserRecordForSession(session);
+
     const project = await createProject(session.id, parsed.data);
 
     return NextResponse.json(
@@ -258,6 +241,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: error.message }, { status: error.status });
     }
 
-    return NextResponse.json({ message: 'Error creating project', error }, { status: 500 });
+    if (isPrismaForeignKeyError(error)) {
+      console.error('[api/project] Foreign key error while creating project:', error);
+      return NextResponse.json({ message: foreignKeyRepairMessage() }, { status: 409 });
+    }
+
+    console.error('[api/project] Error creating project:', error);
+    return NextResponse.json({ message: 'Error creating project' }, { status: 500 });
   }
 }

@@ -3,12 +3,17 @@ import { z } from 'zod';
 import { updateTaskSchema } from '../../../../lib/validation/task';
 import {
   deleteTaskById,
+  getStudySessionsForTask,
   getTaskById,
+  recordTaskCompletion,
   serializeTask,
   TaskServiceError,
   updateTaskById,
 } from '@/lib/services/taskService';
 import { getSession } from '@/lib/firebase/auth';
+import { runWeightAdapter } from "@/lib/services/aiService";
+import { ensureUserRecordForSession } from '@/lib/services/userService';
+import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services/prismaErrors';
 
 /**
  * @swagger
@@ -35,6 +40,10 @@ import { getSession } from '@/lib/firebase/auth';
  *                   type: string
  *                 task:
  *                   $ref: '#/components/schemas/Task'
+ *                 linkedStudySessionIds:
+ *                   type: array
+ *                   items:
+ *                     type: integer
  *       400:
  *         description: Invalid task id
  *       401:
@@ -45,6 +54,9 @@ import { getSession } from '@/lib/firebase/auth';
  *         description: Task not found
  *   patch:
  *     summary: Update a task by ID
+ *     description: >
+ *       Requires ownership of a personal task. When status changes to Completed,
+ *       completion analytics are updated and the weight adapter may run asynchronously.
  *     tags:
  *       - Tasks
  *     parameters:
@@ -97,8 +109,11 @@ import { getSession } from '@/lib/firebase/auth';
  *         description: No access to this task
  *       404:
  *         description: Task not found
+ *       409:
+ *         description: Account record needs repair (foreign key error)
  *   delete:
  *     summary: Delete a task by ID
+ *     description: Requires ownership of a personal task. Deleting a task also adjusts task analytics.
  *     tags:
  *       - Tasks
  *     parameters:
@@ -145,10 +160,17 @@ export async function GET(_: Request, context: RouteContext) {
       return NextResponse.json({ message: 'Invalid task id' }, { status: 400 });
     }
 
-    const task = await getTaskById(parsedId.data, session.id);
+    const [task, linkedSessions] = await Promise.all([
+      getTaskById(parsedId.data, session.id),
+      getStudySessionsForTask(parsedId.data, session.id),
+    ]);
 
     return NextResponse.json(
-      { message: 'Task retrieved successfully', task: serializeTask(task) },
+      {
+        message: 'Task retrieved successfully',
+        task: serializeTask(task),
+        linkedStudySessionIds: linkedSessions.map((row) => row.study_session_id),
+      },
       { status: 200 },
     );
   } catch (error) {
@@ -195,7 +217,22 @@ export async function PATCH(request: Request, context: RouteContext) {
       return NextResponse.json({ message: 'No fields provided for update' }, { status: 400 });
     }
 
-    const updated = await updateTaskById(parsedId.data, session.id, parsed.data);
+    await ensureUserRecordForSession(session);
+
+    const { task: updated, becameCompleted } = await updateTaskById(
+      parsedId.data,
+      session.id,
+      parsed.data,
+    );
+
+    if (becameCompleted) {
+      const shouldAdapt = await recordTaskCompletion(session.id);
+      if (shouldAdapt) {
+        runWeightAdapter(session.id).catch((error) => {
+          console.error(`Weight adapter failed for user ${session.id}:`, error);
+        });
+      }
+    }
 
     return NextResponse.json(
       { message: 'Task updated successfully', task: serializeTask(updated) },
@@ -206,6 +243,12 @@ export async function PATCH(request: Request, context: RouteContext) {
       return NextResponse.json({ message: error.message }, { status: error.status });
     }
 
+    if (isPrismaForeignKeyError(error)) {
+      console.error('[api/task/:id] Foreign key error while updating task:', error);
+      return NextResponse.json({ message: foreignKeyRepairMessage() }, { status: 409 });
+    }
+
+    console.error('[api/task/:id] Error updating task:', error);
     return NextResponse.json({ message: 'Error updating task', error }, { status: 500 });
   }
 }

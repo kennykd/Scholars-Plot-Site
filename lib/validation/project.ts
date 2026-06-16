@@ -23,7 +23,7 @@ export const createProjectSchema = z.object({
     .min(1, 'Member name is required'),
     handle: z.string()
     .optional(),
-    role: z.enum(['owner', 'moderator', 'member']),
+    role: z.enum(['owner', 'moderator', 'collaborator', 'member']),
   }))
   .optional(),
 });
@@ -51,7 +51,7 @@ export const updateProjectSchema = z.object({
     .min(1, 'Member name is required'),
     handle: z.string()
     .optional(),
-    role: z.enum(['owner', 'moderator', 'member']),
+    role: z.enum(['owner', 'moderator', 'collaborator', 'member']),
   }))
   .optional(),
 });
@@ -64,6 +64,10 @@ export const createProjectTaskSchema = z.object({
   .max(100, 'Title cannot exceed 100 characters'),
   description: z.string()
   .optional(),
+  deadline: z.coerce.date()
+  .refine((date) => date >= new Date(),
+    { message: "Deadline must be in the future" }
+  ),
   priority: z.coerce.number()
   .min(0.5).max(5),
   status: z.enum(['Pending', 'In_Progress', 'Completed']),
@@ -71,7 +75,8 @@ export const createProjectTaskSchema = z.object({
   .optional(),
   attachments: z.array(z.string())
   .optional(),
-  reminder: z.enum(['daily', 'every-3-days', 'weekly', 'none'])
+  attachmentIds: z.array(z.coerce.number().int().positive())
+  .max(20)
   .optional(),
 });
 
@@ -82,6 +87,8 @@ export const updateProjectTaskSchema = z.object({
   .optional(),
   description: z.string()
   .optional(),
+  deadline: z.coerce.date()
+  .optional(),
   priority: z.coerce.number()
   .min(0.5).max(5)
   .optional(),
@@ -90,8 +97,6 @@ export const updateProjectTaskSchema = z.object({
   assignedTo: z.string()
   .optional(),
   attachments: z.array(z.string())
-  .optional(),
-  reminder: z.enum(['daily', 'every-3-days', 'weekly', 'none'])
   .optional(),
 });
 
@@ -102,12 +107,30 @@ export const addProjectMemberSchema = z.object({
   .min(1, 'Member name is required'),
   handle: z.string()
   .optional(),
-  role: z.enum(['owner', 'moderator', 'member']),
+  role: z.enum(['owner', 'moderator', 'collaborator', 'member']),
 });
 
 export const updateProjectMemberSchema = z.object({
-  role: z.enum(['owner', 'moderator', 'member']),
+  role: z.enum(['owner', 'moderator', 'collaborator', 'member']),
 });
+
+export const createProjectInviteSchema = z.object({
+  projectId: z.preprocess((value) => {
+    if (typeof value === 'string') {
+      return value.replace(/^project-/, '');
+    }
+
+    return value;
+  }, z.coerce.number().int().positive('Project ID is required')),
+  targetUserId: z.string().trim().min(1).optional(),
+  targetUserEmail: z.string().trim().email().optional(),
+}).refine(
+  (data) => Boolean(data.targetUserId || data.targetUserEmail),
+  {
+    message: 'Target user is required',
+    path: ['targetUserId'],
+  },
+);
 
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
 export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;
@@ -115,3 +138,4 @@ export type CreateProjectTaskInput = z.infer<typeof createProjectTaskSchema>;
 export type UpdateProjectTaskInput = z.infer<typeof updateProjectTaskSchema>;
 export type AddProjectMemberInput = z.infer<typeof addProjectMemberSchema>;
 export type UpdateProjectMemberInput = z.infer<typeof updateProjectMemberSchema>;
+export type CreateProjectInviteInput = z.infer<typeof createProjectInviteSchema>;

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -109,7 +109,6 @@ function CircularTimer({
 }
 
 export default function QuickTimerPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   // Parse timer config from URL params
@@ -117,6 +116,7 @@ export default function QuickTimerPage() {
   const focusMinutesParam = Number(searchParams.get("focus")) || 25;
   const breakMinutesParam = Number(searchParams.get("break")) || 5;
   const totalMinutesParam = Number(searchParams.get("total")) || 60;
+  const autostart = searchParams.get("autostart") === "1";
 
   const [phase, setPhase] = useState<Phase>("idle");
   const [seconds, setSeconds] = useState(0);
@@ -133,14 +133,24 @@ export default function QuickTimerPage() {
   // Initialize timer from params
   useEffect(() => {
     const focusSeconds = focusMinutesParam * 60;
-    const breakSeconds = breakMinutesParam * 60;
     const totalSeconds = totalMinutesParam * 60;
 
-    setPhase("focus");
-    setSeconds(focusSeconds);
-    setTotalSecondsRemaining(totalSeconds);
     totalSecondsRemainingRef.current = totalSeconds;
-  }, [focusMinutesParam, breakMinutesParam, totalMinutesParam]);
+
+    const timeout = window.setTimeout(() => {
+      setPhase("focus");
+      setSeconds(focusSeconds);
+      setTotalSecondsRemaining(totalSeconds);
+
+      // When launched from "Quick Timer", start counting down right away.
+      if (autostart) {
+        setRunning(true);
+        setSessionStatus("running");
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, [focusMinutesParam, totalMinutesParam, autostart]);
 
   const focusSeconds = focusMinutesParam * 60;
   const breakSeconds = breakMinutesParam * 60;
@@ -188,11 +198,15 @@ export default function QuickTimerPage() {
     if (totalSecondsRemaining > 0) return;
     if (!running) return;
 
-    playTone(520, 300);
-    setRunning(false);
-    setPhase("idle");
-    setSessionStatus("completed");
-    toast.success(`Session complete: ${title}`);
+    const timeout = window.setTimeout(() => {
+      playTone(520, 300);
+      setRunning(false);
+      setPhase("idle");
+      setSessionStatus("completed");
+      toast.success(`Session complete: ${title}`);
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
   }, [totalSecondsRemaining, running, title]);
 
   const toggleRunning = () => {

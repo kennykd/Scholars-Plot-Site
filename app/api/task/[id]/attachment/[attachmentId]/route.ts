@@ -9,6 +9,7 @@ import { getSession } from '@/lib/firebase/auth';
  * /api/task/{id}/attachment/{attachmentId}:
  *   delete:
  *     summary: Delete an attachment from a task (owner only)
+ *     description: Requires the session cookie and access to the personal task. Deletes the stored file best-effort, then deletes the attachment row.
  *     tags:
  *       - Tasks
  *     parameters:
@@ -25,6 +26,16 @@ import { getSession } from '@/lib/firebase/auth';
  *     responses:
  *       200:
  *         description: Attachment deleted successfully
+ *       400:
+ *         description: Invalid attachment id
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: No access to this task
+ *       404:
+ *         description: Attachment or task not found
+ *       500:
+ *         description: Error deleting attachment
  */
 
 type RouteContext = {

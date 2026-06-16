@@ -14,12 +14,26 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
+import { cn, openNativePicker } from "@/lib/utils";
 import { toast } from "sonner";
-import { ArrowLeft, CalendarIcon, Paperclip, X, Sparkles } from "lucide-react";
+import { ArrowLeft, CalendarIcon, Clock, Paperclip, X } from "lucide-react";
 import { format, parseISO } from "date-fns";
-import type { Attachment } from "@/types";
+import type {
+  Attachment,
+  StudyReminderOffset,
+  StudyReminderValueUnit,
+  Task,
+} from "@/types";
+import { AiSuggestionsButton } from "@/app/components/common/ai-suggestions-button";
+import { AI_READABLE_ATTACHMENT_HELPER_TEXT } from "@/lib/ai/attachmentSupport";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
@@ -41,6 +55,17 @@ const isApiAttachment = (
 ): attachment is NonNullable<ApiStudyAttachmentLink["attachment"]> =>
   Boolean(attachment);
 
+type StudyTrackDraft = {
+  title: string;
+  start_date: string;
+  time: string;
+  focus_minutes: number;
+  break_minutes: number;
+  total_pomodoros: number;
+  notes: string;
+  description_as_checklist: boolean;
+};
+
 const combineDateTime = (date: Date, time: string) => {
   const [hours, minutes] = time.split(":").map(Number);
   const next = new Date(date);
@@ -48,6 +73,14 @@ const combineDateTime = (date: Date, time: string) => {
   next.setMinutes(minutes);
   next.setSeconds(0, 0);
   return next;
+};
+
+const parseStudyTrackDate = (dateValue: string) => {
+  const [year, month, day] = dateValue.split("-").map(Number);
+  if (!year || !month || !day) return undefined;
+
+  const parsed = new Date(year, month - 1, day);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
 };
 
 export default function StudyEditPage() {
@@ -70,6 +103,15 @@ export default function StudyEditPage() {
   const [attachments, setAttachments] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<string>("none");
+  const [taskOptions, setTaskOptions] = useState<Task[]>([]);
+  const [reminderEnabled, setReminderEnabled] = useState(false);
+  const [reminders, setReminders] = useState<StudyReminderOffset[]>([
+    { unit: "minutes", value: 15 },
+    { unit: "minutes", value: 5 },
+    { unit: "minutes", value: 0, atStart: true },
+  ]);
 
   useEffect(() => {
     if (!sessionId) {
@@ -106,9 +148,9 @@ export default function StudyEditPage() {
         const nextNotes =
           checklistItems.length > 0
             ? checklistItems
-                .map((item: { text?: string }) => item.text ?? "")
-                .filter(Boolean)
-                .join("\n")
+              .map((item: { text?: string }) => item.text ?? "")
+              .filter(Boolean)
+              .join("\n")
             : (apiStudy.study_session_description ?? "");
 
         const persistedAttachments = Array.isArray(apiStudy.study_session_attachments)
@@ -138,6 +180,26 @@ export default function StudyEditPage() {
         setBreakMinutes(apiStudy.break_minutes ?? 5);
         setTotalPomodoro(apiStudy.total_pomodoros ?? 2);
         setDescriptionAsChecklist(checklistItems.length > 0);
+
+        const currentTaskId = apiStudy.study_session_user?.[0]?.task_id;
+        setSelectedTaskId(currentTaskId ? String(currentTaskId) : "none");
+
+        // Prefill reminders so editing keeps the session's existing offsets.
+        setReminderEnabled(Boolean(apiStudy.study_session_reminder_enabled));
+        const reminderMinutes = Array.isArray(
+          apiStudy.study_session_remind_at_minutes,
+        )
+          ? (apiStudy.study_session_remind_at_minutes as number[])
+          : [];
+        if (reminderMinutes.length > 0) {
+          setReminders(
+            reminderMinutes.map((minute) =>
+              minute <= 0
+                ? { unit: "minutes", value: 0, atStart: true }
+                : { unit: "minutes", value: minute },
+            ),
+          );
+        }
       } catch {
         toast.error("Network error while loading study session");
         router.push("/study");
@@ -149,10 +211,74 @@ export default function StudyEditPage() {
     fetchSession();
   }, [router, sessionId]);
 
+  // Load the user's tasks so the session can be linked, relinked, or unlinked.
+  useEffect(() => {
+    let isMounted = true;
+    fetch("/api/task")
+      .then(async (response) => {
+        const data = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(data?.message ?? "Could not load tasks");
+        return (data?.tasks as Task[]) ?? [];
+      })
+      .then((tasks) => {
+        if (isMounted) setTaskOptions(tasks);
+      })
+      .catch(() => {
+        // Linking a task is optional, so a failed fetch is non-fatal.
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const totalMinutesComputed =
     (Math.max(1, Number(focusMinutes) || 0) +
       Math.max(1, Number(breakMinutes) || 0)) *
     Math.max(1, Number(totalPomodoro) || 0);
+
+  const reminderOffsetsInMinutes = reminders
+    .filter(() => reminderEnabled)
+    .map((reminder) => {
+      if (reminder.atStart) return 0;
+      const value = Math.max(1, Number(reminder.value) || 1);
+      return reminder.unit === "hours" ? value * 60 : value;
+    });
+
+  const updateReminder = (
+    index: number,
+    updates: Partial<StudyReminderOffset>,
+  ) => {
+    setReminders((prev) =>
+      prev.map((reminder, reminderIndex) =>
+        reminderIndex === index ? { ...reminder, ...updates } : reminder,
+      ),
+    );
+  };
+
+  const addReminder = () => {
+    setReminders((prev) => [...prev, { unit: "minutes", value: 10 }]);
+  };
+
+  const toggleStartReminder = (index: number, checked: boolean) => {
+    setReminders((prev) =>
+      prev.map((reminder, reminderIndex) => {
+        if (reminderIndex !== index) return reminder;
+        if (checked) return { ...reminder, atStart: true, value: 0 };
+        return {
+          ...reminder,
+          atStart: false,
+          value: reminder.value === 0 ? 1 : reminder.value,
+        };
+      }),
+    );
+  };
+
+  const removeReminder = (index: number) => {
+    setReminders((prev) =>
+      prev.filter((_, reminderIndex) => reminderIndex !== index),
+    );
+  };
 
   const getAcceptedFiles = (incoming: FileList | File[]) => {
     const accepted: File[] = [];
@@ -209,6 +335,69 @@ export default function StudyEditPage() {
     toast.success("Attachment removed");
   };
 
+  const applyStudyTrackToSession = (track: StudyTrackDraft) => {
+    setTitle(track.title);
+    setNotes(track.notes);
+    setScheduledTime(track.time);
+    setFocusMinutes(track.focus_minutes);
+    setBreakMinutes(track.break_minutes);
+    setTotalPomodoro(track.total_pomodoros);
+    setDescriptionAsChecklist(track.description_as_checklist);
+
+    const draftDate = parseStudyTrackDate(track.start_date);
+    if (draftDate) setScheduledDate(draftDate);
+  };
+
+  const buildStudyDraftPayload = () => {
+    const taskId = Number(selectedTaskId);
+
+    return {
+      ...(selectedTaskId !== "none" && Number.isInteger(taskId) && taskId > 0
+        ? { taskId }
+        : {}),
+      title: title.trim(),
+      notes: notes.trim(),
+      scheduledDate: scheduledDate ? format(scheduledDate, "yyyy-MM-dd") : null,
+      scheduledTime: scheduledTime || null,
+      focusMinutes: Math.max(1, Number(focusMinutes) || 25),
+      breakMinutes: Math.max(0, Number(breakMinutes) || 5),
+      totalPomodoro: Math.max(1, Number(totalPomodoro) || 2),
+      descriptionAsChecklist,
+    };
+  };
+
+  const requestSingleStudySessionDraft = async () => {
+    setAiLoading(true);
+    try {
+      const response = await fetch("/api/ai/study-track-draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildStudyDraftPayload()),
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message ?? "Could not generate study session");
+      }
+
+      const firstTrack = (data?.draft?.tracks as StudyTrackDraft[] | undefined)?.[0];
+      if (!firstTrack) {
+        throw new Error("AI did not return a study session suggestion");
+      }
+
+      applyStudyTrackToSession(firstTrack);
+      toast.success("AI study session applied");
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Could not generate study session";
+      toast.error(message);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const handleEditSession = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
@@ -230,19 +419,23 @@ export default function StudyEditPage() {
       // First it checks if the user wants the description to be written as a checklist, if not then the checklist will be null
       checklist_json: descriptionAsChecklist
         ? notes
-            .split("\n")
-            .map((line) => line.trim())
-            .filter(Boolean)
-            .map((text) => ({
-              id: crypto.randomUUID(),
-              text,
-              completed: false,
-            }))
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .map((text) => ({
+            id: crypto.randomUUID(),
+            text,
+            completed: false,
+          }))
         : null,
       study_session_scheduled_at: combineDateTime(
         scheduledDate,
         scheduledTime,
       ).toISOString(),
+      // Link/relink to the chosen task, or unlink with null ("none").
+      task_id: selectedTaskId !== "none" ? Number(selectedTaskId) : null,
+      reminder_enabled: reminderEnabled,
+      reminders: reminderEnabled ? reminderOffsetsInMinutes : [],
     };
 
     try {
@@ -360,6 +553,7 @@ export default function StudyEditPage() {
                 <Popover open={calOpen} onOpenChange={setCalOpen}>
                   <PopoverTrigger asChild>
                     <Button
+                      type="button"
                       variant="outline"
                       className={cn(
                         "w-full justify-start text-left font-normal",
@@ -388,13 +582,48 @@ export default function StudyEditPage() {
 
               {/* Setting the time */}
               <div className="space-y-1.5">
-                <Label className="font-mono text-xs tracking-wider">TIME</Label>
-                <Input
-                  type="time"
-                  value={scheduledTime}
-                  onChange={(e) => setScheduledTime(e.target.value)}
-                />
+                <Label
+                  htmlFor="scheduled-time"
+                  className="font-mono text-xs tracking-wider"
+                >
+                  TIME
+                </Label>
+                <div className="relative">
+                  <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="scheduled-time"
+                    type="time"
+                    value={scheduledTime}
+                    onChange={(e) => setScheduledTime(e.target.value)}
+                    onClick={openNativePicker}
+                    onFocus={openNativePicker}
+                    className="pl-9 [&::-webkit-calendar-picker-indicator]:opacity-0"
+                  />
+                </div>
               </div>
+            </div>
+
+            {/* Link the session to a task (or leave it standalone) */}
+            <div className="space-y-1.5">
+              <Label className="font-mono text-xs tracking-wider">
+                LINKED TASK
+              </Label>
+              <Select value={selectedTaskId} onValueChange={setSelectedTaskId}>
+                <SelectTrigger className="w-full font-mono text-sm">
+                  <SelectValue placeholder="No task" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No task</SelectItem>
+                  {taskOptions.map((task) => (
+                    <SelectItem key={task.id} value={String(task.id)}>
+                      {task.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="font-mono text-[10px] text-muted-foreground">
+                Connect this session to a task, or leave it standalone.
+              </p>
             </div>
 
             {/* Insert Focus Minutes and Break Minutes (For Pomodoro) */}
@@ -477,6 +706,9 @@ export default function StudyEditPage() {
               <Label className="font-mono text-xs tracking-wider">
                 ATTACHMENTS
               </Label>
+              <p className="font-mono text-[10px] text-muted-foreground">
+                {AI_READABLE_ATTACHMENT_HELPER_TEXT}
+              </p>
               {existingAttachments.length > 0 || attachments.length > 0 ? (
                 <div className="space-y-2">
                   {existingAttachments.map((file) => (
@@ -541,25 +773,147 @@ export default function StudyEditPage() {
               </label>
             </div>
 
-            <div className="flex items-center justify-between rounded-lg border border-accent/20 bg-accent/5 px-4 py-3">
-              <div>
-                <p className="text-sm font-medium text-foreground">
-                  AI Suggestions
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Get session ideas based on your title and attachments.
-                </p>
+            <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <Label className="font-mono text-xs tracking-wider">
+                    REMINDER
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Configure how long before the session you want to be
+                    reminded.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="study-reminder-enabled"
+                    checked={reminderEnabled}
+                    onCheckedChange={(checked) =>
+                      setReminderEnabled(checked === true)
+                    }
+                  />
+                  <Label
+                    htmlFor="study-reminder-enabled"
+                    className="font-mono text-xs tracking-wider"
+                  >
+                    Enable reminder
+                  </Label>
+                </div>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                className="gap-1.5 font-mono text-xs border-accent/40 text-accent hover:bg-accent/10 hover:text-accent"
-                onClick={() => toast.info("AI suggestions coming soon!")}
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                AI Suggestions
-              </Button>
+
+              {reminderEnabled ? (
+                <>
+                  <div className="space-y-3">
+                    {reminders.map((reminder, index) => {
+                      const isAtStart = reminder.atStart === true;
+
+                      return (
+                        <div
+                          key={`${reminder.unit}-${index}`}
+                          className="grid gap-3 rounded-lg border border-border/50 bg-background/80 p-3 md:grid-cols-[1fr_180px_auto]"
+                        >
+                          <div className="space-y-1.5">
+                            <Label className="font-mono text-xs tracking-wider">
+                              VALUE UNIT
+                            </Label>
+                            <Select
+                              value={reminder.unit}
+                              onValueChange={(v) =>
+                                updateReminder(index, {
+                                  unit: v as StudyReminderValueUnit,
+                                })
+                              }
+                              disabled={!reminderEnabled}
+                            >
+                              <SelectTrigger className="font-mono text-sm w-full">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="minutes">
+                                  Minutes before
+                                </SelectItem>
+                                <SelectItem value="hours">
+                                  Hours before
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label className="font-mono text-xs tracking-wider">
+                              VALUE
+                            </Label>
+                            <div className="flex items-center gap-2">
+                              <Checkbox
+                                checked={isAtStart}
+                                onCheckedChange={(checked) =>
+                                  toggleStartReminder(index, checked === true)
+                                }
+                                disabled={!reminderEnabled}
+                              />
+                              <Label className="font-mono text-xs tracking-wider">
+                                At Start
+                              </Label>
+                            </div>
+                            {isAtStart ? (
+                              <div className="flex h-10 items-center rounded-md border border-dashed border-border/60 bg-muted/30 px-3 text-sm text-muted-foreground">
+                                At Start
+                              </div>
+                            ) : (
+                              <Input
+                                type="number"
+                                min={1}
+                                value={reminder.value}
+                                onChange={(e) =>
+                                  updateReminder(index, {
+                                    value: Number(e.target.value),
+                                  })
+                                }
+                                disabled={!reminderEnabled}
+                              />
+                            )}
+                          </div>
+
+                          <div className="flex items-end justify-between gap-2">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeReminder(index)}
+                              disabled={!reminderEnabled}
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-border/60 px-3 py-2">
+                    <p className="text-xs text-muted-foreground">
+                      Default reminders are 15 minutes, 5 minutes, and an At
+                      Start reminder.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addReminder}
+                      disabled={!reminderEnabled}
+                    >
+                      Add reminder
+                    </Button>
+                  </div>
+                </>
+              ) : null}
             </div>
+
+            <AiSuggestionsButton
+              description="Generate one study session from this form and optional linked task."
+              loading={aiLoading}
+              onClick={requestSingleStudySessionDraft}
+            />
 
             <div className="flex gap-3 pt-2">
               <Button

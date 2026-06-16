@@ -4,6 +4,8 @@ import { createTaskSchema } from '../../../lib/validation/task';
 import { createTask, getTasks, serializeTask, TaskServiceError } from '@/lib/services/taskService';
 import { runTaskAnalysis } from '@/lib/services/aiService';
 import { getSession } from '@/lib/firebase/auth';
+import { ensureUserRecordForSession } from '@/lib/services/userService';
+import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services/prismaErrors';
 
 /**
  * @swagger
@@ -50,6 +52,7 @@ import { getSession } from '@/lib/firebase/auth';
  * /api/task:
  *   get:
  *     summary: Get tasks belonging to the authenticated user (personal tasks only)
+ *     description: Requires the session cookie. Returns personal tasks only; project tasks are excluded.
  *     tags:
  *       - Tasks
  *     responses:
@@ -72,6 +75,10 @@ import { getSession } from '@/lib/firebase/auth';
  *         description: Internal server error
  *   post:
  *     summary: Create a new personal task for the authenticated user
+ *     description: >
+ *       Requires the session cookie. Creates a personal task, optionally links draft
+ *       attachments by ID, updates pending-task analytics, and starts AI task analysis
+ *       asynchronously after the response is prepared.
  *     tags:
  *       - Tasks
  *     requestBody:
@@ -83,7 +90,6 @@ import { getSession } from '@/lib/firebase/auth';
  *             required:
  *               - title
  *               - deadline
- *               - status
  *             properties:
  *               title:
  *                 type: string
@@ -100,12 +106,21 @@ import { getSession } from '@/lib/firebase/auth';
  *               status:
  *                 type: string
  *                 enum: [Pending, In_Progress, Completed]
+ *                 default: Pending
  *                 example: Pending
  *               priority:
  *                 type: number
  *                 minimum: 0.5
  *                 maximum: 5
+ *                 default: 3
  *                 example: 3
+ *               attachmentIds:
+ *                 type: array
+ *                 maxItems: 20
+ *                 items:
+ *                   type: integer
+ *                   minimum: 1
+ *                 description: Draft attachment IDs owned by the user to attach to the task.
  *     responses:
  *       201:
  *         description: Task created successfully
@@ -122,6 +137,8 @@ import { getSession } from '@/lib/firebase/auth';
  *         description: Validation failed or invalid JSON
  *       401:
  *         description: Not authenticated
+ *       409:
+ *         description: Account record needs repair (foreign key error)
  *       500:
  *         description: Internal server error
  */
@@ -175,6 +192,8 @@ export async function POST(request: Request) {
       );
     }
 
+    await ensureUserRecordForSession(session);
+
     const created = await createTask(session.id, parsed.data);
 
     runTaskAnalysis(created.task_id, session.id).catch((error) => {
@@ -190,6 +209,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: error.message }, { status: error.status });
     }
 
-    return NextResponse.json({ message: 'Error creating task', error }, { status: 500 });
+    if (isPrismaForeignKeyError(error)) {
+      console.error('[api/task] Foreign key error while creating task:', error);
+      return NextResponse.json({ message: foreignKeyRepairMessage() }, { status: 409 });
+    }
+
+    console.error('[api/task] Error creating task:', error);
+    return NextResponse.json({ message: 'Error creating task' }, { status: 500 });
   }
 }

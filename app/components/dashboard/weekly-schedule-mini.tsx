@@ -15,15 +15,15 @@ export function WeeklyScheduleMini({ tasks }: WeeklyScheduleMiniProps) {
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
   return (
-    <Card className="bg-card/80 backdrop-blur-sm border-0">
+    <Card className="h-full w-full bg-card/80 backdrop-blur-sm border-0">
       <CardHeader className="pb-4">
         <CardTitle className="font-display text-base font-bold tracking-wide">
           THIS WEEK
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <Link href="/calendar" className="block">
-          <div className="grid grid-cols-7 gap-1">
+      <CardContent className="flex-1 min-h-0 flex flex-col justify-center">
+        <Link href="/calendar" className="block w-full">
+          <div className="grid w-full grid-cols-7 gap-1">
             {days.map((day) => {
               const dayTasks = tasks.filter((t) =>
                 isSameDay(new Date(t.deadline), day),

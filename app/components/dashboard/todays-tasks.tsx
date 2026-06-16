@@ -1,13 +1,25 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link"; // Added for routing
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button"; // Imported to match your button standard
 import { StarRating } from "@/app/components/common/star-rating";
 import type { Task } from "@/types";
 import { cn } from "@/lib/utils";
-import { format, isToday, isTomorrow, isPast } from "date-fns";
+import {
+  addDays,
+  endOfDay,
+  format,
+  isPast,
+  isToday,
+  isTomorrow,
+  isWithinInterval,
+  startOfDay,
+} from "date-fns";
+import { Plus } from "lucide-react"; // UI icons for actions and layout empty-state
 
 interface TodaysTasksProps {
   tasks: Task[];
@@ -16,9 +28,26 @@ interface TodaysTasksProps {
 export function TodaysTasks({ tasks }: TodaysTasksProps) {
   const [completed, setCompleted] = useState<Set<number>>(new Set());
 
+  const today = new Date();
+  const dueThisWeekWindow = {
+    start: startOfDay(today),
+    end: endOfDay(addDays(today, 7)),
+  };
+
   const sorted = [...tasks]
-    .sort((a, b) => b.priority - a.priority)
-    .slice(0, 6);
+    .filter((task) => {
+      const deadlineDate = new Date(task.deadline);
+      return (
+        task.status !== "Completed" &&
+        isWithinInterval(deadlineDate, dueThisWeekWindow)
+      );
+    })
+    .sort((a, b) => {
+      const deadlineDelta =
+        new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+      if (deadlineDelta !== 0) return deadlineDelta;
+      return b.priority - a.priority;
+    });
 
   const toggle = (id: number) => {
     setCompleted((prev) => {
@@ -37,16 +66,45 @@ export function TodaysTasks({ tasks }: TodaysTasksProps) {
   };
 
   return (
-    <Card className="bg-card/80 backdrop-blur-sm border-0">
+    <Card className="bg-card/80 backdrop-blur-sm border-0 h-full">
       <CardHeader className="pb-4">
         <CardTitle className="font-display text-base font-bold tracking-wide">
           TODAY&apos;S TASKS
         </CardTitle>
+        
+        {/* Subtle header action: Only renders if tasks actually exist */}
+        {sorted.length > 0 && (
+          <Button asChild size="sm" variant="outline" className="h-8 gap-1 font-mono text-xs border-white/10 hover:bg-white/5">
+            <Link href="/tasks/new">
+              <Plus size={14} /> New Task
+            </Link>
+          </Button>
+        )}
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-3 flex-1 min-h-0 overflow-y-auto">
         {sorted.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No tasks yet.</p>
+          /* Custom centered layout container: Placed right over "No tasks yet" */
+          <div className="flex flex-col items-center justify-center py-10 px-4 text-center border border-dashed border-border/60 rounded-xl bg-background/20 my-auto">
+            <h3 className="font-display font-bold text-sm tracking-wide text-foreground mb-1">
+              NO TASKS DUE THIS WEEK
+            </h3>
+            <p className="text-xs text-muted-foreground max-w-xs mb-5 leading-relaxed font-mono">
+              Nothing assigned to you is due in the next seven days.
+            </p>
+
+            {/* Tactical Dark Orange Action Button */}
+            <Button 
+              asChild 
+              className="bg-accent hover:bg-accent/90 text-accent-foreground font-semibold px-5 shadow-lg gap-1.5"
+            >
+              <Link href="/tasks/new">
+                <Plus size={16} strokeWidth={2.5} />
+                New Task
+              </Link>
+            </Button>
+          </div>
         ) : (
+          /* Normal layout task mapping block */
           sorted.map((task) => {
             const done = completed.has(task.id) || task.status === "Completed";
             const deadlineDate = new Date(task.deadline);

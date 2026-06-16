@@ -4,6 +4,80 @@ import prisma from "@/lib/prisma";
 import { v4 as uuidv4 } from "uuid";
 import { getSession } from "@/lib/firebase/auth";
 
+/**
+ * @swagger
+ * /api/attachment:
+ *   post:
+ *     summary: Upload a standalone attachment
+ *     tags:
+ *       - Attachments
+ *     description: >
+ *       Requires the session cookie. Accepts multipart form data with a `file`, uploads
+ *       it to storage under a unique key, creates an attachment row, and returns a
+ *       temporary URL.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [file]
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Attachment uploaded.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 attachment_id:
+ *                   type: integer
+ *                 fileName:
+ *                   type: string
+ *                 url:
+ *                   type: string
+ *       400:
+ *         description: No file provided.
+ *       401:
+ *         description: User is not authenticated.
+ *       500:
+ *         description: Upload failed.
+ *   get:
+ *     summary: Get a temporary URL for an uploaded file
+ *     tags:
+ *       - Attachments
+ *     description: >
+ *       Requires the session cookie. The implementation reads multipart form data
+ *       from the GET request and expects a `file` entry containing the file key or File.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [file]
+ *             properties:
+ *               file:
+ *                 oneOf:
+ *                   - type: string
+ *                   - type: string
+ *                     format: binary
+ *     responses:
+ *       200:
+ *         description: Temporary URL returned.
+ *       400:
+ *         description: No file name provided.
+ *       401:
+ *         description: Not authenticated.
+ *       500:
+ *         description: Read failed.
+ */
 export async function POST(req: Request) {
   try {
     const session = await getSession();

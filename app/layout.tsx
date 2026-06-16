@@ -23,11 +23,15 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Scholar's Plot",
+  title: "Scholar's Plot Site",
   description: "Student Planner & Productivity Tracker",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en" suppressHydrationWarning className="min-h-dvh bg-background">
       <body
@@ -41,15 +45,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           min-h-dvh
         `}
       >
-        <Providers>
-          {children}
-        </Providers>
+        <Providers>{children}</Providers>
 
         {/* Grain overlay — fixed texture on dark backgrounds */}
         <div className="grain-overlay" />
 
         {/* Sonner Toaster */}
-        <Toaster position="bottom-right" richColors closeButton duration={3000} />
+        <Toaster
+          position="bottom-right"
+          richColors
+          closeButton
+          duration={3000}
+        />
       </body>
     </html>
   );

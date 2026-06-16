@@ -1,6 +1,13 @@
 import prisma from '@/lib/prisma';
+import { getAnalyticsByUserId, updateAnalyticsByUserId } from '@/lib/services/analyticService';
+import {
+  getTaskStatusAnalyticsUpdate,
+  isCompletionStatusTransition,
+} from '@/lib/services/taskStatusAnalytics';
+import type { TaskStatus } from '@/types';
 import type {
   AddProjectMemberInput,
+  CreateProjectInviteInput,
   CreateProjectInput,
   CreateProjectTaskInput,
   UpdateProjectInput,
@@ -8,9 +15,12 @@ import type {
   UpdateProjectTaskInput,
 } from '@/lib/validation/project';
 
-type ProjectUserRole = 'owner' | 'moderator' | 'member';
+type ProjectUserRole = 'owner' | 'moderator' | 'collaborator' | 'member';
+type ProjectInviteTarget =
+  | string
+  | Pick<CreateProjectInviteInput, 'targetUserId' | 'targetUserEmail'>;
 
-const projectManagerRoles: ProjectUserRole[] = ['owner', 'moderator'];
+const projectManagerRoles: ProjectUserRole[] = ['owner'];
 
 export class ProjectServiceError extends Error {
   constructor(
@@ -23,8 +33,23 @@ export class ProjectServiceError extends Error {
 }
 
 const projectInclude = {
-  project_user: true,
-  tasks: true,
+  project_user: {
+    include: {
+      user: {
+        select: {
+          user_name: true,
+          user_email: true,
+        },
+      },
+    },
+  },
+  tasks: {
+    include: {
+      task_users: {
+        select: { user_id: true },
+      },
+    },
+  },
 };
 
 const taskInclude = {
@@ -34,6 +59,31 @@ const taskInclude = {
 
 function isProjectManagerRole(role: ProjectUserRole) {
   return projectManagerRoles.includes(role);
+}
+
+async function requireUsersExist(userIds: string[], label = 'Project member') {
+  const uniqueIds = [...new Set(userIds.filter(Boolean))];
+
+  if (uniqueIds.length === 0) {
+    return;
+  }
+
+  const existingUsers = await prisma.user.findMany({
+    where: {
+      user_id: {
+        in: uniqueIds,
+      },
+    },
+    select: {
+      user_id: true,
+    },
+  });
+  const existingIds = new Set(existingUsers.map((user) => user.user_id));
+  const missingIds = uniqueIds.filter((userId) => !existingIds.has(userId));
+
+  if (missingIds.length > 0) {
+    throw new ProjectServiceError(400, `${label} does not exist: ${missingIds.join(', ')}`);
+  }
 }
 
 async function getProjectMemberRole(projectId: number, userId: string) {
@@ -67,7 +117,7 @@ async function requireProjectManagerRole(projectId: number, userId: string) {
   }
 
   if (!isProjectManagerRole(memberRole.project_user_role as ProjectUserRole)) {
-    throw new ProjectServiceError(403, 'Only moderators or owners can manage members and tasks');
+    throw new ProjectServiceError(403, 'Only the project owner can manage members and tasks');
   }
 
   return memberRole.project_user_role as ProjectUserRole;
@@ -96,7 +146,7 @@ async function requireProjectOwnerRole(projectId: number, userId: string) {
   return memberRole.project_user_role as ProjectUserRole;
 }
 
-async function requireProjectTaskAccess(taskId: number, userId: string) {
+export async function requireProjectTaskAccess(taskId: number, userId: string) {
   const task = await prisma.task.findUnique({
     where: { task_id: taskId },
     include: {
@@ -141,6 +191,20 @@ async function requireProjectTaskAccess(taskId: number, userId: string) {
   };
 }
 
+export async function requireProjectTaskAttachmentAccess(
+  taskId: number,
+  userId: string,
+  mode: 'view' | 'manage' = 'view',
+) {
+  const access = await requireProjectTaskAccess(taskId, userId);
+
+  if (mode === 'manage' && !access.isManager && !access.isAssigned) {
+    throw new ProjectServiceError(403, 'Members can only manage tasks assigned to them');
+  }
+
+  return access.task;
+}
+
 export async function getProjects(userId: string) {
   return prisma.project.findMany({
     where: {
@@ -166,6 +230,8 @@ export async function createProject(userId: string, data: CreateProjectInput) {
         user_id: member.id,
         project_user_role: member.role as ProjectUserRole,
       })) ?? [];
+
+  await requireUsersExist(additionalMembers.map((member) => member.user_id));
 
   return prisma.project.create({
     data: {
@@ -214,6 +280,16 @@ export async function updateProjectById(projectId: number, userId: string, data:
   if (data.members) {
     const ownerId = existingProject.project_user[0]?.user_id;
 
+    const membersToCreate = data.members
+      .filter((member) => member.id !== ownerId)
+      .map((member) => ({
+        project_id: projectId,
+        user_id: member.id,
+        project_user_role: member.role,
+      }));
+
+    await requireUsersExist(membersToCreate.map((member) => member.user_id));
+
     await prisma.projectUser.deleteMany({
       where: {
         project_id: projectId,
@@ -222,14 +298,6 @@ export async function updateProjectById(projectId: number, userId: string, data:
         },
       },
     });
-
-    const membersToCreate = data.members
-      .filter((member) => member.id !== ownerId)
-      .map((member) => ({
-        project_id: projectId,
-        user_id: member.id,
-        project_user_role: member.role,
-      }));
 
     if (membersToCreate.length > 0) {
       await prisma.projectUser.createMany({
@@ -269,11 +337,21 @@ export async function addProjectMember(projectId: number, userId: string, data: 
     throw new ProjectServiceError(409, 'Member already in project');
   }
 
+  await requireUsersExist([data.id]);
+
   return prisma.projectUser.create({
     data: {
       project_id: projectId,
       user_id: data.id,
       project_user_role: data.role,
+    },
+    include: {
+      user: {
+        select: {
+          user_name: true,
+          user_email: true,
+        }
+      }
     },
   });
 }
@@ -309,6 +387,14 @@ export async function updateProjectMemberById(
     data: {
       project_user_role: data.role,
     },
+    include: {
+      user: {
+        select: {
+          user_name: true,
+          user_email: true,
+        },
+      },
+    },
   });
 }
 
@@ -332,13 +418,24 @@ export async function deleteProjectMemberById(projectId: number, userId: string,
     throw new ProjectServiceError(403, 'Cannot remove the project owner');
   }
 
-  await prisma.projectUser.delete({
-    where: {
-      project_id_user_id: {
-        project_id: projectId,
+  await prisma.$transaction(async (tx) => {
+    await tx.taskUser.deleteMany({
+      where: {
         user_id: memberId,
+        task: {
+          project_id: projectId,
+        },
       },
-    },
+    });
+
+    await tx.projectUser.delete({
+      where: {
+        project_id_user_id: {
+          project_id: projectId,
+          user_id: memberId,
+        },
+      },
+    });
   });
 }
 
@@ -352,38 +449,58 @@ export async function createProjectTask(userId: string, data: CreateProjectTaskI
     throw new ProjectServiceError(404, 'Project not found');
   }
 
-  const memberRole = await getProjectMemberRole(data.projectId, userId);
+  await requireProjectOwnerRole(data.projectId, userId);
 
-  if (!memberRole) {
-    throw new ProjectServiceError(403, 'You are not a member of this project');
+  if (data.assignedTo && data.assignedTo !== userId) {
+    await requireUsersExist([data.assignedTo], 'Assigned user');
   }
 
-  const isManager = isProjectManagerRole(memberRole.project_user_role as ProjectUserRole);
-
-  if (!isManager && data.assignedTo !== userId) {
-    throw new ProjectServiceError(403, 'Members can only manage tasks assigned to them');
-  }
-
-  const task = await prisma.task.create({
-    data: {
-      project_id: data.projectId,
-      task_name: data.title,
-      task_description: data.description,
-      task_priority: data.priority,
-      task_status: data.status,
-      task_deadline: new Date(Date.now() + 24 * 60 * 60 * 1000),
-    },
-    include: taskInclude,
-  });
-
-  if (data.assignedTo) {
-    await prisma.taskUser.create({
+  const task = await prisma.$transaction(async (tx) => {
+    const createdTask = await tx.task.create({
       data: {
-        task_id: task.task_id,
-        user_id: data.assignedTo,
+        project_id: data.projectId,
+        task_name: data.title,
+        task_description: data.description,
+        task_priority: data.priority,
+        task_status: data.status,
+        task_deadline: data.deadline,
       },
+      include: taskInclude,
     });
-  }
+
+    if (data.assignedTo) {
+      await tx.taskUser.create({
+        data: {
+          task_id: createdTask.task_id,
+          user_id: data.assignedTo,
+        },
+      });
+    }
+
+    if (data.attachmentIds?.length) {
+      const attachmentIds = [...new Set(data.attachmentIds)];
+      const attachments = await tx.attachment.findMany({
+        where: { attachment_id: { in: attachmentIds } },
+        select: { attachment_id: true, user_id: true, task_id: true },
+      });
+
+      if (
+        attachments.length !== attachmentIds.length ||
+        attachments.some(
+          (attachment) => attachment.user_id !== userId || attachment.task_id !== null,
+        )
+      ) {
+        throw new ProjectServiceError(400, 'Some draft attachments are unavailable');
+      }
+
+      await tx.attachment.updateMany({
+        where: { attachment_id: { in: attachmentIds } },
+        data: { task_id: createdTask.task_id },
+      });
+    }
+
+    return createdTask;
+  });
 
   return prisma.task.findUnique({
     where: { task_id: task.task_id },
@@ -393,32 +510,82 @@ export async function createProjectTask(userId: string, data: CreateProjectTaskI
 
 export async function updateProjectTaskById(taskId: number, userId: string, data: UpdateProjectTaskInput) {
   const access = await requireProjectTaskAccess(taskId, userId);
+  const previousStatus = access.task.task_status as TaskStatus;
+  const nextStatus = data.status as TaskStatus | undefined;
+  const statusChanging = nextStatus !== undefined && nextStatus !== previousStatus;
+  const existingAssignedUserId = access.task.task_users[0]?.user_id ?? null;
+  const isSelfClaim =
+    data.assignedTo !== undefined &&
+    data.assignedTo === userId &&
+    existingAssignedUserId === null;
+  const hasDetailEdits =
+    data.title !== undefined ||
+    data.description !== undefined ||
+    data.deadline !== undefined ||
+    data.priority !== undefined ||
+    data.attachments !== undefined;
+  const hasAssignmentEdit = data.assignedTo !== undefined;
+  const onlySelfClaim = isSelfClaim && !hasDetailEdits && nextStatus === undefined;
+  const onlyStatusMove = nextStatus !== undefined && !hasDetailEdits && !hasAssignmentEdit;
+  const nextAssignedUserId = data.assignedTo !== undefined
+    ? data.assignedTo || null
+    : existingAssignedUserId;
 
   if (!access.isManager) {
-    if (!access.isAssigned) {
-      throw new ProjectServiceError(403, 'Members can only manage tasks assigned to them');
-    }
-
-    if (data.assignedTo !== undefined && data.assignedTo !== userId) {
-      throw new ProjectServiceError(403, 'Members can only manage tasks assigned to them');
+    if (onlySelfClaim) {
+      // Allowed below.
+    } else if (hasDetailEdits) {
+      throw new ProjectServiceError(403, 'Only the project owner can edit project task details');
+    } else if (hasAssignmentEdit) {
+      throw new ProjectServiceError(403, 'Members can only claim unassigned tasks for themselves');
+    } else if (onlyStatusMove && !access.isAssigned) {
+      throw new ProjectServiceError(403, 'Members can only move tasks assigned to them');
+    } else if (!onlyStatusMove) {
+      throw new ProjectServiceError(403, 'Only the project owner can edit project task details');
     }
   }
+
+  if (data.assignedTo && data.assignedTo !== userId) {
+    await requireUsersExist([data.assignedTo], 'Assigned user');
+  }
+
+  const analyticsUserId = previousStatus === 'Completed' && nextStatus !== 'Completed'
+    ? existingAssignedUserId ?? userId
+    : nextAssignedUserId ?? userId;
+  const currentAnalytics = isCompletionStatusTransition(previousStatus, nextStatus)
+    ? await getAnalyticsByUserId(analyticsUserId)
+    : null;
+  const completionDate = statusChanging && nextStatus === 'Completed' ? new Date() : null;
 
   const updatedTask = await prisma.task.update({
     where: { task_id: taskId },
     data: {
       ...(data.title ? { task_name: data.title } : {}),
       ...(data.description !== undefined ? { task_description: data.description } : {}),
+      ...(data.deadline !== undefined ? { task_deadline: data.deadline } : {}),
       ...(data.priority ? { task_priority: data.priority } : {}),
-      ...(data.status
-        ? {
-          task_status: data.status,
-          task_completed_at: data.status === 'Completed' ? new Date() : null,
-        }
+      ...(nextStatus !== undefined ? { task_status: nextStatus } : {}),
+      ...(statusChanging
+        ? { task_completed_at: nextStatus === 'Completed' ? completionDate : null }
         : {}),
     },
     include: taskInclude,
   });
+
+  if (currentAnalytics && nextStatus) {
+    const analyticsUpdate = getTaskStatusAnalyticsUpdate({
+      currentAnalytics,
+      previousStatus,
+      nextStatus,
+      deadline: access.task.task_deadline,
+      completionDate: completionDate ?? new Date(),
+      previousCompletedAt: access.task.task_completed_at,
+    });
+
+    if (analyticsUpdate) {
+      await updateAnalyticsByUserId(analyticsUserId, analyticsUpdate);
+    }
+  }
 
   if (data.assignedTo !== undefined) {
     await prisma.taskUser.deleteMany({
@@ -443,11 +610,174 @@ export async function updateProjectTaskById(taskId: number, userId: string, data
 export async function deleteProjectTaskById(taskId: number, userId: string) {
   const access = await requireProjectTaskAccess(taskId, userId);
 
-  if (!access.isManager && !access.isAssigned) {
-    throw new ProjectServiceError(403, 'Members can only manage tasks assigned to them');
+  if (!access.isManager) {
+    throw new ProjectServiceError(403, 'Only the project owner can delete project tasks');
   }
 
   await prisma.task.delete({
     where: { task_id: taskId },
   });
+}
+
+// INVITIATION LOGICS
+export async function getPendingInvitesForUser(userId: string) {
+  return await prisma.projectInvite.findMany({
+    where: {
+      invited_user: userId,
+      status: "pending",
+    },
+    include: {
+      project: {
+        select: {
+          project_name: true,
+        },
+      },
+      inviter: {
+        select: {
+          user_name: true,
+        },
+      },
+    },
+    orderBy: {
+      created_at: "desc",
+    },
+  });
+}
+
+export async function createProjectInvite(
+  projectId: number,
+  senderUserId: string,
+  target: ProjectInviteTarget,
+) {
+  const targetUserId = typeof target === "string" ? undefined : target.targetUserId;
+  const targetUserEmail = typeof target === "string" ? target : target.targetUserEmail;
+
+  let targetUser = targetUserId
+    ? await prisma.user.findUnique({
+      where: { user_id: targetUserId },
+    })
+    : null;
+
+  if (!targetUser && targetUserEmail) {
+    targetUser = await prisma.user.findUnique({
+      where: { user_email: targetUserEmail },
+    });
+  }
+
+  if (!targetUser) {
+    throw { status: 404, message: "User not found" };
+  }
+
+  // 2. Verify sender is authorized (must be an owner)
+  const senderRole = await prisma.projectUser.findUnique({
+    where: {
+      project_id_user_id: {
+        project_id: projectId,
+        user_id: senderUserId,
+      },
+    },
+  });
+
+  if (!senderRole || senderRole.project_user_role !== "owner") {
+    throw { status: 403, message: "Forbidden: Insufficient privileges" };
+  }
+
+  // 3. Check if target user is already part of the project
+  const existingMember = await prisma.projectUser.findUnique({
+    where: {
+      project_id_user_id: {
+        project_id: projectId,
+        user_id: targetUser.user_id,
+      },
+    },
+  });
+
+  if (existingMember) {
+    throw { status: 409, message: "User is already a member of this project" };
+  }
+
+  // 4. Upsert invite payload (using your exact schema constraints)
+  return await prisma.projectInvite.upsert({
+    where: {
+      project_id_invited_user: {
+        project_id: projectId,
+        invited_user: targetUser.user_id,
+      },
+    },
+    update: {
+      invited_by: senderUserId,
+      status: "pending",
+      created_at: new Date(),
+      responded_at: null,
+    },
+    create: {
+      project_id: projectId,
+      invited_user: targetUser.user_id,
+      invited_by: senderUserId,
+      status: "pending",
+    },
+  });
+}
+
+export async function respondToInvite(inviteId: number, userId: string, action: "accepted" | "declined") {
+  // 1. Locate the invitation
+  const invite = await prisma.projectInvite.findUnique({
+    where: { invite_id: inviteId },
+  });
+
+  if (!invite) {
+    throw { status: 404, message: "Invitation not found" };
+  }
+
+  // 2. Ensure targeted safety check (user_id instead of id)
+  if (invite.invited_user !== userId) {
+    throw { status: 403, message: "Forbidden: Insufficient privileges" };
+  }
+
+  if (invite.status !== "pending") {
+    throw { status: 400, message: `Invitation has already been ${invite.status}` };
+  }
+
+  // 3. Process transactional state change
+  if (action === "accepted") {
+    return await prisma.$transaction(async (tx) => {
+      const updatedInvite = await tx.projectInvite.update({
+        where: { invite_id: inviteId },
+        data: {
+          status: "accepted",
+          responded_at: new Date(),
+        },
+      });
+
+      const existingMember = await tx.projectUser.findUnique({
+        where: {
+          project_id_user_id: {
+            project_id: invite.project_id,
+            user_id: userId,
+          },
+        },
+      });
+
+      if (!existingMember) {
+        await tx.projectUser.create({
+          data: {
+            project_id: invite.project_id,
+            user_id: userId,
+            project_user_role: "member", // Enum type from your schema
+          },
+        });
+      }
+
+      return updatedInvite;
+    });
+  } else {
+    // Declined path
+    return await prisma.projectInvite.update({
+      where: { invite_id: inviteId },
+      data: {
+        status: "declined",
+        responded_at: new Date(),
+      },
+    });
+  }
 }

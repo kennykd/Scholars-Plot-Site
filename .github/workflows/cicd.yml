@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: "Optional image tag to build and push (overrides default)"
+        description: 'Optional image tag to build and push (overrides default)'
         required: false
 
 concurrency:

@@ -4,6 +4,49 @@ import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/firebase/auth";
 import { requireTaskAccess, TaskServiceError } from "@/lib/services/taskService";
 
+/**
+ * @swagger
+ * /api/attachment/{id}:
+ *   delete:
+ *     summary: Delete a stored file by file name
+ *     tags:
+ *       - Attachments
+ *     description: >
+ *       Requires the session cookie. The dynamic `id` path parameter is not used by the
+ *       handler; it expects multipart form data with `fileName`. If the file is linked
+ *       to a task, task access is checked before deleting the object from storage.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Present in the route path but not read by the implementation.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [fileName]
+ *             properties:
+ *               fileName:
+ *                 type: string
+ *                 description: Storage key to delete.
+ *     responses:
+ *       200:
+ *         description: File deleted from storage.
+ *       400:
+ *         description: No file name provided.
+ *       401:
+ *         description: Not authenticated.
+ *       403:
+ *         description: No access to the linked task.
+ *       404:
+ *         description: Linked task not found.
+ *       500:
+ *         description: Delete failed.
+ */
 export async function DELETE(req: Request) {
   try {
     const session = await getSession();

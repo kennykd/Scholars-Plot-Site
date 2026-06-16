@@ -7,6 +7,7 @@ import { StarRating } from "@/app/components/common/star-rating";
 import { TaskDeleteButton } from "../../../components/tasks/task-delete-button";
 import { TaskAttachmentDeleteButton } from "../../../components/tasks/task-attachment-delete-button";
 import { TaskCompleteButton } from "../../../components/tasks/task-complete-button";
+import { TaskInProgressButton } from "../../../components/tasks/task-in-progress-button";
 import { getSession } from "@/lib/firebase/auth";
 import {
   getStudySessionsForTask,
@@ -19,6 +20,8 @@ import type { Attachment, Task } from "@/types";
 import { format, formatDistanceToNow } from "date-fns";
 import { ArrowLeft, BookOpen, Paperclip } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { taskStatusColors, taskStatusLabels } from "@/lib/tasks/task-status";
+import { AI_READABLE_ATTACHMENT_HELPER_TEXT } from "@/lib/ai/attachmentSupport";
 
 interface LinkedStudySession {
   id: number;
@@ -26,18 +29,6 @@ interface LinkedStudySession {
   scheduledAt: string;
   focusMinutes: number;
 }
-
-const statusColors: Record<Task["status"], string> = {
-  Pending: "bg-muted text-muted-foreground",
-  In_Progress: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-  Completed: "bg-green-500/20 text-green-400 border-green-500/30",
-};
-
-const statusLabels: Record<Task["status"], string> = {
-  Pending: "PENDING",
-  In_Progress: "IN PROGRESS",
-  Completed: "COMPLETED",
-};
 
 export default async function TaskDetailPage({
   params,
@@ -89,7 +80,7 @@ export default async function TaskDetailPage({
   const deadlineDate = new Date(task.deadline);
 
   return (
-    <div className="p-6 max-w-2xl mx-auto space-y-6">
+    <div className="p-6 space-y-6">
       <Button variant="ghost" size="sm" asChild className="font-mono text-xs">
         <Link href="/tasks">
           <ArrowLeft className="h-4 w-4 mr-1" /> Tasks
@@ -104,11 +95,11 @@ export default async function TaskDetailPage({
             <Badge
               className={cn(
                 "shrink-0 font-mono text-xs border",
-                statusColors[task.status],
+                taskStatusColors[task.status],
               )}
               variant="outline"
             >
-              {statusLabels[task.status]}
+              {taskStatusLabels[task.status]}
             </Badge>
           </div>
           <StarRating value={task.priority} size="lg" readOnly />
@@ -181,6 +172,9 @@ export default async function TaskDetailPage({
               <p className="font-mono text-xs text-muted-foreground tracking-wider mb-2">
                 ATTACHMENTS
               </p>
+              <p className="font-mono text-[10px] text-muted-foreground mb-2">
+                {AI_READABLE_ATTACHMENT_HELPER_TEXT}
+              </p>
               <ul className="space-y-1.5">
                 {attachments.map((att) => (
                   <li
@@ -206,12 +200,11 @@ export default async function TaskDetailPage({
               </ul>
             </div>
           )}
-          {task.status !== "Completed" && (
-            <TaskCompleteButton taskId={task.id} />
-          )}
-          <div className="flex gap-3 pt-2">
-            <Button variant="outline" disabled className="font-mono text-xs">
-              Edit
+          <div className="flex flex-wrap gap-3 pt-2">
+            <TaskInProgressButton taskId={task.id} initialStatus={task.status} />
+            <TaskCompleteButton taskId={task.id} initialStatus={task.status} />
+            <Button variant="outline" asChild className="font-mono text-xs">
+              <Link href={`/tasks/${task.id}/edit`}>Edit</Link>
             </Button>
             <TaskDeleteButton taskId={task.id} taskTitle={task.title} />
           </div>

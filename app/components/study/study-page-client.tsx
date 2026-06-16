@@ -5,13 +5,11 @@ import { useRouter } from "next/navigation";
 import {
   differenceInSeconds,
   format,
-  formatDistanceToNow,
-  isPast,
   isToday,
   isTomorrow,
   parseISO,
 } from "date-fns";
-import { Bell, ChevronRight, Timer } from "lucide-react";
+import { ChevronRight, Timer } from "lucide-react";
 import type { StudySession } from "@/types";
 import { useAuth } from "@/lib/firebase/auth-context";
 import {
@@ -39,7 +37,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StudySelectionToolbar } from "@/app/components/study/study-selection-toolbar";
 import { StudyQuickTimerCard } from "@/app/components/study/study-quick-timer-card";
 
@@ -48,7 +45,6 @@ type StudyPageClientProps = {
 };
 
 type StudySectionType = "in-progress" | "upcoming" | "completed" | "expired";
-type StudyFilter = "all" | StudySectionType;
 type StudySort = "scheduled" | "status";
 
 type StudySessionRow = {
@@ -56,13 +52,34 @@ type StudySessionRow = {
   sectionType: StudySectionType;
 };
 
-const FILTERS: Array<{ value: StudyFilter; label: string }> = [
-  { value: "all", label: "All" },
-  { value: "in-progress", label: "In Progress" },
-  { value: "upcoming", label: "Upcoming" },
-  { value: "completed", label: "Completed" },
-  { value: "expired", label: "Expired" },
+const STUDY_SECTIONS: Array<{
+  value: StudySectionType;
+  label: string;
+  dotClassName: string;
+}> = [
+  {
+    value: "in-progress",
+    label: "In Progress",
+    dotClassName: "bg-amber-500",
+  },
+  {
+    value: "upcoming",
+    label: "Upcoming",
+    dotClassName: "bg-blue-500",
+  },
+  {
+    value: "completed",
+    label: "Completed",
+    dotClassName: "bg-green-500",
+  },
+  {
+    value: "expired",
+    label: "Expired",
+    dotClassName: "bg-red-500",
+  },
 ];
+
+const DEFAULT_VISIBLE_SECTIONS = STUDY_SECTIONS.map((section) => section.value);
 
 const STATUS_ORDER: Record<StudySectionType, number> = {
   "in-progress": 0,
@@ -70,6 +87,35 @@ const STATUS_ORDER: Record<StudySectionType, number> = {
   completed: 2,
   expired: 3,
 };
+
+const SENT_REMINDERS_STORAGE_KEY = "scholars-plot:sent-study-reminders";
+
+function readStoredReminderKeys() {
+  if (typeof window === "undefined") return new Set<string>();
+
+  try {
+    const raw = window.localStorage.getItem(SENT_REMINDERS_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return new Set<string>(Array.isArray(parsed) ? parsed.filter(Boolean) : []);
+  } catch {
+    return new Set<string>();
+  }
+}
+
+function persistReminderKeys(keys: Set<string>) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(
+    SENT_REMINDERS_STORAGE_KEY,
+    JSON.stringify([...keys]),
+  );
+}
+
+function getReminderKey(
+  studySession: StudySession,
+  thresholdSeconds: number,
+) {
+  return `${studySession.id}:${studySession.scheduledAt}:${thresholdSeconds}`;
+}
 
 function getStatusBadge(sectionType: StudySectionType, session: StudySession) {
   if (sectionType === "in-progress") {
@@ -113,7 +159,9 @@ function getRowAccent(sectionType: StudySectionType) {
 }
 
 function getScheduleBadge(date: Date, sectionType: StudySectionType) {
-  if (sectionType === "expired" || (isPast(date) && !isToday(date))) {
+  // Only the Expired section gets the red "Expired" badge — an in-progress row
+  // whose scheduled time has passed should not be mislabeled as expired.
+  if (sectionType === "expired") {
     return {
       label: "Expired",
       className: "bg-red-500/20 text-red-400 border-red-500/30",
@@ -161,6 +209,21 @@ function buildRows(
   return rows;
 }
 
+function sortStudyRows(rows: StudySessionRow[], sortMode: StudySort) {
+  return [...rows].sort((a, b) => {
+    if (sortMode === "status") {
+      const statusDiff =
+        STATUS_ORDER[a.sectionType] - STATUS_ORDER[b.sectionType];
+      if (statusDiff !== 0) return statusDiff;
+    }
+
+    return (
+      new Date(a.session.scheduledAt).getTime() -
+      new Date(b.session.scheduledAt).getTime()
+    );
+  });
+}
+
 export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
   const router = useRouter();
   const userIDRef = useRef<string | null>(null);
@@ -173,7 +236,8 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
   const [quickTotalMinutes, setQuickTotalMinutes] = useState(60);
   const [selectedSessionIds, setSelectedSessionIds] = useState<string[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [filter, setFilter] = useState<StudyFilter>("all");
+  const [visibleSectionTypes, setVisibleSectionTypes] =
+    useState<StudySectionType[]>(DEFAULT_VISIBLE_SECTIONS);
   const [sortMode, setSortMode] = useState<StudySort>("scheduled");
 
   useEffect(() => {
@@ -194,8 +258,8 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
   }, [user]);
 
   const inProgressSessions = useMemo(
-    () => getInProgressSessions(sessions, nowTick),
-    [sessions, nowTick],
+    () => getInProgressSessions(sessions),
+    [sessions],
   );
 
   const upcomingSessions = useMemo(
@@ -229,27 +293,37 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
     [inProgressSessions, upcomingSessions, completedSessions, expiredSessions],
   );
 
-  const visibleRows = useMemo(() => {
-    const filtered =
-      filter === "all"
-        ? allRows
-        : allRows.filter((row) => row.sectionType === filter);
+  const groupedRows = useMemo(
+    () =>
+      STUDY_SECTIONS.map((section) => ({
+        ...section,
+        rows: sortStudyRows(
+          allRows.filter((row) => row.sectionType === section.value),
+          sortMode,
+        ),
+      })),
+    [allRows, sortMode],
+  );
 
-    return [...filtered].sort((a, b) => {
-      if (sortMode === "status") {
-        const statusDiff =
-          STATUS_ORDER[a.sectionType] - STATUS_ORDER[b.sectionType];
-        if (statusDiff !== 0) return statusDiff;
-      }
+  const visibleGroups = useMemo(
+    () =>
+      groupedRows.filter(
+        (group) =>
+          visibleSectionTypes.includes(group.value) && group.rows.length > 0,
+      ),
+    [groupedRows, visibleSectionTypes],
+  );
 
-      return (
-        new Date(a.session.scheduledAt).getTime() -
-        new Date(b.session.scheduledAt).getTime()
-      );
-    });
-  }, [allRows, filter, sortMode]);
+  const visibleRows = useMemo(
+    () => visibleGroups.flatMap((group) => group.rows),
+    [visibleGroups],
+  );
 
-  const sentReminders = useRef<Record<string, number[]>>({});
+  const sentReminders = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    sentReminders.current = readStoredReminderKeys();
+  }, []);
 
   const notifyUpcomingSoon = useCallback(async () => {
     const userID = userIDRef.current;
@@ -274,8 +348,11 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
 
       for (const threshold of thresholds) {
         if (secondsAway <= threshold && secondsAway > threshold - 60) {
-          const sentForSession = sentReminders.current[studySession.id] || [];
-          if (sentForSession.includes(threshold)) continue;
+          const reminderKey = getReminderKey(studySession, threshold);
+          if (sentReminders.current.has(reminderKey)) continue;
+
+          sentReminders.current.add(reminderKey);
+          persistReminderKeys(sentReminders.current);
 
           const minutesLabel = threshold / 60;
           const title = `Study session: ${studySession.title}`;
@@ -288,17 +365,12 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              userID,
               title,
               body,
               url: `/study/${studySession.id}`,
+              tag: `study-reminder:${reminderKey}`,
             }),
           });
-
-          sentReminders.current[studySession.id] = [
-            ...(sentReminders.current[studySession.id] || []),
-            threshold,
-          ];
         }
       }
     }
@@ -338,6 +410,14 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
 
   const deselectAllSessionsGlobal = () => {
     setSelectedSessionIds([]);
+  };
+
+  const toggleSection = (sectionType: StudySectionType) => {
+    setVisibleSectionTypes((current) =>
+      current.includes(sectionType)
+        ? current.filter((type) => type !== sectionType)
+        : [...current, sectionType],
+    );
   };
 
   const markAsDone = async () => {
@@ -426,27 +506,29 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
     if (quickFocusMinutes < 1 || quickBreakMinutes < 1 || quickTotalMinutes < 1)
       return;
 
-    const newStudySession: StudySession = {
-      id: `session-${Date.now()}`,
+    // Quick timers are ephemeral: jump straight into the timer route and start
+    // it running immediately rather than parking an idle row in the list.
+    const params = new URLSearchParams({
       title: quickTitle.trim() || "Timer Only",
-      notes: "",
-      attachments: [],
-      scheduledAt: new Date().toISOString(),
-      focusMinutes: Math.max(1, Number(quickFocusMinutes) || 25),
-      breakMinutes: Math.max(1, Number(quickBreakMinutes) || 5),
-      totalMinutes: Math.max(1, Number(quickTotalMinutes) || 60),
-      sessionStatus: "idle",
-      createdAt: new Date().toISOString(),
-      isTimerOnly: true,
-    };
+      focus: String(Math.max(1, Number(quickFocusMinutes) || 25)),
+      break: String(Math.max(1, Number(quickBreakMinutes) || 5)),
+      total: String(Math.max(1, Number(quickTotalMinutes) || 60)),
+      autostart: "1",
+    });
 
-    setSessions((prev) => [newStudySession, ...prev]);
+    setQuickTimerOpen(false);
     setQuickTitle("");
     setQuickFocusMinutes(25);
     setQuickBreakMinutes(5);
     setQuickTotalMinutes(60);
-    setQuickTimerOpen(false);
+    router.push(`/study/quicktimer?${params.toString()}`);
   };
+
+  // Hide "Mark as Done" when every selected session is already completed.
+  const showMarkDone = selectedSessionIds.some(
+    (id) =>
+      sessions.find((s) => s.id === id)?.sessionStatus !== "completed",
+  );
 
   return (
     <>
@@ -455,6 +537,7 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
         allCount={visibleRows.length}
         isDeleting={isDeleting}
         canEdit={selectedSessionIds.length === 1}
+        showMarkDone={showMarkDone}
         onSelectAll={selectVisibleSessions}
         onDeselectAll={deselectAllSessionsGlobal}
         onEditSelected={() => {
@@ -467,30 +550,50 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
 
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-          <Tabs
-            value={filter}
-            onValueChange={(value) => setFilter(value as StudyFilter)}
-            className="flex-1"
+          <div
+            aria-label="Study status filters"
+            className="flex flex-1 flex-wrap gap-2"
           >
-            <TabsList className="bg-muted/50">
-              {FILTERS.map((item) => (
-                <TabsTrigger
-                  key={item.value}
-                  value={item.value}
-                  className="font-mono text-xs"
+            {STUDY_SECTIONS.map((section) => {
+              const active = visibleSectionTypes.includes(section.value);
+              const count =
+                groupedRows.find((group) => group.value === section.value)
+                  ?.rows.length ?? 0;
+
+              return (
+                <Button
+                  key={section.value}
+                  type="button"
+                  size="sm"
+                  variant={active ? "default" : "outline"}
+                  aria-pressed={active}
+                  onClick={() => toggleSection(section.value)}
+                  className={cn(
+                    "gap-2 font-mono text-xs",
+                    active
+                      ? "shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
                 >
-                  {item.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+                  <span
+                    aria-hidden="true"
+                    className={cn("h-2 w-2 rounded-full", section.dotClassName)}
+                  />
+                  {section.label}
+                  <span className="rounded-full bg-background/60 px-1.5 py-0.5 text-[10px] text-foreground">
+                    {count}
+                  </span>
+                </Button>
+              );
+            })}
+          </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <Select
               value={sortMode}
               onValueChange={(value) => setSortMode(value as StudySort)}
             >
-              <SelectTrigger className="w-44 font-mono text-xs">
+              <SelectTrigger className="w-auto min-w-[12rem] font-mono text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -530,123 +633,125 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 font-mono text-xs text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <Bell className="h-4 w-4 text-accent" />
-            <p className="font-semibold text-foreground">Upcoming Reminders</p>
-          </div>
-          {upcomingSoon.length === 0 ? (
-            <p>
-              No study reminders are due soon.
-            </p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {upcomingSoon.map((studySession) => (
-                <button
-                  key={studySession.id}
-                  type="button"
-                  onClick={() => openSession(studySession)}
-                  className="rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-left text-xs hover:bg-accent/15"
-                >
-                  <span className="font-medium text-foreground">
-                    Reminder: {studySession.title}
-                  </span>{" "}
-                  <span className="text-muted-foreground">
-                    {formatDistanceToNow(parseISO(studySession.scheduledAt), {
-                      addSuffix: true,
-                    })}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="space-y-2">
+        <div className="space-y-4">
           {visibleRows.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border/70 bg-card/70 px-4 py-8 text-sm text-muted-foreground">
               No study sessions found.
             </div>
           ) : (
-            visibleRows.map(({ session, sectionType }) => {
-              const isSelected = selectedSessionIds.includes(session.id);
-              const statusBadge = getStatusBadge(sectionType, session);
-              const scheduledDate = parseISO(session.scheduledAt);
-              const scheduleBadge = getScheduleBadge(scheduledDate, sectionType);
-
-              return (
-                <div
-                  key={session.id}
-                  data-study-row
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg px-4 py-3.5 border-l-4 bg-card",
-                    "hover:bg-card/90 transition-all duration-150 group shadow-sm",
-                    getRowAccent(sectionType),
-                    isSelected && "ring-1 ring-accent/40 bg-card/95",
-                  )}
-                >
-                  <Checkbox
-                    aria-label={`Select ${session.title}`}
-                    checked={isSelected}
-                    onCheckedChange={() => selectSession(session.id)}
-                    className="shrink-0"
+            visibleGroups.map((group) => (
+              <section key={group.value} className="space-y-2">
+                <div className="flex items-center gap-2 px-1">
+                  <span
+                    aria-hidden="true"
+                    className={cn("h-2 w-2 rounded-full", group.dotClassName)}
                   />
-
-                  <button
-                    type="button"
-                    aria-label={`Open ${session.title}`}
-                    onClick={() => openSession(session)}
-                    className="flex-1 flex items-center gap-3 min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 rounded-md"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate text-foreground">
-                        {session.title}
-                      </p>
-                      <div className="mt-1 flex flex-wrap gap-1.5">
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "font-mono text-[10px]",
-                            statusBadge.className,
-                          )}
-                        >
-                          {statusBadge.label}
-                        </Badge>
-                        <Badge variant="secondary" className="font-mono text-[10px]">
-                          {session.focusMinutes}m / {session.breakMinutes}m
-                        </Badge>
-                        <Badge variant="secondary" className="font-mono text-[10px]">
-                          Total {session.totalMinutes}m
-                        </Badge>
-                        {session.notes && (
-                          <Badge variant="secondary" className="font-mono text-[10px]">
-                            Notes
-                          </Badge>
-                        )}
-                        {session.attachments.length > 0 && (
-                          <Badge variant="secondary" className="font-mono text-[10px]">
-                            {session.attachments.length} attachment
-                            {session.attachments.length > 1 ? "s" : ""}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-
-                    <Badge
-                      className={cn(
-                        "shrink-0 font-mono text-xs border",
-                        scheduleBadge.className,
-                      )}
-                      variant="outline"
-                    >
-                      {scheduleBadge.label}
-                    </Badge>
-
-                    <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0 group-hover:text-muted-foreground transition-colors" />
-                  </button>
+                  <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {group.label}
+                  </h2>
+                  <Badge variant="secondary" className="font-mono text-[10px]">
+                    {group.rows.length}
+                  </Badge>
                 </div>
-              );
-            })
+                <div className="space-y-2">
+                  {group.rows.map(({ session, sectionType }) => {
+                    const isSelected = selectedSessionIds.includes(session.id);
+                    const statusBadge = getStatusBadge(sectionType, session);
+                    const scheduledDate = parseISO(session.scheduledAt);
+                    const scheduleBadge = getScheduleBadge(
+                      scheduledDate,
+                      sectionType,
+                    );
+
+                    return (
+                      <div
+                        key={session.id}
+                        data-study-row
+                        className={cn(
+                          "flex items-center gap-3 rounded-lg px-4 py-3.5 border-l-4 bg-card",
+                          "hover:bg-card/90 hover:shadow-md transition-all duration-150 group shadow-sm",
+                          getRowAccent(sectionType),
+                          isSelected && "ring-1 ring-accent/40 bg-card/95",
+                        )}
+                      >
+                        <Checkbox
+                          aria-label={`Select ${session.title}`}
+                          checked={isSelected}
+                          onCheckedChange={() => selectSession(session.id)}
+                          className="shrink-0"
+                        />
+
+                        <button
+                          type="button"
+                          aria-label={`Open ${session.title}`}
+                          onClick={() => openSession(session)}
+                          className="flex-1 flex items-center gap-3 min-w-0 text-left cursor-pointer rounded-md transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate text-foreground">
+                              {session.title}
+                            </p>
+                            <div className="mt-1 flex flex-wrap gap-1.5">
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "font-mono text-[10px]",
+                                  statusBadge.className,
+                                )}
+                              >
+                                {statusBadge.label}
+                              </Badge>
+                              <Badge
+                                variant="secondary"
+                                className="font-mono text-[10px]"
+                              >
+                                {session.focusMinutes}m /{" "}
+                                {session.breakMinutes}m
+                              </Badge>
+                              <Badge
+                                variant="secondary"
+                                className="font-mono text-[10px]"
+                              >
+                                Total {session.totalMinutes}m
+                              </Badge>
+                              {session.notes && (
+                                <Badge
+                                  variant="secondary"
+                                  className="font-mono text-[10px]"
+                                >
+                                  Notes
+                                </Badge>
+                              )}
+                              {session.attachments.length > 0 && (
+                                <Badge
+                                  variant="secondary"
+                                  className="font-mono text-[10px]"
+                                >
+                                  {session.attachments.length} attachment
+                                  {session.attachments.length > 1 ? "s" : ""}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+
+                          <Badge
+                            className={cn(
+                              "shrink-0 font-mono text-xs border",
+                              scheduleBadge.className,
+                            )}
+                            variant="outline"
+                          >
+                            {scheduleBadge.label}
+                          </Badge>
+
+                          <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0 group-hover:text-muted-foreground transition-colors" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            ))
           )}
         </div>
       </div>

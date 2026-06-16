@@ -2,13 +2,6 @@ export type TaskStatus = "Pending" | "In_Progress" | "Completed";
 export type ProjectTaskStatus = "not-done" | "pending" | "done";
 export type ReminderIntervalType = "minutes" | "hours" | "days" | "weeks" | "months";
 export type StudyReminderValueUnit = "minutes" | "hours";
-export type ReminderFrequency =
-  | "none"
-  | "daily"
-  | "every-3-days"
-  | "weekly"
-  | "biweekly"
-  | "monthly";
 export type StudyReminderOffset = {
   unit: StudyReminderValueUnit;
   value: number;
@@ -60,41 +53,93 @@ export type StudySession = {
   paused_total_seconds_remaining?: number;
 };
 
+/** Payload required to create a new study session */
+export interface CreateStudySessionPayload extends Omit<StudySession, 'id' | 'createdAt' | 'sessionStatus' | 'attachments' | 'scheduledAt'> {
+  study_session_name: string;
+  study_session_description?: string | null;
+  focus_minutes?: number;
+  break_minutes?: number;
+  total_pomodoros?: number;
+  total_minutes?: number;
+  study_session_scheduled_at: Date | string;
+  checklist_json?: unknown;
+  reminder_enabled?: boolean;
+  reminders?: number[];
+  task_id?: number | null;
+  attachment_id?: number | null;
+  repeat_enabled?: boolean;
+  repeat_every?: number;
+  repeat_unit?: "days" | "weeks";
+}
 
+/** Payload allowed for updating a study session */
+export interface UpdateStudySessionPayload {
+  status?: "idle" | "running" | "paused" | "completed";
+  started_at?: Date | string | null;
+  current_time?: number | null;
+  completed_at?: Date | string | null;
+  actual_duration?: number | null;
+  study_session_name?: string;
+  study_session_description?: string | null;
+  focus_minutes?: number;
+  break_minutes?: number;
+  total_minutes?: number;
+  checklist_json?: unknown;
+  task_id?: number | null;
+}
+
+export interface AnalyticsInput {
+  tasks_completed_early: number;
+  tasks_completed_on_time: number;
+  tasks_completed_late: number;
+  tasks_pending: number;
+  total_focus_minutes: number;
+  total_tasks_completed: number;
+  streak: number;
+  streak_activity?: boolean;
+}
+
+export interface DecryptedAnalytics {
+  analytics_id: number;
+  tasks_completed_early: number;
+  tasks_completed_on_time: number;
+  tasks_completed_late: number;
+  tasks_pending: number;
+  total_focus_minutes: number;
+  total_tasks_completed: number;
+  streak: number;
+  updated_at: Date;
+}
+
+export interface ProductivityDay {
+  day: string;
+  score?: number;
+  tasksCompleted: number;
+  sessionsCompleted?: number;
+}
+
+export interface TimeByTask {
+  taskName: string;
+  minutes: number;
+}
+
+export interface TimeBySubject {
+  subject: string;
+  hours: number;
+}
 
 export interface AnalyticsData {
-  /** Task completion metrics categorized by timing */
   completionStats: {
-    /** Number of tasks completed before deadline */
     early: number;
-    /** Number of tasks completed on time */
     onTime: number;
-    /** Number of tasks completed after deadline */
     late: number;
-    /** Number of tasks still pending */
     pending: number;
   };
-  /** Time allocation breakdown by subject/category */
-  timeBySubject: {
-    /** Subject or category name */
-    subject: string;
-    /** Hours spent on this subject */
-    hours: number;
-  }[];
-  /** Productivity metrics by day of week */
-  productivityByDay: {
-    /** Day of the week (e.g., "Monday", "Tuesday") */
-    day: string;
-    /** Productivity score for the day */
-    score: number;
-    /** Number of tasks completed on that day */
-    tasksCompleted: number;
-  }[];
-  /** Number of consecutive productive days */
+  timeBySubject?: TimeBySubject[];
+  timeByTask: TimeByTask[];
+  productivityByDay: ProductivityDay[];
   streak: number;
-  /** Total Pomodoro minutes completed */
   totalFocusMinutes: number;
-  /** Total number of tasks completed */
   totalTasksCompleted: number;
 }
 
@@ -122,14 +167,16 @@ export interface Notification {
   type: "reminder" | "timer-complete" | "deadline-approaching";
 }
 
-export type ProjectRole = "owner" | "moderator" | "member";
+export type ProjectRole = "owner" | "moderator" | "collaborator" | "member"
 
 export interface ProjectMember {
   /** Unique identifier for the member */
   id: string;
   /** Display name for the member */
   name: string;
-  /** Optional email or username */
+  /** Email address for the member */
+  email?: string;
+  /** Optional short handle or display alias */
   handle?: string;
   /** Role within the project */
   role: ProjectRole;
@@ -140,10 +187,10 @@ export interface ProjectTask {
   title: string;
   description?: string;
   attachments?: string[];
-  reminder?: ReminderFrequency;
   priority: number;
   status: ProjectTaskStatus;
   assignedTo?: string;
+  deadline: string;
   createdAt: Date;
 }
 
@@ -160,23 +207,3 @@ export interface Project {
   createdAt: Date;
 }
 
-/** Type for the json format expected in AI responses */
-import type { AIResponseData } from '../lib/validation/ai';
-
-export interface AIRequest {
-  /** User's text message/prompt */
-  message: string;
-  /** Optional file names for attachments */
-  attachments?: string[];
-}
-
-export interface AIResponse {
-  /** Unique identifier for the AI response */
-  id: string;
-  /** AI's language response for the user's input */
-  chatResponse: string;
-  /** Structured JSON result from AI processing */
-  jsonFormat?: AIResponseData['jsonFormat'];
-  /** Timestamp when the response was created */
-  createdAt: Date;
-}
