@@ -160,7 +160,7 @@ Describe how your project handles:
 ## 11. Deployment & Production Setup
 
 ### 11.1 Docker Setup
-* Dockerfile included
+* Dockerfile included 
 * docker-compose.yml included
 
 ### 11.2 Production Environment
@@ -177,34 +177,66 @@ https://e2526-wads-b4bc-05.csbihub.id
 ---
 
 ## 12. GitHub Contribution Summary (INDIVIDUAL)
-Student Name: Barri Nur Pratama
-* Features implemented:
-* API endpoints handled:
-* Tests written:
-* Security work:
-* AI-related work:
+### Student Name: Barri Nur Pratama
+Features implemented:<br>
+Study session, timer, notification, analytics
 
-Student Name: Kenny Krixiadi
-* Features implemented:
-* API endpoints handled:
-* Tests written:
-* Security work:
-* AI-related work:
+API endpoints handled:<br>
+- /api/study
+- /api/study/[id]
+- /api/users
+- /api/users/me
+- /api/web-push/send
+- /api/web-push/subscribe
+- /api/web-push/unsubscribe
+- /api/auth/firebase
+- /api/auth/logout
+  
+Tests written:<br>
+- /app/analytics
+- /app/calendar
+- /app/settings
+- /app/study
+- /app/study/quicktimer
+- /app/study/[id]
 
-Student Name: Rafie Mustika Ramasna
-* Features implemented:
-* API endpoints handled:
-* Tests written:
-* Security work:
-* AI-related work:
+Security work:<br>
+- Authentication and Authorization (session management & timeout control)
+- Encryption of analytcs data
+- Protection of notification endpoints
+
+AI-related work:<br>
+- Chatbot frontend UI
+
+### Student Name: Kenny Krixiadi
+* Features implemented:<br>
+* API endpoints handled:<br>
+* Tests written:<br>
+* Security work:<br>
+* AI-related work:<br>
+
+### Student Name: Rafie Mustika Ramasna
+* Features implemented:<br>
+* API endpoints handled:<br>
+* Tests written:<br>
+* Security work:<br>
+* AI-related work:<br>
 
 ---
 
 ## 13. AI Usage Disclosure (MANDATORY)
 List:
-* AI tools used: Gemini, Claude
-* Purpose of usage
-* Which parts were assisted
+AI tools used: Gemini, Claude, ChatGPT<br>
+Purpose of usage:<br>
+The purpose of using AI in our project is to accelerate the development cycle, making use of AI in repetitive structural tasks that would normally take hours to finish, but with the help of AI it could be way faster. AI is handling the scaffholding of our application, while we as the developers are solving the high-level business logic while making sure the quality and security of our application is meeting the standards.
+
+Which parts were assisted:
+ - Boilerplate UI design
+ - Visualization of frontend code using claude
+ - Give the basic structure of API design
+ - Assisting in creation of zod schemas
+ - Giving suggestions on the tests in jest testing
+ - Mapping out the swagger UI
 
 ---
 
@@ -226,8 +258,8 @@ We declare that:
 
 **Signed by Group Members:**
 * Barri Nur Pratama
-* [Name]
-* [Name]
+* Kenny Krixiadi
+* Rafie Mustika Ramasna
 
 ## 16. SETUP
 
