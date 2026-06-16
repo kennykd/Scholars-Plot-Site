@@ -36,11 +36,11 @@ jobs:
           DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci?sslmode=disable
         run: npx prisma generate
 
-      # - name: Lint
-      #   run: npm run lint
+      - name: Lint
+        run: npm run lint
 
-      # - name: Test
-      # run: npm test
+      - name: Test
+        run: npm test
 
   build:
     needs: quality
