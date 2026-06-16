@@ -95,7 +95,7 @@ Explain why you chose:
 PostgreSQL. We choose this database because it is open source, and a versatile relational database. PostgreSQL is also widely used in many industries as a standard, this would help in us as students to get used to what type of programs are running the tech industry.
 
 ### 7.2 Schema / Data Structure
-Insert ERD or data structure diagram.
+<img src="img/erd.svg" width="1200" alt="Entity Relationship Diagram" />
 
 ---
 
