@@ -349,6 +349,87 @@ We kept our secret API keys in environment variables, making sure that it is in 
 ### 10.4 AI Functionality Testing (MANDATORY)
 This subsection is intentionally left for the contributor handling AI functionality testing.
 
+**AI Feature: Schedule Optimizer**
+
+| Test Case | Input | Expected Output | Status |
+| :--- | :--- | :--- | :--- |
+| AI-01 | Valid availability + tasks, Gemini returns well-formed sessions | `proposed_sessions` array populated with correct structure; `total_scheduled_minutes` and `total_available_minutes` > 0 | Pass |
+| AI-02 | Valid input with a `behavior_profile` object supplied | Gemini called once; profile influences prompt without breaking output shape | Pass |
+| AI-03 | Empty `tasks` array | Returns empty `proposed_sessions`, `total_scheduled_minutes` = 0 | Pass |
+| AI-04 | Empty `availability` array | Returns empty `proposed_sessions` | Pass |
+| AI-05 | Gemini returns a session referencing a `task_id` not present in input (`999`) | Ghost session filtered out; only valid task IDs remain | Pass |
+| AI-06 | Gemini returns a session with `total_minutes: 0` | Zero-minute session filtered out of result | Pass |
+| AI-07 | Gemini returns a session with `scheduled_at: null` | Session missing a schedule time filtered out | Pass |
+| AI-08 | Single task with deadline only 2 hours away | Function resolves without crashing; sessions array length ≥ 0 | Pass |
+| AI-09 | Gemini call rejects with a network error | Function throws | Pass |
+| AI-10 | Gemini returns malformed JSON string | Function throws | Pass |
+| AI-11 | Gemini response missing `proposed_sessions` field entirely | Falls back to empty array via `?? []`; `warnings` defaults to `[]` | Pass |
+| AI-12 | Gemini returns valid but empty `proposed_sessions` array | Returns empty sessions array gracefully | Pass |
+| AI-13 | Task name containing prompt-injection text (e.g. "Ignore previous instructions...") | Function does not crash; output still validated against schema | Pass |
+| AI-14 | Task with an extreme `project_priority` value (999999) | Function does not crash; sessions array still returned | Pass |
+| AI-15 | Gemini response contains unexpected top-level keys (`hacked`, `admin_override`) | Extra keys stripped from result; not present on returned object | Pass |
+
+**Failure Handling:** If Gemini is unavailable or returns malformed/non-JSON output, `optimizeSchedule` throws rather than silently returning bad data, allowing the calling route to catch the error and surface a controlled failure response. Sessions referencing unknown task IDs, missing schedule times, or zero-minute durations are filtered out before being returned, so a partially malformed Gemini response degrades gracefully instead of corrupting the schedule.
+
+**AI Feature: Overload Detector**
+
+| Test Case | Input | Expected Output | Status |
+| :--- | :--- | :--- | :--- |
+| AI-01 | Light schedule (1 session, 480 min available) | `overload_detected: false`, `severity: "none"`, arrays present | Pass |
+| AI-02 | Heavily overbooked schedule (3 sessions totalling 900 min vs 240 available) | `overload_detected: true`, `severity: "critical"`, `at_risk_tasks` and `warnings` populated | Pass |
+| AI-03 | Schedule with one at-risk task | `at_risk_tasks[0]` contains `task_id`, `task_name`, `risk_level`, `reason`, `recommendation` | Pass |
+| AI-04 | Empty `scheduled_sessions` and empty `unscheduled_tasks` | `overload_detected: false`, `at_risk_tasks` length 0 | Pass |
+| AI-05 | `total_available_minutes: 0` | Function resolves without crashing; `overload_detected` is boolean | Pass |
+| AI-06 | Each of the five valid severity values (`critical`, `high`, `medium`, `low`, `none`) | Returned `severity` matches the value Gemini supplied for each case | Pass |
+| AI-07 | 20 sessions scheduled within the same week | Function resolves; `severity` reflects dense schedule | Pass |
+| AI-08 | Unscheduled task with `estimated_minutes: null` | Function resolves without crashing | Pass |
+| AI-09 | Session with no linked task (`task_id` and `task_name` both null) | Function resolves without crashing | Pass |
+| AI-10 | Gemini call rejects with a network error | Function throws | Pass |
+| AI-11 | Gemini returns completely invalid (non-JSON) text | Function throws | Pass |
+| AI-12 | Gemini response missing `overload_detected` and `severity` fields | Falls back to `false` and `"none"` respectively via nullish coalescing; `at_risk_tasks` defaults to `[]` | Pass |
+| AI-13 | Gemini call rejects simulating a timeout | Function throws with the timeout error message | Pass |
+| AI-14 | Session `task_name` containing a prompt-injection instruction | Function does not crash; `overload_detected` still a boolean | Pass |
+| AI-15 | Gemini response contains injected extra fields (`injected_field`, `admin_mode`) | Extra fields stripped from result; not present on returned object | Pass |
+| AI-16 | Session `task_name` that is 5000 characters long | Function resolves without crashing | Pass |
+
+**Failure Handling:** Network errors and timeouts from Gemini are allowed to propagate as thrown exceptions rather than being swallowed, so the calling layer (the cron job or API route) can decide how to handle the failure — for example, skipping that user for the current run via `Promise.allSettled` rather than failing the entire batch. Missing fields in an otherwise-valid JSON response fall back to safe defaults (`overload_detected: false`, `severity: "none"`) instead of crashing or reporting a false overload.
+
+**AI Feature: Weight Adapter**
+
+| Test Case | Input | Expected Output | Status |
+| :--- | :--- | :--- | :--- |
+| AI-01 | 5 completed tasks, valid Gemini response | Result contains `w_impact`, `w_ease`, `w_urgency`, `behavior_profile`, `reasoning`, `adjustment_magnitude` | Pass |
+| AI-02 | 8 completed tasks, Gemini suggests weights within range | All three weights fall within the absolute bound 0.5–8.0 | Pass |
+| AI-03 | 10 completed tasks, Gemini returns a full `behavior_profile` | Profile object contains all five expected keys | Pass |
+| AI-04 | Fewer than 3 completed tasks (2 tasks) | Gemini is never called; weights returned unchanged from current; `adjustment_magnitude: "conservative"` | Pass |
+| AI-05 | 5 tasks (conservative band), Gemini suggests an extreme shift (8.0 / 1.0 / 9.0) | Adjustment clamped to ±0.5 from current weights; `adjustment_magnitude: "conservative"` | Pass |
+| AI-06 | 10 tasks (moderate band), Gemini suggests extreme shift | Adjustment clamped to ±1.0 from current weights; `adjustment_magnitude: "moderate"` | Pass |
+| AI-07 | 20 tasks (full band), Gemini suggests +2.0 shift on `w_urgency` | Adjustment allowed up to ±2.0; `adjustment_magnitude: "full"` | Pass |
+| AI-08 | `actual_minutes` exactly equal to `estimated_minutes` (perfect estimation accuracy) | Function resolves; weight values are numeric | Pass |
+| AI-09 | `actual_minutes` and `estimated_minutes` both null (session never started) | Function resolves without crashing | Pass |
+| AI-10 | Exactly 3 completed tasks (minimum threshold for conservative mode) | Gemini is called exactly once; result is defined | Pass |
+| AI-11 | Non-default starting weights (already-adapted user) | Deviation clamp is calculated from the custom current weights, not from defaults | Pass |
+| AI-12 | Gemini call rejects with a network error | Function throws | Pass |
+| AI-13 | Gemini returns non-JSON text | Function throws | Pass |
+| AI-14 | Gemini response missing weight fields entirely | Falls back to current weights via nullish coalescing | Pass |
+| AI-15 | Gemini returns weights as numeric strings instead of numbers | `clampWeight` coercion prevents NaN in any returned weight | Pass |
+| AI-16 | Completed task `task_name` containing a prompt-injection instruction | Function does not crash; weights remain numeric (no NaN) | Pass |
+| AI-17 | Gemini response simulating an injected override (`w_impact: 100`, `w_ease: -50`, `w_urgency: 999`) | All weights clamped to ±0.5 conservative deviation and within absolute 0.5–8.0 bounds regardless of Gemini's claim | Pass |
+| AI-18 | Completed task `task_name` is itself a raw JSON payload | Function does not crash; `w_impact` remains a number | Pass |
+
+**Failure Handling:** Below the 3-task threshold, Gemini is skipped entirely and the current weights are returned untouched — this is a deliberate cost and stability control, not a failure path. Above the threshold, every weight returned by Gemini is run through `clampWeight()`, which bounds the value against the *current* weights (not hardcoded defaults) within a tier-specific deviation band, and then against the absolute 0.5–8.0 range. This means even an adversarial or malformed Gemini response (extreme values, negative numbers, numeric strings) can never push a weight outside safe bounds or produce `NaN`.
+
+**AI Feature: AI Chat Agent**
+
+| Test Case | Input | Expected Output | Status |
+| :--- | :--- | :--- | :--- |
+| AI-01 | User message with no matching function call from Gemini | Returns `{ text, action: null, rawResponse }`; tool config sent with `mode: "AUTO"` and no `allowedFunctionNames` restriction; draft generators not called | Pass |
+| AI-02 | Gemini calls `create_task_draft` with title/description/deadline/priority | `generateTaskDraft` called with parsed `Date` deadline; result `action.type` is `CREATE_TASK_DRAFT` with drafted payload; response text contains "drafted a task" | Pass |
+| AI-03 | Gemini calls `create_study_track_draft` with a valid `task_id` (42) that exists in context | `generateStudyTrackDraft` called with matched task, preferences, availability, and behavior profile; `action.type` is `CREATE_STUDY_TRACK_DRAFT` with `client_plan_id` generated per plan | Pass |
+| AI-04 | Gemini calls `create_study_track_draft` referencing an unknown `task_id` (999, not in pending tasks) | `generateStudyTrackDraft` is never called; `action` is `null`; response text asks "which task" for clarification | Pass |
+
+**Failure Handling:** When Gemini's function call references a `task_id` that doesn't exist in the injected `ChatContext`, the agent does not blindly pass that ID downstream to the draft generator — it short-circuits, skips the Gemini-backed draft call entirely, and returns a clarifying question instead. This protects against both a hallucinated task ID and a deliberately injected one, since the only valid task IDs the agent will act on are the ones it was explicitly given in context.
+
 ---
 
 ## 11. Deployment & Production Setup
@@ -403,11 +484,33 @@ AI-related work:<br>
 - Chatbot frontend UI
 
 ### Student Name: Kenny Krixiadi
-* Features implemented:<br>
-* API endpoints handled:<br>
-* Tests written:<br>
-* Security work:<br>
-* AI-related work:<br>
+Features implemented:<br>
+Project, AI
+
+API endpoints handled:<br>
+- /api/project
+- /api/project/[id]
+- /api/project/[id]/member
+- /api/project/[id]/member/[memberId]
+- /api/ai
+- /api/ai/overload
+- /api/ai/schedule
+- /api/ai/weight-adapter
+- /api/chat
+- /api/chat/[conversationId]
+
+Tests written:<br>
+- /lib/ai
+- /lib/services
+
+Security work:<br>
+- SQL injection
+- Prompt injection
+
+AI-related work:<br>
+- Schedule Optimization
+- Overload Dectection
+- Weight Adapter + formula weights
 
 ### Student Name: Rafie Mustika Ramasna
 Features implemented:<br>
