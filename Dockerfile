@@ -12,7 +12,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # ─── Stage 2: Dependencies ──────────────────────────────────────────────────
 FROM base AS deps
 COPY package.json package-lock.json ./
-RUN npm ci
+# Skip lifecycle scripts (postinstall -> prisma generate); the schema isn't
+# present in this stage and the builder stage runs `prisma generate` explicitly.
+RUN npm ci --ignore-scripts
 
 # ─── Stage 3: Builder ───────────────────────────────────────────────────────
 FROM base AS builder
@@ -51,7 +53,9 @@ RUN npm run build
 # One-off migrations run on the VPS via: docker compose --profile migrate run --rm db-schema-sync
 FROM base AS migrator
 COPY package.json package-lock.json ./
-RUN npm ci
+# Same as deps: skip postinstall here; this stage runs `prisma generate`
+# explicitly below, after the schema is copied in.
+RUN npm ci --ignore-scripts
 COPY prisma ./prisma
 COPY prisma.config.ts ./
 ENV DATABASE_URL=postgresql://migrate:[REDACTED]@127.0.0.1:5432/migrate?sslmode=disable
