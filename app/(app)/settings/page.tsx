@@ -9,6 +9,7 @@ import { getUserProfileForSession } from "@/lib/services/userService";
 
 export default async function SettingsPage() {
   const user = await getSession();
+
   if (!user) {
     redirect("/login");
   }
@@ -39,6 +40,7 @@ export default async function SettingsPage() {
         <CardHeader className="pb-2">
           <CardTitle className="font-display text-lg">Appearance</CardTitle>
         </CardHeader>
+
         <CardContent className="pt-4">
           <ThemeToggle />
         </CardContent>
@@ -46,8 +48,11 @@ export default async function SettingsPage() {
 
       <Card className="bg-card border-0 shadow-sm">
         <CardHeader className="pb-2">
-          <CardTitle className="font-display text-lg">Notifications</CardTitle>
+          <CardTitle className="font-display text-lg">
+            Notifications
+          </CardTitle>
         </CardHeader>
+
         <CardContent className="pt-4">
           <PushNotificationsToggle />
         </CardContent>

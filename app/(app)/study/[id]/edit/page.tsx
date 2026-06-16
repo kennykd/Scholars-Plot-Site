@@ -128,9 +128,9 @@ export default function StudyEditPage() {
         const nextNotes =
           checklistItems.length > 0
             ? checklistItems
-                .map((item: { text?: string }) => item.text ?? "")
-                .filter(Boolean)
-                .join("\n")
+              .map((item: { text?: string }) => item.text ?? "")
+              .filter(Boolean)
+              .join("\n")
             : (apiStudy.study_session_description ?? "");
 
         const persistedAttachments = Array.isArray(apiStudy.study_session_attachments)
@@ -336,14 +336,14 @@ export default function StudyEditPage() {
       // First it checks if the user wants the description to be written as a checklist, if not then the checklist will be null
       checklist_json: descriptionAsChecklist
         ? notes
-            .split("\n")
-            .map((line) => line.trim())
-            .filter(Boolean)
-            .map((text) => ({
-              id: crypto.randomUUID(),
-              text,
-              completed: false,
-            }))
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .map((text) => ({
+            id: crypto.randomUUID(),
+            text,
+            completed: false,
+          }))
         : null,
       study_session_scheduled_at: combineDateTime(
         scheduledDate,

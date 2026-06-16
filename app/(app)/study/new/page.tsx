@@ -1515,10 +1515,11 @@ export default function StudyNewPage() {
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1.5">
-                <Label className="font-mono text-xs tracking-wider">
+                <Label htmlFor="focusMinutes" className="font-mono text-xs tracking-wider">
                   FOCUS MINUTES
                 </Label>
                 <Input
+                  id="focusMinutes"
                   type="number"
                   min={1}
                   value={focusMinutes}

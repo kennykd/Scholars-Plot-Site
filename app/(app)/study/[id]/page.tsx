@@ -208,11 +208,12 @@ export default function StudySessionPage() {
               : undefined,
         };
 
-        console.debug("Fetched session from API", {
-          apiStudy,
-          userSessionData,
-          mapped,
-        });
+        // console.debug("Fetched session from API", {
+        //   apiStudy,
+        //   userSessionData,
+        //   mapped,
+        // });
+
         setSession(mapped);
 
         // If server reports a current_time, initialize the timer state so the UI
@@ -243,13 +244,13 @@ export default function StudySessionPage() {
             }
           }
 
-          console.debug("Initializing timer state from API (fetch)", {
-            elapsed,
-            remainingTotal,
-            restoredPhase,
-            restoredSeconds,
-            serverStatus: userSessionData.status,
-          });
+          // console.debug("Initializing timer state from API (fetch)", {
+          //   elapsed,
+          //   remainingTotal,
+          //   restoredPhase,
+          //   restoredSeconds,
+          //   serverStatus: userSessionData.status,
+          // });
 
           setPhase(restoredPhase);
           setSeconds(restoredSeconds);
@@ -315,13 +316,13 @@ export default function StudySessionPage() {
       session.sessionStatus === "paused" &&
       session.current_time !== undefined
     ) {
-      console.debug("Restoring paused state from current_time", {
-        id: session.id,
-        current_time: session.current_time,
-        focusMinutes: session.focusMinutes,
-        breakMinutes: session.breakMinutes,
-        totalMinutes: session.totalMinutes,
-      });
+      // console.debug("Restoring paused state from current_time", {
+      //   id: session.id,
+      //   current_time: session.current_time,
+      //   focusMinutes: session.focusMinutes,
+      //   breakMinutes: session.breakMinutes,
+      //   totalMinutes: session.totalMinutes,
+      // });
       // `current_time` is elapsed seconds stored on the server.
       const elapsed = Math.max(0, session.current_time);
       const remainingTotal = Math.max(0, totalSeconds - elapsed);
@@ -399,12 +400,14 @@ export default function StudySessionPage() {
           (sessionRef.current?.totalMinutes ?? 0) * 60;
         const elapsedSeconds =
           totalSecondsAtUnmount - totalSecondsRemainingRef.current;
-        console.debug("Auto-pausing session on unmount", {
-          sessionId: sessionRef.current.id,
-          elapsedSeconds,
-          totalSecondsAtUnmount,
-          totalSecondsRemainingRef: totalSecondsRemainingRef.current,
-        });
+
+        // console.debug("Auto-pausing session on unmount", {
+        //   sessionId: sessionRef.current.id,
+        //   elapsedSeconds,
+        //   totalSecondsAtUnmount,
+        //   totalSecondsRemainingRef: totalSecondsRemainingRef.current,
+        // });
+
         fetch(`/api/study/${sessionRef.current.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -486,17 +489,18 @@ export default function StudySessionPage() {
         paused_total_seconds_remaining: totalSecondsRemaining,
       };
 
-      console.debug("Pausing session locally", { pausedState });
+      // console.debug("Pausing session locally", { pausedState });
+
       setSession((prev) =>
         prev
           ? {
-              ...prev,
-              sessionStatus: "paused",
-              paused_seconds: pausedState.paused_seconds,
-              paused_phase: pausedState.paused_phase,
-              paused_total_seconds_remaining:
-                pausedState.paused_total_seconds_remaining,
-            }
+            ...prev,
+            sessionStatus: "paused",
+            paused_seconds: pausedState.paused_seconds,
+            paused_phase: pausedState.paused_phase,
+            paused_total_seconds_remaining:
+              pausedState.paused_total_seconds_remaining,
+          }
           : prev,
       );
 
@@ -513,7 +517,8 @@ export default function StudySessionPage() {
       setRunning(false);
     } else {
       // Resuming
-      console.debug("Resuming session (client) for", session?.id);
+      // console.debug("Resuming session (client) for", session?.id);
+
       setRunning(true);
       fetch(`/api/study/${session.id}`, {
         method: "PATCH",

@@ -47,7 +47,7 @@ export default function LoginPage() {
 
       await createSession(idToken);
 
-      toast.success("Login success 🎉");
+      toast.success("Login success!");
 
       router.push("/dashboard");
       router.refresh();
@@ -75,14 +75,14 @@ export default function LoginPage() {
       const idToken = await result.user.getIdToken();
       await createSession(idToken);
 
-      toast.success("Login success");
+      toast.success("Login success!");
 
       router.push("/dashboard");
       router.refresh();
     } catch (error: unknown) {
       console.error(error);
 
-      let message = "Login failed";
+      let message = "Login failed!";
 
       const err = error as { code?: string; message?: string };
       if (err.code === "auth/user-not-found") {
