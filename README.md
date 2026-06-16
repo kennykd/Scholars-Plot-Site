@@ -17,7 +17,7 @@ Group Members (Max 3 – same class only):
 | :--- | :--- | :--- | :--- |
 | Barri Nur Pratama | 2802501142 | developer | Barrizzz |
 | Kenny Krixiadi | 2802529191 | developer | kennykd |
-| Rafie Mustika Ramasna | 2802522815 | | |
+| Rafie Mustika Ramasna | 2802522815 | developer | rafipy |
 
 ---
 
