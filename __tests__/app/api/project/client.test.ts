@@ -1,5 +1,6 @@
 import {
   createProjectTaskApi,
+  deleteProjectMemberApi,
   serializeProject,
   serializeProjectTask,
   updateProjectApi,
@@ -159,6 +160,17 @@ describe("project API client", () => {
           priority: 4,
           project_status: "completed",
         }),
+      }),
+    );
+  });
+
+  it("sends member removal requests", async () => {
+    await deleteProjectMemberApi("project-12", "member-2");
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/project/12/member/member-2",
+      expect.objectContaining({
+        method: "DELETE",
       }),
     );
   });

@@ -56,6 +56,7 @@ import {
   createProjectApi,
   updateProjectApi,
   addProjectMemberApi,
+  deleteProjectMemberApi,
   createProjectTaskApi,
   updateProjectTaskApi,
   deleteProjectTaskApi,
@@ -217,6 +218,7 @@ export default function ProjectsPage() {
   const [deletingProject, setDeletingProject] = useState(false);
   const [savingProjectSettings, setSavingProjectSettings] = useState(false);
   const [savingTaskEdit, setSavingTaskEdit] = useState(false);
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
 
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectDescription, setNewProjectDescription] = useState("");
@@ -460,6 +462,30 @@ export default function ProjectsPage() {
       toast.error(message);
     } finally {
       setSavingProjectSettings(false);
+    }
+  };
+
+  const handleRemoveProjectMember = async (member: ProjectMember) => {
+    if (!activeProject || !isOwner || member.role === "owner") return;
+
+    setRemovingMemberId(member.id);
+    try {
+      await deleteProjectMemberApi(activeProject.id, member.id);
+
+      updateProject(activeProject.id, (project) => ({
+        ...project,
+        members: project.members.filter((projectMember) => projectMember.id !== member.id),
+        tasks: project.tasks.map((task) =>
+          task.assignedTo === member.id ? { ...task, assignedTo: undefined } : task,
+        ),
+      }));
+
+      toast.success(`Removed ${member.name} from the project`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to remove member";
+      toast.error(message);
+    } finally {
+      setRemovingMemberId(null);
     }
   };
 
@@ -742,12 +768,6 @@ export default function ProjectsPage() {
     try {
       setInvitingMemberId(userId);
 
-      console.log("INVITE PAYLOAD:", {
-        projectId: activeProject.id,
-        targetUserId: userId,
-        targetUserEmail: email,
-      });
-
       const res = await fetch("/api/project/invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -997,14 +1017,50 @@ export default function ProjectsPage() {
                     <p className="text-xs font-mono tracking-wider text-muted-foreground">MEMBERS</p>
                     <div className="divide-y divide-border/40 rounded-lg border border-border/50">
                       {activeProject.members.map((member) => (
-                        <div key={member.id} className="flex items-center justify-between px-3 py-2">
-                          <div>
+                        <div key={member.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                          <div className="min-w-0">
                             <p className="text-sm font-medium">{member.name}</p>
-                            <p className="text-[10px] text-muted-foreground font-mono">{member.email}</p>
+                            <p className="text-[10px] text-muted-foreground font-mono truncate">{member.email}</p>
                           </div>
-                          <Badge variant="outline" className={cn("text-[10px] font-mono", ROLE_STYLES[member.role])}>
-                            {member.role.toUpperCase()}
-                          </Badge>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <Badge variant="outline" className={cn("text-[10px] font-mono", ROLE_STYLES[member.role])}>
+                              {member.role.toUpperCase()}
+                            </Badge>
+                            {isOwner && member.role !== "owner" && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    aria-label={`Remove ${member.name} from project`}
+                                    disabled={removingMemberId === member.id}
+                                    className="h-7 gap-1 px-2 text-[10px] font-mono text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                    Remove
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Remove {member.name}?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This removes the member from &quot;{activeProject.name}&quot; and unassigns their project tasks.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => handleRemoveProjectMember(member)}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      Remove member
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>

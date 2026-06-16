@@ -333,6 +333,24 @@ export async function addProjectMemberApi(
 }
 
 /**
+ * Remove a member from a project.
+ */
+export async function deleteProjectMemberApi(
+  projectId: string,
+  memberId: string,
+): Promise<void> {
+  const projectNumId = projectId.replace("project-", "");
+  const res = await fetch(`/api/project/${projectNumId}/member/${memberId}`, {
+    method: "DELETE",
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body?.message || "Failed to remove member");
+  }
+}
+
+/**
  * Create a task in a project
  */
 export async function createProjectTaskApi(

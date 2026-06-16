@@ -5,6 +5,7 @@ import {
   createProjectTask,
   createProjectInvite,
   createProject,
+  deleteProjectMemberById,
   ProjectServiceError,
   updateProjectTaskById,
 } from "@/lib/services/projectService";
@@ -20,6 +21,7 @@ jest.mock("@/lib/prisma", () => {
     },
     projectUser: {
       create: jest.fn(),
+      delete: jest.fn(),
       findUnique: jest.fn(),
     },
     projectInvite: {
@@ -217,6 +219,46 @@ describe("projectService user validation", () => {
       message: "Project member does not exist: missing-member",
     });
     expect(prisma.projectUser.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("projectService member removal", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("removes a non-owner member and clears their project task assignments", async () => {
+    (prisma.project.findUnique as jest.Mock).mockResolvedValue({
+      project_id: 12,
+    });
+    (prisma.projectUser.findUnique as jest.Mock)
+      .mockResolvedValueOnce({ project_user_role: "owner" })
+      .mockResolvedValueOnce({ project_user_role: "collaborator" });
+    (prisma.taskUser.deleteMany as jest.Mock).mockResolvedValue({ count: 2 });
+    (prisma.projectUser.delete as jest.Mock).mockResolvedValue({
+      project_id: 12,
+      user_id: "member-1",
+      project_user_role: "collaborator",
+    });
+
+    await deleteProjectMemberById(12, "owner-1", "member-1");
+
+    expect(prisma.taskUser.deleteMany).toHaveBeenCalledWith({
+      where: {
+        user_id: "member-1",
+        task: {
+          project_id: 12,
+        },
+      },
+    });
+    expect(prisma.projectUser.delete).toHaveBeenCalledWith({
+      where: {
+        project_id_user_id: {
+          project_id: 12,
+          user_id: "member-1",
+        },
+      },
+    });
   });
 });
 

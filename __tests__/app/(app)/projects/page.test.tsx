@@ -7,6 +7,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ProjectsPage from "@/app/(app)/projects/page";
 import {
+  deleteProjectMemberApi,
   fetchProjects,
   updateProjectTaskApi,
   type StoredProject,
@@ -33,6 +34,7 @@ jest.mock("@/app/api/project/client", () => ({
   createProjectTaskApi: jest.fn(),
   updateProjectApi: jest.fn(),
   updateProjectTaskApi: jest.fn(),
+  deleteProjectMemberApi: jest.fn(),
   deleteProjectApi: jest.fn(),
 }));
 
@@ -90,6 +92,7 @@ describe("ProjectsPage", () => {
       } as Response;
     });
     (updateProjectTaskApi as jest.Mock).mockResolvedValue({});
+    (deleteProjectMemberApi as jest.Mock).mockResolvedValue(undefined);
   });
 
   it("shows a loading state while projects are being fetched", () => {
@@ -275,4 +278,40 @@ describe("ProjectsPage", () => {
     });
     expect(screen.queryByRole("button", { name: /Edit Task/i })).not.toBeInTheDocument();
   });
+
+  it("lets owners remove non-owner members from project settings", async () => {
+    const user = userEvent.setup();
+    (fetchProjects as jest.Mock).mockResolvedValue([
+      makeProject({
+        tasks: [
+          {
+            id: "proj-task-42",
+            title: "Member task",
+            priority: "medium",
+            status: "not-done",
+            assignedTo: "member-1",
+            deadline: "2099-06-20T16:59:00.000Z",
+            createdAt: "2026-06-01T12:00:00.000Z",
+          },
+        ],
+      }),
+    ]);
+
+    render(<ProjectsPage />);
+
+    await user.click(await screen.findByRole("button", { name: /Project Settings/i }));
+    await user.click(
+      await screen.findByRole("button", {
+        name: /Remove Member from project/i,
+      }),
+    );
+    await user.click(await screen.findByRole("button", { name: /Remove member/i }));
+
+    await waitFor(() => {
+      expect(deleteProjectMemberApi).toHaveBeenCalledWith("project-1", "member-1");
+    });
+    expect(screen.queryByText("member@example.com")).not.toBeInTheDocument();
+    expect(screen.getAllByText("Unassigned").length).toBeGreaterThan(0);
+  });
+
 });

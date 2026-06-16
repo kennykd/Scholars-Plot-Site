@@ -418,13 +418,24 @@ export async function deleteProjectMemberById(projectId: number, userId: string,
     throw new ProjectServiceError(403, 'Cannot remove the project owner');
   }
 
-  await prisma.projectUser.delete({
-    where: {
-      project_id_user_id: {
-        project_id: projectId,
+  await prisma.$transaction(async (tx) => {
+    await tx.taskUser.deleteMany({
+      where: {
         user_id: memberId,
+        task: {
+          project_id: projectId,
+        },
       },
-    },
+    });
+
+    await tx.projectUser.delete({
+      where: {
+        project_id_user_id: {
+          project_id: projectId,
+          user_id: memberId,
+        },
+      },
+    });
   });
 }
 
