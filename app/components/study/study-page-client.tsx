@@ -669,7 +669,7 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
                         data-study-row
                         className={cn(
                           "flex items-center gap-3 rounded-lg px-4 py-3.5 border-l-4 bg-card",
-                          "hover:bg-card/90 transition-all duration-150 group shadow-sm",
+                          "hover:bg-card/90 hover:shadow-md transition-all duration-150 group shadow-sm",
                           getRowAccent(sectionType),
                           isSelected && "ring-1 ring-accent/40 bg-card/95",
                         )}
@@ -685,7 +685,7 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
                           type="button"
                           aria-label={`Open ${session.title}`}
                           onClick={() => openSession(session)}
-                          className="flex-1 flex items-center gap-3 min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 rounded-md"
+                          className="flex-1 flex items-center gap-3 min-w-0 text-left cursor-pointer rounded-md transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                         >
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate text-foreground">

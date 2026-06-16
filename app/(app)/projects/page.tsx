@@ -7,6 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -43,7 +49,7 @@ import {
   ProjectRole,
   ProjectTaskStatus,
 } from "@/types";
-import { cn } from "@/lib/utils";
+import { cn, openNativePicker } from "@/lib/utils";
 import { AI_READABLE_ATTACHMENT_HELPER_TEXT } from "@/lib/ai/attachmentSupport";
 import {
   fetchProjects,
@@ -59,6 +65,8 @@ import {
 } from "@/app/api/project/client";
 
 import {
+  CalendarIcon,
+  Clock,
   Paperclip,
   Plus,
   Settings,
@@ -66,6 +74,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { format } from "date-fns";
 
 type CurrentUser = {
   id: string;
@@ -165,6 +174,25 @@ const combineDateAndTime = (dateValue: string, timeValue: string) => {
   return Number.isNaN(date.getTime()) ? null : date;
 };
 
+const dateInputValueToDate = (value: string) => {
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return undefined;
+  const date = new Date(year, month - 1, day);
+  return Number.isNaN(date.getTime()) ? undefined : date;
+};
+
+const dateToInputValue = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const formatDeadlineDateButton = (value: string) => {
+  const date = dateInputValueToDate(value);
+  return date ? format(date, "PPP") : "Pick a date";
+};
+
 const normalizeRatingValue = (value: unknown, fallback = 2.5) => {
   const rating = Number(value);
   return Number.isFinite(rating) ? rating : fallback;
@@ -183,6 +211,8 @@ export default function ProjectsPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
   const [editTaskOpen, setEditTaskOpen] = useState(false);
+  const [taskDeadlineCalOpen, setTaskDeadlineCalOpen] = useState(false);
+  const [editTaskDeadlineCalOpen, setEditTaskDeadlineCalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<StoredProjectTask | null>(null);
   const [deletingProject, setDeletingProject] = useState(false);
   const [savingProjectSettings, setSavingProjectSettings] = useState(false);
@@ -1091,21 +1121,46 @@ export default function ProjectsPage() {
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="space-y-1.5">
                       <Label className="font-mono text-xs tracking-wider">DEADLINE DATE *</Label>
-                      <Input
-                        type="date"
-                        value={taskDeadlineDate}
-                        onChange={(e) => setTaskDeadlineDate(e.target.value)}
-                        required
-                      />
+                      <Popover open={taskDeadlineCalOpen} onOpenChange={setTaskDeadlineCalOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !taskDeadlineDate && "text-muted-foreground",
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {formatDeadlineDateButton(taskDeadlineDate)}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={dateInputValueToDate(taskDeadlineDate)}
+                            onSelect={(date) => {
+                              setTaskDeadlineDate(date ? dateToInputValue(date) : "");
+                              setTaskDeadlineCalOpen(false);
+                            }}
+                          />
+                        </PopoverContent>
+                      </Popover>
                     </div>
                     <div className="space-y-1.5">
                       <Label className="font-mono text-xs tracking-wider">DEADLINE TIME</Label>
-                      <Input
-                        type="time"
-                        value={taskDeadlineTime}
-                        onChange={(e) => setTaskDeadlineTime(e.target.value)}
-                        placeholder="23:59"
-                      />
+                      <div className="relative">
+                        <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          type="time"
+                          value={taskDeadlineTime}
+                          onChange={(e) => setTaskDeadlineTime(e.target.value)}
+                          onClick={openNativePicker}
+                          onFocus={openNativePicker}
+                          placeholder="23:59"
+                          className="pl-9 [&::-webkit-calendar-picker-indicator]:opacity-0"
+                        />
+                      </div>
                       <p className="font-mono text-[10px] text-muted-foreground">
                         Defaults to 23:59 if left blank.
                       </p>
@@ -1208,21 +1263,46 @@ export default function ProjectsPage() {
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="space-y-1.5">
                       <Label className="font-mono text-xs tracking-wider">DEADLINE DATE *</Label>
-                      <Input
-                        type="date"
-                        value={editTaskDeadlineDate}
-                        onChange={(e) => setEditTaskDeadlineDate(e.target.value)}
-                        required
-                      />
+                      <Popover open={editTaskDeadlineCalOpen} onOpenChange={setEditTaskDeadlineCalOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !editTaskDeadlineDate && "text-muted-foreground",
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {formatDeadlineDateButton(editTaskDeadlineDate)}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={dateInputValueToDate(editTaskDeadlineDate)}
+                            onSelect={(date) => {
+                              setEditTaskDeadlineDate(date ? dateToInputValue(date) : "");
+                              setEditTaskDeadlineCalOpen(false);
+                            }}
+                          />
+                        </PopoverContent>
+                      </Popover>
                     </div>
                     <div className="space-y-1.5">
                       <Label className="font-mono text-xs tracking-wider">DEADLINE TIME</Label>
-                      <Input
-                        type="time"
-                        value={editTaskDeadlineTime}
-                        onChange={(e) => setEditTaskDeadlineTime(e.target.value)}
-                        placeholder="23:59"
-                      />
+                      <div className="relative">
+                        <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          type="time"
+                          value={editTaskDeadlineTime}
+                          onChange={(e) => setEditTaskDeadlineTime(e.target.value)}
+                          onClick={openNativePicker}
+                          onFocus={openNativePicker}
+                          placeholder="23:59"
+                          className="pl-9 [&::-webkit-calendar-picker-indicator]:opacity-0"
+                        />
+                      </div>
                     </div>
                   </div>
 

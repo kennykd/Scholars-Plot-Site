@@ -119,6 +119,12 @@ describe("StudyPageClient View", () => {
     expect(screen.getByText("Live algebra review")).toBeInTheDocument();
     expect(screen.getByText("Upcoming literature block")).toBeInTheDocument();
     expect(screen.getByText("Completed chemistry notes")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /open live algebra review/i }),
+    ).toHaveClass("cursor-pointer");
+    expect(
+      screen.getByRole("checkbox", { name: /select live algebra review/i }),
+    ).toBeInTheDocument();
 
     const filters = screen.getByLabelText("Study status filters");
     const upcomingFilter = within(filters).getByRole("button", {

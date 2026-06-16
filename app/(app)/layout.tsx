@@ -4,6 +4,7 @@ import { getSession } from "@/lib/firebase/auth";
 import { redirect } from "next/navigation";
 import { AuthProvider } from "@/lib/firebase/auth-context";
 import { ChatPanelWrapper } from "../components/ai/ai-chatbot-wrapper"; // Import your new wrapper
+import { getUserProfileForSession } from "@/lib/services/userService";
 
 export default async function AppLayout({
   children,
@@ -17,14 +18,16 @@ export default async function AppLayout({
     redirect("/api/auth/logout");
   }
 
+  const profile = await getUserProfileForSession(user);
+
   return (
     <div className="flex min-h-dvh">
       {/* Desktop sidebar */}
-      <Sidebar user={user} />
+      <Sidebar user={profile} />
 
       {/* Main content area */}
       <main className="relative min-w-0 flex-1 bg-background">
-        <AuthProvider initialUser={user}>
+        <AuthProvider initialUser={profile}>
           <div className="min-h-full pb-16 lg:pb-0">
             {/* Wrap your layout content with the toggleable chatbot layer */}
             <ChatPanelWrapper>{children}</ChatPanelWrapper>

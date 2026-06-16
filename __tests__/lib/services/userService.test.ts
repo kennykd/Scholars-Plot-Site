@@ -10,7 +10,10 @@ jest.mock("@/lib/prisma", () => ({
 }));
 
 import prisma from "@/lib/prisma";
-import { ensureUserRecordForSession } from "@/lib/services/userService";
+import {
+  ensureUserRecordForSession,
+  getUserProfileForSession,
+} from "@/lib/services/userService";
 
 const mockUser = prisma.user as jest.Mocked<typeof prisma.user>;
 
@@ -24,7 +27,7 @@ describe("ensureUserRecordForSession", () => {
     jest.useRealTimers();
   });
 
-  it("updates an existing Firebase UID user", async () => {
+  it("updates an existing Firebase UID user without overwriting the app display name", async () => {
     mockUser.findUnique.mockResolvedValueOnce({
       user_id: "uid-1",
       user_email: "student@example.com",
@@ -34,7 +37,7 @@ describe("ensureUserRecordForSession", () => {
     mockUser.update.mockResolvedValue({
       user_id: "uid-1",
       user_email: "student@example.com",
-      user_name: "Student",
+      user_name: "Old Name",
       avatar_url: "https://avatar.test/me.png",
     } as never);
 
@@ -49,7 +52,6 @@ describe("ensureUserRecordForSession", () => {
       where: { user_id: "uid-1" },
       data: {
         user_email: "student@example.com",
-        user_name: "Student",
         avatar_url: "https://avatar.test/me.png",
         user_last_login: new Date("2026-06-13T12:00:00.000Z"),
       },
@@ -119,6 +121,29 @@ describe("ensureUserRecordForSession", () => {
         user_last_login: new Date("2026-06-13T12:00:00.000Z"),
       },
       select: expect.any(Object),
+    });
+  });
+
+  it("reads the app display name from Prisma instead of Firebase claims", async () => {
+    mockUser.findUnique.mockResolvedValueOnce({
+      user_id: "uid-1",
+      user_email: "student@example.com",
+      user_name: "Custom Scholar",
+      avatar_url: "https://avatar.test/app.png",
+    } as never);
+
+    const user = await getUserProfileForSession({
+      id: "uid-1",
+      email: "student@example.com",
+      name: "Firebase Student",
+      image: "https://avatar.test/firebase.png",
+    });
+
+    expect(user).toEqual({
+      id: "uid-1",
+      email: "student@example.com",
+      name: "Custom Scholar",
+      image: "https://avatar.test/app.png",
     });
   });
 });

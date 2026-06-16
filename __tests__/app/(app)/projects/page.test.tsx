@@ -154,6 +154,46 @@ describe("ProjectsPage", () => {
     expect(await screen.findByText("4.5")).toBeInTheDocument();
   });
 
+  it("uses the task deadline date picker in the create task dialog", async () => {
+    const user = userEvent.setup();
+    (fetchProjects as jest.Mock).mockResolvedValue([makeProject()]);
+
+    render(<ProjectsPage />);
+
+    await user.click(await screen.findByRole("button", { name: /New Task/i }));
+
+    expect(
+      await screen.findByRole("button", { name: /Pick a date/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("uses the task deadline date picker in the edit task dialog", async () => {
+    const user = userEvent.setup();
+    (fetchProjects as jest.Mock).mockResolvedValue([
+      makeProject({
+        tasks: [
+          {
+            id: "proj-task-42",
+            title: "Assigned task",
+            priority: "medium",
+            status: "not-done",
+            assignedTo: "member-1",
+            deadline: "2099-06-20T16:59:00.000Z",
+            createdAt: "2026-06-01T12:00:00.000Z",
+          },
+        ],
+      }),
+    ]);
+
+    render(<ProjectsPage />);
+
+    await user.click(await screen.findByRole("button", { name: /Edit Task/i }));
+
+    expect(
+      await screen.findByRole("button", { name: /June 20th, 2099/i }),
+    ).toBeInTheDocument();
+  });
+
   it("lets owners move member-assigned tasks and open task editing", async () => {
     const user = userEvent.setup();
     (fetchProjects as jest.Mock).mockResolvedValue([

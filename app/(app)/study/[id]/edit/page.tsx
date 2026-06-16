@@ -22,9 +22,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
+import { cn, openNativePicker } from "@/lib/utils";
 import { toast } from "sonner";
-import { ArrowLeft, CalendarIcon, Paperclip, X } from "lucide-react";
+import { ArrowLeft, CalendarIcon, Clock, Paperclip, X } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import type {
   Attachment,
@@ -470,6 +470,7 @@ export default function StudyEditPage() {
                 <Popover open={calOpen} onOpenChange={setCalOpen}>
                   <PopoverTrigger asChild>
                     <Button
+                      type="button"
                       variant="outline"
                       className={cn(
                         "w-full justify-start text-left font-normal",
@@ -498,12 +499,24 @@ export default function StudyEditPage() {
 
               {/* Setting the time */}
               <div className="space-y-1.5">
-                <Label className="font-mono text-xs tracking-wider">TIME</Label>
-                <Input
-                  type="time"
-                  value={scheduledTime}
-                  onChange={(e) => setScheduledTime(e.target.value)}
-                />
+                <Label
+                  htmlFor="scheduled-time"
+                  className="font-mono text-xs tracking-wider"
+                >
+                  TIME
+                </Label>
+                <div className="relative">
+                  <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="scheduled-time"
+                    type="time"
+                    value={scheduledTime}
+                    onChange={(e) => setScheduledTime(e.target.value)}
+                    onClick={openNativePicker}
+                    onFocus={openNativePicker}
+                    className="pl-9 [&::-webkit-calendar-picker-indicator]:opacity-0"
+                  />
+                </div>
               </div>
             </div>
 

@@ -3,7 +3,11 @@ import { cookies } from "next/headers";
 import { z } from "zod";
 import { adminAuth } from "@/lib/firebase/firebase-admin";
 import { getSession } from "@/lib/firebase/auth";
-import { deleteUserById, updateUserProfile } from "@/lib/services/userService";
+import {
+  deleteUserById,
+  getUserProfileForSession,
+  updateUserProfile,
+} from "@/lib/services/userService";
 import { updateUserSchema } from "@/lib/validation/user";
 
 /**
@@ -178,7 +182,13 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  return NextResponse.json(session);
+  try {
+    const user = await getUserProfileForSession(session);
+    return NextResponse.json(user);
+  } catch (error) {
+    console.error("[api/users/me] Failed to read user profile:", error);
+    return NextResponse.json({ error: "Failed to retrieve user" }, { status: 500 });
+  }
 }
 
 // Update the authenticated user's profile (name and/or image)

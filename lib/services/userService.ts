@@ -48,7 +48,6 @@ export async function ensureUserRecordForSession(identity: SessionUserIdentity) 
 
   const updateData = {
     user_email: email,
-    ...(name ? { user_name: name } : {}),
     ...(image ? { avatar_url: image } : {}),
     user_last_login: new Date(),
   };
@@ -78,7 +77,6 @@ export async function ensureUserRecordForSession(identity: SessionUserIdentity) 
       where: { user_email: email },
       data: {
         user_id: id,
-        ...(name ? { user_name: name } : {}),
         ...(image ? { avatar_url: image } : {}),
         user_last_login: new Date(),
       },
@@ -100,6 +98,24 @@ export async function ensureUserRecordForSession(identity: SessionUserIdentity) 
   });
 
   return serializeSessionUser(user);
+}
+
+export async function getUserProfileForSession(identity: SessionUserIdentity) {
+  const user = await prisma.user.findUnique({
+    where: { user_id: identity.id },
+    select: SESSION_USER_SELECT,
+  });
+
+  if (user) {
+    return serializeSessionUser(user);
+  }
+
+  return {
+    id: identity.id,
+    email: identity.email,
+    name: optionalText(identity.name) ?? null,
+    image: optionalText(identity.image) ?? null,
+  };
 }
 
 export async function getPublicUsers() {
@@ -125,7 +141,7 @@ export async function updateUserProfile(userId: string, data: UpdateUserInput) {
     where: { user_id: userId },
     data: {
       user_name: data.name,
-      avatar_url: data.image,
+      ...(data.image !== undefined ? { avatar_url: data.image } : {}),
     },
     select: {
       user_id: true,

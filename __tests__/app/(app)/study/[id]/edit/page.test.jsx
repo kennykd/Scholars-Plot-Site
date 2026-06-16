@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { useParams, useRouter } from "next/navigation";
 import StudyEditPage from "@/app/(app)/study/[id]/edit/page";
 
@@ -69,5 +69,23 @@ describe("StudyEditPage attachments", () => {
       "href",
       "https://example.com/mechanics.pdf",
     );
+  });
+
+  it("uses the task-style native time picker treatment", async () => {
+    render(<StudyEditPage />);
+
+    expect(await screen.findByDisplayValue("Mechanical Physics")).toBeInTheDocument();
+
+    const timeInput = screen.getByLabelText(/^time$/i);
+    const showPicker = jest.fn();
+    timeInput.showPicker = showPicker;
+
+    expect(timeInput).toHaveClass("pl-9");
+    expect(timeInput).toHaveClass("[&::-webkit-calendar-picker-indicator]:opacity-0");
+
+    fireEvent.click(timeInput);
+    fireEvent.focus(timeInput);
+
+    expect(showPicker).toHaveBeenCalledTimes(2);
   });
 });

@@ -315,7 +315,6 @@ export default function TaskForm() {
                         setDeadline(d);
                         setCalOpen(false);
                       }}
-                      initialFocus
                     />
                   </PopoverContent>
                 </Popover>
