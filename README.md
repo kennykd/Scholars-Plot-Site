@@ -169,7 +169,7 @@ Explain:
 ### (Frontend)
 - User page is redirected to dashboard by using `router.push()`
 
-### Authentication:
+### Authentication
 Our web app handles authentication by keeping it simple and secure with Firebase. When a user logs in or signs up, Firebase handles the heavy lifting of credential validation and hands back a JSON web token. We then pass that token to our API in the `Authorization` header, where we use `adminAuth.verifyIdToken()` to make sure the user is legit. 
 
 From there, we sync with our Prisma database to either update their last login or create a new row. Finally, the API creates a session cookie using Firebase's `createSessionCookie()`, which allows our `getSession()` function to call `verifySessionCookie()` on subsequent requests to keep them securely logged in. It’s a clean loop: authenticate with Firebase, verify at the API, sync with the database, and maintain the session with a secure cookie.
