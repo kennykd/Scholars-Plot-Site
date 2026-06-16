@@ -16,11 +16,12 @@ export const runtime = 'nodejs';
  * @swagger
  * /api/ai/study-track-draft:
  *   post:
- *     summary: Generate an AI study-track draft (batch of study sessions) for a task
+ *     summary: Generate an AI study-session or study-track draft
  *     description: >
- *       Builds a study plan for the given task using the user's availability, preferences,
- *       behavior profile, and task attachments. Authenticated; the user comes from the
- *       session cookie.
+ *       Builds study-session suggestions from the current study form. taskId is optional;
+ *       when provided, the route loads that task and its attachments as extra planning
+ *       context. The user's availability, preferences, and behavior profile are also used.
+ *       Authenticated; the user comes from the session cookie.
  *     tags:
  *       - AI
  *     requestBody:
@@ -29,12 +30,41 @@ export const runtime = 'nodejs';
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - taskId
  *             properties:
  *               taskId:
  *                 type: integer
  *                 minimum: 1
+ *                 description: Optional task ID to use as additional study context.
+ *               title:
+ *                 type: string
+ *                 maxLength: 100
+ *                 description: Current study-session title.
+ *               notes:
+ *                 type: string
+ *                 maxLength: 3000
+ *                 description: Current study-session notes or checklist text.
+ *               scheduledDate:
+ *                 type: string
+ *                 format: date
+ *                 nullable: true
+ *               scheduledTime:
+ *                 type: string
+ *                 pattern: "^\\d{2}:\\d{2}$"
+ *                 nullable: true
+ *               focusMinutes:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 240
+ *               breakMinutes:
+ *                 type: integer
+ *                 minimum: 0
+ *                 maximum: 120
+ *               totalPomodoro:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 12
+ *               descriptionAsChecklist:
+ *                 type: boolean
  *     responses:
  *       200:
  *         description: Draft generated.
@@ -59,8 +89,27 @@ export const runtime = 'nodejs';
  *         description: Error generating study track draft.
  */
 
+const nullableText = (max: number) =>
+  z.string().trim().max(max).nullable().optional();
+
 const requestSchema = z.object({
-  taskId: z.coerce.number().int().positive(),
+  taskId: z.coerce.number().int().positive().optional(),
+  title: nullableText(100),
+  notes: nullableText(3000),
+  scheduledDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable()
+    .optional(),
+  scheduledTime: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/)
+    .nullable()
+    .optional(),
+  focusMinutes: z.coerce.number().int().min(1).max(240).optional(),
+  breakMinutes: z.coerce.number().int().min(0).max(120).optional(),
+  totalPomodoro: z.coerce.number().int().min(1).max(12).optional(),
+  descriptionAsChecklist: z.coerce.boolean().optional(),
 });
 
 export async function POST(request: Request) {
@@ -85,22 +134,39 @@ export async function POST(request: Request) {
       );
     }
 
-    const [task, preferences, availability, behaviorProfile, attachments] =
+    const [preferences, availability, behaviorProfile] =
       await Promise.all([
-        getTaskById(parsed.data.taskId, session.id),
         getUserStudyPreferences(session.id),
         getUserAvailability(session.id),
         getUserBehaviorProfile(session.id),
-        listTaskAttachments(parsed.data.taskId, session.id),
       ]);
 
+    const [task, attachments] = parsed.data.taskId
+      ? await Promise.all([
+          getTaskById(parsed.data.taskId, session.id),
+          listTaskAttachments(parsed.data.taskId, session.id),
+        ])
+      : [null, []];
+
     const draft = await generateStudyTrackDraft({
-      task: {
-        id: task.task_id,
-        title: task.task_name,
-        description: task.task_description,
-        deadline: task.task_deadline,
-        priority: Number(task.task_priority),
+      task: task
+        ? {
+            id: task.task_id,
+            title: task.task_name,
+            description: task.task_description,
+            deadline: task.task_deadline,
+            priority: Number(task.task_priority),
+          }
+        : null,
+      session: {
+        title: parsed.data.title ?? null,
+        notes: parsed.data.notes ?? null,
+        scheduled_date: parsed.data.scheduledDate ?? null,
+        scheduled_time: parsed.data.scheduledTime ?? null,
+        focus_minutes: parsed.data.focusMinutes ?? null,
+        break_minutes: parsed.data.breakMinutes ?? null,
+        total_pomodoros: parsed.data.totalPomodoro ?? null,
+        description_as_checklist: parsed.data.descriptionAsChecklist ?? null,
       },
       preferences,
       availability: availability.map((slot) => ({

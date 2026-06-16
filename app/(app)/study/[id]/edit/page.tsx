@@ -55,6 +55,17 @@ const isApiAttachment = (
 ): attachment is NonNullable<ApiStudyAttachmentLink["attachment"]> =>
   Boolean(attachment);
 
+type StudyTrackDraft = {
+  title: string;
+  start_date: string;
+  time: string;
+  focus_minutes: number;
+  break_minutes: number;
+  total_pomodoros: number;
+  notes: string;
+  description_as_checklist: boolean;
+};
+
 const combineDateTime = (date: Date, time: string) => {
   const [hours, minutes] = time.split(":").map(Number);
   const next = new Date(date);
@@ -62,6 +73,14 @@ const combineDateTime = (date: Date, time: string) => {
   next.setMinutes(minutes);
   next.setSeconds(0, 0);
   return next;
+};
+
+const parseStudyTrackDate = (dateValue: string) => {
+  const [year, month, day] = dateValue.split("-").map(Number);
+  if (!year || !month || !day) return undefined;
+
+  const parsed = new Date(year, month - 1, day);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
 };
 
 export default function StudyEditPage() {
@@ -84,6 +103,7 @@ export default function StudyEditPage() {
   const [attachments, setAttachments] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
+  const [aiLoading, setAiLoading] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string>("none");
   const [taskOptions, setTaskOptions] = useState<Task[]>([]);
   const [reminderEnabled, setReminderEnabled] = useState(false);
@@ -313,6 +333,69 @@ export default function StudyEditPage() {
       prev.filter((attachment) => attachment.id !== attachmentId),
     );
     toast.success("Attachment removed");
+  };
+
+  const applyStudyTrackToSession = (track: StudyTrackDraft) => {
+    setTitle(track.title);
+    setNotes(track.notes);
+    setScheduledTime(track.time);
+    setFocusMinutes(track.focus_minutes);
+    setBreakMinutes(track.break_minutes);
+    setTotalPomodoro(track.total_pomodoros);
+    setDescriptionAsChecklist(track.description_as_checklist);
+
+    const draftDate = parseStudyTrackDate(track.start_date);
+    if (draftDate) setScheduledDate(draftDate);
+  };
+
+  const buildStudyDraftPayload = () => {
+    const taskId = Number(selectedTaskId);
+
+    return {
+      ...(selectedTaskId !== "none" && Number.isInteger(taskId) && taskId > 0
+        ? { taskId }
+        : {}),
+      title: title.trim(),
+      notes: notes.trim(),
+      scheduledDate: scheduledDate ? format(scheduledDate, "yyyy-MM-dd") : null,
+      scheduledTime: scheduledTime || null,
+      focusMinutes: Math.max(1, Number(focusMinutes) || 25),
+      breakMinutes: Math.max(0, Number(breakMinutes) || 5),
+      totalPomodoro: Math.max(1, Number(totalPomodoro) || 2),
+      descriptionAsChecklist,
+    };
+  };
+
+  const requestSingleStudySessionDraft = async () => {
+    setAiLoading(true);
+    try {
+      const response = await fetch("/api/ai/study-track-draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildStudyDraftPayload()),
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message ?? "Could not generate study session");
+      }
+
+      const firstTrack = (data?.draft?.tracks as StudyTrackDraft[] | undefined)?.[0];
+      if (!firstTrack) {
+        throw new Error("AI did not return a study session suggestion");
+      }
+
+      applyStudyTrackToSession(firstTrack);
+      toast.success("AI study session applied");
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Could not generate study session";
+      toast.error(message);
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   const handleEditSession = async (e: React.FormEvent) => {
@@ -826,7 +909,11 @@ export default function StudyEditPage() {
               ) : null}
             </div>
 
-            <AiSuggestionsButton description="Get session ideas based on your title and attachments." />
+            <AiSuggestionsButton
+              description="Generate one study session from this form and optional linked task."
+              loading={aiLoading}
+              onClick={requestSingleStudySessionDraft}
+            />
 
             <div className="flex gap-3 pt-2">
               <Button

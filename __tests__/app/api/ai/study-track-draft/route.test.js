@@ -130,7 +130,17 @@ describe("POST /api/ai/study-track-draft", () => {
   });
 
   it("asks Gemini for a task-linked study track draft", async () => {
-    const response = await POST(jsonRequest({ taskId: 42 }));
+    const response = await POST(jsonRequest({
+      taskId: 42,
+      title: "Single mechanics review",
+      notes: "Focus on force diagrams",
+      scheduledDate: "2099-03-22",
+      scheduledTime: "16:00",
+      focusMinutes: 30,
+      breakMinutes: 10,
+      totalPomodoro: 2,
+      descriptionAsChecklist: true,
+    }));
     const body = await response.json();
 
     expect(response.status).toBe(200);
@@ -141,12 +151,60 @@ describe("POST /api/ai/study-track-draft", () => {
           title: "Physics Final",
           priority: 4,
         }),
+        session: expect.objectContaining({
+          title: "Single mechanics review",
+          notes: "Focus on force diagrams",
+          scheduled_date: "2099-03-22",
+          scheduled_time: "16:00",
+          focus_minutes: 30,
+          break_minutes: 10,
+          total_pomodoros: 2,
+          description_as_checklist: true,
+        }),
         attachments: [
           expect.objectContaining({
             fileName: "rubric.pdf",
             url: "https://signed.example/rubric.pdf",
           }),
         ],
+        now: expect.any(Date),
+      }),
+    );
+    expect(body.draft.tracks[0]).toEqual(
+      expect.objectContaining({ title: "Mechanics review" }),
+    );
+  });
+
+  it("asks Gemini for a standalone study-session draft without taskId", async () => {
+    const response = await POST(jsonRequest({
+      title: "Independent calculus review",
+      notes: "Practice derivatives and integrals",
+      scheduledDate: "2099-03-24",
+      scheduledTime: "10:30",
+      focusMinutes: 40,
+      breakMinutes: 10,
+      totalPomodoro: 3,
+      descriptionAsChecklist: false,
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(getTaskById).not.toHaveBeenCalled();
+    expect(listTaskAttachments).not.toHaveBeenCalled();
+    expect(generateStudyTrackDraft).toHaveBeenCalledWith(
+      expect.objectContaining({
+        task: null,
+        session: expect.objectContaining({
+          title: "Independent calculus review",
+          notes: "Practice derivatives and integrals",
+          scheduled_date: "2099-03-24",
+          scheduled_time: "10:30",
+          focus_minutes: 40,
+          break_minutes: 10,
+          total_pomodoros: 3,
+          description_as_checklist: false,
+        }),
+        attachments: [],
         now: expect.any(Date),
       }),
     );

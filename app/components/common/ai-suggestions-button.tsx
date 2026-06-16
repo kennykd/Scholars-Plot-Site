@@ -2,13 +2,12 @@
 
 import { Button } from "@/components/ui/button";
 import { Sparkles } from "lucide-react";
-import { toast } from "sonner";
 
 type AiSuggestionsButtonProps = {
   description?: string;
   disabled?: boolean;
   loading?: boolean;
-  onClick?: () => void | Promise<void>;
+  onClick: () => void | Promise<void>;
 };
 
 export function AiSuggestionsButton({
@@ -29,11 +28,7 @@ export function AiSuggestionsButton({
         className="gap-1.5 font-mono text-xs border-accent/40 text-accent hover:bg-accent/10 hover:text-accent"
         disabled={disabled || loading}
         onClick={() => {
-          if (onClick) {
-            void onClick();
-            return;
-          }
-          toast.warning("AI suggestions coming soon!");
+          void onClick();
         }}
       >
         <Sparkles className="h-3.5 w-3.5" />

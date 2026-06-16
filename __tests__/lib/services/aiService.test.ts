@@ -212,6 +212,67 @@ describe("aiService draft helpers", () => {
     ]);
   });
 
+  it("generates standalone study-session drafts without requiring a task", async () => {
+    (geminiFlash.generateContent as jest.Mock).mockResolvedValue({
+      text: JSON.stringify({
+        tracks: [
+          {
+            title: "Calculus practice block",
+            start_date: "2099-03-24",
+            repeat_enabled: false,
+            repeat_every: 1,
+            repeat_unit: "weeks",
+            time: "10:30",
+            focus_minutes: 40,
+            break_minutes: 10,
+            total_pomodoros: 3,
+            notes: "Practice derivatives and integrals.",
+            description_as_checklist: true,
+          },
+        ],
+        warnings: [],
+        reasoning: "Uses the standalone session fields.",
+      }),
+    });
+
+    const result = await generateStudyTrackDraft({
+      task: null,
+      session: {
+        title: "Independent calculus review",
+        notes: "Practice derivatives and integrals",
+        scheduled_date: "2099-03-24",
+        scheduled_time: "10:30",
+        focus_minutes: 40,
+        break_minutes: 10,
+        total_pomodoros: 3,
+        description_as_checklist: false,
+      },
+      preferences: {
+        focus_minutes: 25,
+        break_minutes: 5,
+        total_pomodoros: 2,
+        total_minutes: 60,
+      },
+      availability: [],
+      behaviorProfile: null,
+      now: new Date("2099-03-20T08:00:00.000Z"),
+    });
+
+    const call = (geminiFlash.generateContent as jest.Mock).mock.calls[0][0];
+    const prompt = call.contents[0].parts[0].text;
+    expect(prompt).toContain("standalone study session");
+    expect(prompt).toContain("Standalone session title: Independent calculus review");
+    expect(prompt).toContain("Standalone notes: Practice derivatives and integrals");
+    expect(prompt).toContain("Requested date: 2099-03-24");
+    expect(result.tracks[0]).toEqual(
+      expect.objectContaining({
+        title: "Calculus practice block",
+        start_date: "2099-03-24",
+        time: "10:30",
+      }),
+    );
+  });
+
   it("drops AI study tracks outside today-through-deadline and returns a safe fallback", async () => {
     (geminiFlash.generateContent as jest.Mock).mockResolvedValue({
       text: JSON.stringify({

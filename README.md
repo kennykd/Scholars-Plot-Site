@@ -75,16 +75,79 @@ We are however using external services for our authentication with Firebase auth
 ## 6. API Design (MANDATORY)
 
 ### 6.1 API Endpoints
+The endpoint list is based on the Swagger comments inside `app/api/**/route.ts` and cross-checked with the route handlers for authentication behavior.
+
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| GET | | | Yes / No |
-| POST | | | Yes / No |
-| PUT | | | Yes / No |
-| DELETE | | | Yes / No |
+| POST | `/api/ai` | Re-run AI analysis for one of the authenticated user's tasks | Yes |
+| GET | `/api/ai/overload` | List stored overload warnings for the authenticated user | Yes |
+| POST | `/api/ai/overload` | Run overload detection for the authenticated user's week | Yes |
+| PATCH | `/api/ai/overload` | Mark an overload warning as read | Yes |
+| POST | `/api/ai/schedule` | Generate a proposed study schedule for the authenticated user | Yes |
+| PUT | `/api/ai/schedule` | Confirm selected sessions and persist them for the authenticated user | Yes |
+| POST | `/api/ai/study-track-draft` | Generate an AI study-track draft for a task | Yes |
+| POST | `/api/ai/task-draft` | Generate an AI task draft from text and optional attachments | Yes |
+| POST | `/api/ai/weight-adapter` | Adapt priority-formula weights | Yes  |
+| GET | `/api/analytics` | Get the current user's analytics | Yes |
+| PATCH | `/api/analytics` | Update the current user's analytics | Yes |
+| GET | `/api/attachment` | Get a temporary URL for an uploaded file | Yes |
+| POST | `/api/attachment` | Upload a standalone attachment | Yes |
+| DELETE | `/api/attachment/{id}` | Delete a stored file by file name | Yes |
+| POST | `/api/auth/firebase` | Exchange a Firebase ID token for a session cookie | No |
+| POST | `/api/auth/logout` | Log out the current user and clear the session cookie | No |
+| GET | `/api/chat` | List chat conversations for the authenticated user | Yes |
+| POST | `/api/chat` | Send a message to the authenticated AI chat agent | Yes |
+| GET | `/api/chat/{conversationId}` | Get a chat conversation and its messages | Yes |
+| PATCH | `/api/chat/{conversationId}` | Update a chat message action status | Yes |
+| DELETE | `/api/chat/{conversationId}` | Delete a chat conversation | Yes |
+| GET | `/api/docs` | Return the generated OpenAPI document | No |
+| POST | `/api/docs` | Return the generated OpenAPI document | No |
+| GET | `/api/project` | Get projects visible to the authenticated user | Yes |
+| POST | `/api/project` | Create a new project owned by the authenticated user | Yes |
+| GET | `/api/project/invite` | List pending project invites for the authenticated user | Yes |
+| POST | `/api/project/invite` | Invite a user to a project | Yes |
+| PATCH | `/api/project/invite/{id}` | Accept or decline a project invitation | Yes |
+| POST | `/api/project/task` | Create a new task within a project | Yes |
+| PATCH | `/api/project/task/{id}` | Update a project task by ID | Yes |
+| DELETE | `/api/project/task/{id}` | Delete a project task by ID | Yes |
+| GET | `/api/project/task/{id}/attachment` | List attachments for a project task | Yes |
+| POST | `/api/project/task/{id}/attachment` | Upload an attachment for a project task | Yes |
+| DELETE | `/api/project/task/{id}/attachment/{attachmentId}` | Delete an attachment from a project task | Yes |
+| PATCH | `/api/project/{id}` | Update a project by ID | Yes |
+| DELETE | `/api/project/{id}` | Delete a project by ID | Yes |
+| POST | `/api/project/{id}/member` | Add a member to a project | Yes |
+| PATCH | `/api/project/{id}/member/{memberId}` | Update a member's role in a project | Yes |
+| DELETE | `/api/project/{id}/member/{memberId}` | Remove a member from a project | Yes |
+| GET | `/api/study` | Get the authenticated user's study sessions | Yes |
+| POST | `/api/study` | Create one or more study sessions for the authenticated user | Yes |
+| POST | `/api/study/attachment` | Upload an attachment and link it to study sessions | Yes |
+| POST | `/api/study/batch` | Create a batch of study sessions for a task | Yes |
+| GET | `/api/study/{id}` | Get one study session for the authenticated user | Yes |
+| PATCH | `/api/study/{id}` | Update a study session by ID | Yes |
+| DELETE | `/api/study/{id}` | Delete a study session by ID | Yes |
+| DELETE | `/api/study/{id}/attachment/{attachmentId}` | Unlink and possibly delete a study session attachment | Yes |
+| GET | `/api/task` | Get personal tasks belonging to the authenticated user | Yes |
+| POST | `/api/task` | Create a new personal task for the authenticated user | Yes |
+| GET | `/api/task/{id}` | Get a single authenticated-user task by ID | Yes |
+| PATCH | `/api/task/{id}` | Update a task by ID | Yes |
+| DELETE | `/api/task/{id}` | Delete a task by ID | Yes |
+| GET | `/api/task/{id}/attachment` | List attachments for a task | Yes |
+| POST | `/api/task/{id}/attachment` | Upload an attachment for a task | Yes |
+| DELETE | `/api/task/{id}/attachment/{attachmentId}` | Delete an attachment from a task | Yes |
+| GET | `/api/users` | Get all users using safe public fields | Yes |
+| GET | `/api/users/me` | Get the currently authenticated user | Yes |
+| PUT | `/api/users/me` | Update the authenticated user's profile | Yes |
+| DELETE | `/api/users/me` | Delete the authenticated user's account | Yes |
+| POST | `/api/web-push/send` | Send a web-push notification to the authenticated user | Yes |
+| POST | `/api/web-push/subscribe` | Register the authenticated user's web-push subscription | Yes |
+| DELETE | `/api/web-push/unsubscribe` | Clear the authenticated user's web-push subscription | Yes |
 
 ### 6.2 API Documentation
-* Swagger / Postman link 
-* Example request & response (JSON)
+* Swagger UI: `/docs`
+* OpenAPI JSON: `/api/docs`
+* Public API link: https://app.swaggerhub.com/apis-docs/scholarsplot/Scholars-Plot-Site/1.0.0?view=uiDocs#/
+* The OpenAPI document is generated from route-local Swagger comments in `app/api/**/route.ts`.
+* Most application endpoints require the httpOnly `session` cookie set by `/api/auth/firebase`.
 
 ---
 
@@ -102,16 +165,21 @@ PostgreSQL. We choose this database because it is open source, and a versatile r
 ## 8. AI Features (MANDATORY)
 
 ### 8.1 AI Feature List
-Describe at least TWO AI features.
 | AI Feature | Purpose | AI Type (NLP / OCR / Rec) |
 | :--- | :--- | :--- |
-| | | |
-| | | |
+| AI task draft suggestions | Used on personal task creation, personal task editing, and project task creation. The user provides a title, description, deadline, priority, and optional supported attachments; Gemini returns a structured draft with title, description, priority, reasoning, and skipped attachment notes. | NLP + multimodal document/image understanding |
+| AI study-track draft suggestions | Used on the new study-session planner for an existing task. The app sends the task, study preferences, availability, behavior profile, and task attachments; Gemini returns proposed study-session tracks with dates, times, pomodoro settings, notes, warnings, and reasoning. | Recommendation + NLP |
+| Ploty AI chat assistant | Used by the chatbot page/panel. Ploty answers questions about the user's tasks, schedule, projects, and workload, and can return confirmable action cards for task drafts or task-linked study plans. | Conversational NLP + function calling |
+| Automatic task analysis and priority support | Triggered by task creation and available through the AI analysis route. The service estimates effort, confidence, grade weight, and an AI priority score that is stored on the task and used by scheduling/chat context. Completing tasks can also trigger priority-formula weight adaptation. | NLP + recommendation |
+
+The codebase also contains backend routes for schedule optimization, overload detection, and weight adaptation. They are documented in the API table, but they are not listed as standalone user-facing frontend features unless a current component directly exposes them.
 
 ### 8.2 AI Integration Flow
-Explain:
-* Input → AI processing → Output
-* How AI results are used in the system
+* Task draft flow: task form input and optional attachments -> `/api/ai/task-draft` -> `generateTaskDraft()` sends validated prompt content and supported files to Gemini -> the frontend shows a preview -> the user applies it before creating or updating the real task.
+* Study-track draft flow: selected task -> `/api/ai/study-track-draft` -> the route loads the task, user preferences, availability, behavior profile, and attachments -> Gemini returns one or more study-session plans -> the user applies the plans in the study planner and saves them through `/api/study/batch`.
+* Ploty chat flow: chat message -> `/api/chat` -> the server builds live context from tasks, study sessions, projects, overload warnings, preferences, and formula weights -> Gemini either returns a direct answer or calls a draft tool -> the frontend shows text and, when available, an action card that can create a task or study sessions after user confirmation.
+* Task analysis flow: task creation -> `runTaskAnalysis()` -> Gemini estimates effort-related fields -> the priority formula calculates `ai_priority_score` -> the task record is updated asynchronously and later used as planning context.
+* Safety and failure handling: AI draft inputs are validated with Zod, obvious prompt-injection patterns are blocked before Gemini is called, supported attachments are filtered, Gemini responses must match schemas, and draft calls use a 30-second timeout with a user-facing fallback error.
 
 ---
 
@@ -200,30 +268,86 @@ We kept our secret API keys in environment variables, making sure that it is in 
 ### 10.1 Frontend Testing
 | Test Case | Scenario | Expected Result | Status |
 | :--- | :--- | :--- | :--- |
-| FE-01 | | | Pass / Fail |
+| FE-01 | Analytics page rendering and data states | Analytics cards, charts, and mocked data states render correctly; 3/3 assertions passed | Pass |
+| FE-02 | Calendar page schedule display | Calendar renders study-session dates and interactions from mocked data; 5/5 assertions passed | Pass |
+| FE-03 | Dashboard page composition | Dashboard loads the expected widgets; 1/1 assertion passed | Pass |
+| FE-04 | Projects page workflows | Project, task, member, and dialog UI workflows behave as expected; 8/8 assertions passed | Pass |
+| FE-05 | Settings page rendering | Settings sections and user controls render correctly; 3/3 assertions passed | Pass |
+| FE-06 | Study edit page legacy coverage | Existing study edit form behavior passes legacy JSX test coverage; 2/2 assertions passed | Pass |
+| FE-07 | Study edit page TypeScript coverage | Study edit form state, validation, and update behavior pass current test coverage; 4/4 assertions passed | Pass |
+| FE-08 | Study detail page legacy coverage | Existing study detail view renders expected data; 1/1 assertion passed | Pass |
+| FE-09 | Study detail page TypeScript coverage | Study detail interactions and data display pass current test coverage; 9/9 assertions passed | Pass |
+| FE-10 | New study-session planner | Planner form, draft application, validation, and save behavior pass; 7/7 assertions passed | Pass |
+| FE-11 | Study session listing page | Study session list renders expected session data; 2/2 assertions passed | Pass |
+| FE-12 | Quick timer completion behavior | Timer should show completed status and trigger success toast when total session time ends; 4/5 assertions passed and completion-status assertion failed | Fail |
+| FE-13 | Task detail page | Task detail view renders and handles expected task state; 4/4 assertions passed | Pass |
+| FE-14 | New task page | Task form validation, attachment handling, AI suggestion preview, and submit flow pass; 10/10 assertions passed | Pass |
+| FE-15 | Login page | Login form validation and Firebase sign-in states pass; 8/8 assertions passed | Pass |
+| FE-16 | Register page | Registration form validation and Firebase account creation states pass; 10/10 assertions passed | Pass |
+| FE-17 | Register verification page | Email verification flow and user feedback states pass; 7/7 assertions passed | Pass |
+| FE-18 | Logout button component | Logout button calls the logout flow correctly; 1/1 assertion passed | Pass |
+| FE-19 | Chat action card component | Confirm and dismiss behavior for chat action cards passes; 2/2 assertions passed | Pass |
+| FE-20 | Today's tasks dashboard component | Today's tasks widget renders expected task data; 1/1 assertion passed | Pass |
+| FE-21 | Upcoming deadlines dashboard component | Upcoming deadlines widget renders sorted deadline data; 3/3 assertions passed | Pass |
+| FE-22 | Sidebar layout component | Sidebar navigation and active states render correctly; 2/2 assertions passed | Pass |
+| FE-23 | Notification panel component | Notification panel state and display behavior pass; 3/3 assertions passed | Pass |
+| FE-24 | Profile display-name form | Profile name form validation and save behavior pass; 3/3 assertions passed | Pass |
+| FE-25 | Study reminders component | Reminder controls render and update as expected; 3/3 assertions passed | Pass |
+| FE-26 | Task in-progress button component | Task status button behavior passes; 2/2 assertions passed | Pass |
+| FE-27 | Tasks toolbar component | Filtering/search toolbar behavior passes; 2/2 assertions passed | Pass |
+| FE-28 | Chatbot component | Chat panel conversation loading and message behavior pass; 3/3 assertions passed | Pass |
 
 ### 10.2 Backend & API Testing
 | Test Case | Endpoint | Input | Expected Output | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| API-01 | | | | Pass / Fail |
+| API-01 | `/api/ai/overload` | Authenticated overload run, list request, and mark-read request | Overload warning operations return the expected scoped responses; 5/5 assertions passed | Pass |
+| API-02 | `/api/ai/schedule` | Authenticated schedule generation and confirmation payloads | Schedule proposal and confirmation are scoped to the session user; 4/4 assertions passed | Pass |
+| API-03 | `/api/ai/study-track-draft` | Authenticated task ID for study-track draft generation | Study-track draft route validates task access and returns expected JSON/errors; 3/3 assertions passed | Pass |
+| API-04 | `/api/ai/task-draft` | Multipart task draft input with text and optional file | Task draft route uploads supported files and returns expected draft/error JSON; 3/3 assertions passed | Pass |
+| API-05 | `/api/ai/weight-adapter` | Session request and cron-secret batch request | Weight adaptation handles authenticated and cron-protected paths; 4/4 assertions passed | Pass |
+| API-06 | `/api/auth/firebase` | Firebase ID token login payload | Session cookie is created and user record is synchronized; 1/1 assertion passed | Pass |
+| API-07 | `/api/auth/logout` | Logout request | Session cookie is cleared; 1/1 assertion passed | Pass |
+| API-08 | `/api/chat/{conversationId}` | Conversation ID plus message action update/delete requests | Conversation reads, deletes, and action-status updates are session scoped; 5/5 assertions passed | Pass |
+| API-09 | `/api/chat` | Chat message payload and optional conversation ID | Chat creates or continues a conversation without trusting client user IDs; 4/4 assertions passed | Pass |
+| API-10 | Project API client helper | Project API success and failure responses | Client helper normalizes project responses and errors; 7/7 assertions passed | Pass |
+| API-11 | `/api/project/invite` | Project invite creation/listing payloads | Invite route validates ownership and invitee state; 4/4 assertions passed | Pass |
+| API-12 | `/api/project` | Project create/list payloads | Project route creates and lists session-visible projects correctly; 4/4 assertions passed | Pass |
+| API-13 | `/api/project/task/{id}/attachment` | Project task attachment upload/list request | Attachment route enforces project task access; 1/1 assertion passed | Pass |
+| API-14 | `/api/project/task/{id}` | Project task update/delete request | Project task mutation is authorized and validated; 1/1 assertion passed | Pass |
+| API-15 | `/api/project/task` | Project task creation payload | Project task create route validates and persists expected data; 1/1 assertion passed | Pass |
+| API-16 | `/api/study/attachment` | Study attachment multipart upload payload | Attachment is uploaded and linked only to valid study sessions; 3/3 assertions passed | Pass |
+| API-17 | `/api/study/batch` | Task-linked batch study-session plans | Batch route creates valid study sessions and rejects invalid plans; 5/5 assertions passed | Pass |
+| API-18 | `/api/study` | Study-session create/list payloads | Study sessions are created and listed for the authenticated user; 4/4 assertions passed | Pass |
+| API-19 | `/api/task/{id}/attachment` | Task attachment upload/list request | Attachment route enforces task ownership; 1/1 assertion passed | Pass |
+| API-20 | `/api/task/{id}` | Task read/update/delete request | Task route validates IDs, authorization, update fields, and delete behavior; 6/6 assertions passed | Pass |
+| API-21 | `/api/task` | Personal task create/list payload | Task route creates personal tasks and triggers expected service calls; 1/1 assertion passed | Pass |
+| API-22 | `/api/users/me` | Profile read/update/delete payloads | User profile route returns, updates, and deletes only the session user; 4/4 assertions passed | Pass |
+| API-23 | `/api/web-push/send` | Authenticated notification send payload | Web-push send route handles success, stale subscriptions, and auth checks; 5/5 assertions passed | Pass |
+| API-24 | Backend module: chat agent | Chat prompt, context, and draft-tool calls | Chat agent returns text or confirmable actions as expected; 4/4 assertions passed | Pass |
+| API-25 | Backend module: overload detector | Weekly scheduled sessions and unscheduled tasks | Detector returns expected overload severity and fallback behavior; 16/16 assertions passed | Pass |
+| API-26 | Backend module: schedule optimizer | Pending tasks, availability, and study preferences | Optimizer generates schedule-shaped output and handles edge cases; 16/16 assertions passed | Pass |
+| API-27 | Backend module: weight adapter | Completed-task history and current formula weights | Adapter updates, clamps, or preserves weights correctly; 18/18 assertions passed | Pass |
+| API-28 | Backend module: B2 bucket storage | Upload, signed URL, and delete storage inputs | Storage helper calls B2-compatible APIs correctly; 3/3 assertions passed | Pass |
+| API-29 | Backend module: crypto helpers | Plain numeric analytics values | Encryption/decryption helpers preserve metric values; 7/7 assertions passed | Pass |
+| API-30 | Backend module: AI service | Draft, attachment, prompt-safety, and timeout inputs | AI service validates outputs and returns expected draft/error behavior; 9/9 assertions passed | Pass |
+| API-31 | Backend module: project service | Project, member, invite, and task service inputs | Project service enforces ownership and returns expected records/errors; 13/13 assertions passed | Pass |
+| API-32 | Backend module: study session service | Study-session create/update/delete and repeat inputs | Study service persists sessions, repeats, reminders, and membership correctly; 16/16 assertions passed | Pass |
+| API-33 | Backend module: task service | Task create/update/delete service inputs | Task service serializes and mutates task data correctly; 4/4 assertions passed | Pass |
+| API-34 | Backend module: task status analytics | Task completion timing inputs | Analytics counters update for early/on-time/late completions; 3/3 assertions passed | Pass |
+| API-35 | Backend module: user service | User profile and public-user service inputs | User service returns safe user data and profile operations correctly; 4/4 assertions passed | Pass |
 
 ### 10.3 Security Testing
 | Test Case | Attack Type | Expected Behavior | Result |
 | :--- | :--- | :--- | :--- |
-| SEC-01 | XSS | Input sanitized | Pass / Fail |
-| SEC-02 | Injection | Query blocked | Pass / Fail |
+| SEC-01 | Unauthenticated API access | Protected endpoints return 401 when the session cookie is missing or invalid | Covered by route tests |
+| SEC-02 | Broken object-level authorization | User-supplied IDs do not override the authenticated session user; users can only access their own tasks, study sessions, analytics, notifications, and permitted project resources | Covered by route/service tests |
+| SEC-03 | Invalid or malicious request body | Zod validation rejects malformed JSON, invalid enum values, invalid IDs, and out-of-range fields before database writes | Covered by route/service tests |
+| SEC-04 | File upload abuse | Oversized files are rejected and attachment access/deletion is checked against task, project, or study-session ownership | Covered by route/storage tests |
+| SEC-05 | Session lifecycle abuse | Login exchanges a Firebase ID token for an httpOnly session cookie, logout clears it, and account deletion clears both database and session state | Covered by auth route tests |
+| SEC-06 | Sensitive analytics data exposure | Analytics numeric counters are encrypted at rest and decrypted only through authenticated service calls | Covered by crypto/service tests |
 
 ### 10.4 AI Functionality Testing (MANDATORY)
-**AI Feature: [Name]**
-| Test Case | Input | Expected Output | Actual Result | Status |
-| :--- | :--- | :--- | :--- | :--- |
-| AI-01 | Valid input | Correct response | | Pass |
-| AI-02 | Invalid input | Error / fallback | | Pass |
-| AI-03 | Prompt injection | Sanitized | | Pass |
-
-**Failure Handling:**
-* What happens if AI is unavailable?
-* How is timeout handled?
+This subsection is intentionally left for the contributor handling AI functionality testing.
 
 ---
 
@@ -286,11 +410,33 @@ AI-related work:<br>
 * AI-related work:<br>
 
 ### Student Name: Rafie Mustika Ramasna
-* Features implemented:<br>
-* API endpoints handled:<br>
-* Tests written:<br>
-* Security work:<br>
-* AI-related work:<br>
+Features implemented:<br>
+Task, Project, Attachment, AI suggestion, Study Session
+
+API endpoints handled:<br>
+- /api/task/*
+- /api/study/batch
+- /api/study/attachment
+- /api/docs
+- /api/ai/study-track-draft
+- /api/ai/task-draft
+
+Tests written:<br>
+- /app/tasks
+- /lib/bucket.test.ts
+- /lib/services
+- /app/dashboard
+- /app/projects
+- /app/calendar
+
+Security work:<br>
+- Prompt Injection Protection
+
+AI-related work:<br>
+- AI Prompts for drafting study session + task
+- Generate content with Gemini to schema
+- Task + Study Session suggestion AI integration
+
 
 ---
 
@@ -302,11 +448,13 @@ The purpose of using AI in our project is to accelerate the development cycle, m
 
 Which parts were assisted:
  - Boilerplate UI design
+ - Connecting parts of the frontend with the backend
  - Visualization of frontend code using claude
  - Give the basic structure of API design
  - Assisting in creation of zod schemas
  - Giving suggestions on the tests in jest testing
- - Mapping out the swagger UI
+ - Mapping out the swagger
+ - Converting code to tables for README
 
 ---
 

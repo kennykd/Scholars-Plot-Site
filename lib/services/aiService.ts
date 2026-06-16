@@ -87,13 +87,23 @@ export type TaskDraftResult = {
 };
 
 export type StudyTrackDraftInput = {
-  task: {
+  task?: {
     id: number;
     title: string;
     description: string | null;
     deadline: Date;
     priority: number;
-  };
+  } | null;
+  session?: {
+    title?: string | null;
+    notes?: string | null;
+    scheduled_date?: string | null;
+    scheduled_time?: string | null;
+    focus_minutes?: number | null;
+    break_minutes?: number | null;
+    total_pomodoros?: number | null;
+    description_as_checklist?: boolean | null;
+  } | null;
   preferences: {
     focus_minutes: number;
     break_minutes: number;
@@ -227,6 +237,51 @@ function combineDateAndTime(date: Date, time: string) {
   return scheduled;
 }
 
+function endOfLocalDay(date: Date) {
+  const next = new Date(date);
+  next.setHours(23, 59, 59, 999);
+  return next;
+}
+
+function addLocalDays(date: Date, days: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function getStudyDraftDeadline(input: StudyTrackDraftInput, now: Date) {
+  if (input.task?.deadline) return input.task.deadline;
+
+  const requestedDate = input.session?.scheduled_date
+    ? parseLocalDateString(input.session.scheduled_date)
+    : null;
+  if (requestedDate) {
+    const requestedDeadline = endOfLocalDay(requestedDate);
+    if (requestedDeadline >= now) return requestedDeadline;
+  }
+
+  return endOfLocalDay(addLocalDays(now, 14));
+}
+
+function getStudyDraftTitle(input: StudyTrackDraftInput) {
+  return (
+    input.session?.title?.trim() ||
+    input.task?.title?.trim() ||
+    "Study session"
+  );
+}
+
+function getStudyDraftNotes(input: StudyTrackDraftInput) {
+  const sessionNotes = input.session?.notes?.trim();
+  const taskDescription = input.task?.description?.trim();
+
+  if (sessionNotes && taskDescription) {
+    return `${sessionNotes}\n\nTask context: ${taskDescription}`;
+  }
+
+  return sessionNotes || taskDescription || "";
+}
+
 function minutesFromTime(value: string) {
   const [hours, minutes] = value.split(":").map(Number);
   return hours * 60 + minutes;
@@ -288,6 +343,7 @@ function normalizeStudyTrack(
 ): { track: StudyTrackDraftTrack | null; reason?: "window" | "availability" } {
   const startDate = parseLocalDateString(track.start_date);
   if (!startDate) return { track: null, reason: "window" };
+  const deadline = getStudyDraftDeadline(input, now);
 
   const repeatUnit = track.repeat_unit === "days" ? "days" : "weeks";
   const normalized: StudyTrackDraftTrack = {
@@ -307,7 +363,7 @@ function normalizeStudyTrack(
   };
   const scheduledAt = combineDateAndTime(startDate, normalized.time);
 
-  if (scheduledAt < now || scheduledAt > input.task.deadline) {
+  if (scheduledAt < now || scheduledAt > deadline) {
     return { track: null, reason: "window" };
   }
 
@@ -315,7 +371,7 @@ function normalizeStudyTrack(
   if (repeatDays > 0) {
     const secondOccurrence = new Date(scheduledAt);
     secondOccurrence.setDate(secondOccurrence.getDate() + repeatDays);
-    if (secondOccurrence > input.task.deadline) {
+    if (secondOccurrence > deadline) {
       normalized.repeat_enabled = false;
     }
   }
@@ -325,7 +381,7 @@ function normalizeStudyTrack(
     !repeatOccurrencesFitAvailability(
       normalized,
       scheduledAt,
-      input.task.deadline,
+      deadline,
       input.availability,
     )
   ) {
@@ -347,7 +403,8 @@ function findFirstAvailableSlot(
     minutesFromTime(a.start_time) - minutesFromTime(b.start_time)
   ));
   const cursor = parseLocalDateString(formatLocalDate(now));
-  const deadlineDate = parseLocalDateString(formatLocalDate(input.task.deadline));
+  const deadline = getStudyDraftDeadline(input, now);
+  const deadlineDate = parseLocalDateString(formatLocalDate(deadline));
   if (!cursor || !deadlineDate) return null;
 
   while (cursor <= deadlineDate) {
@@ -362,7 +419,7 @@ function findFirstAvailableSlot(
 
       if (
         scheduledAt >= now &&
-        scheduledAt <= input.task.deadline &&
+        scheduledAt <= deadline &&
         trackFitsAvailability(candidate, scheduledAt, [slot])
       ) {
         return {
@@ -391,18 +448,34 @@ function buildFallbackStudyTrack(
   input: StudyTrackDraftInput,
   now: Date,
 ): StudyTrackDraftTrack {
+  const deadline = getStudyDraftDeadline(input, now);
+  const requestedDate = input.session?.scheduled_date
+    ? parseLocalDateString(input.session.scheduled_date)
+    : null;
   const fallbackTrack: StudyTrackDraftTrack = {
-    title: input.task.title || "Study session",
-    start_date: formatLocalDate(now),
+    title: getStudyDraftTitle(input),
+    start_date: requestedDate ? formatLocalDate(requestedDate) : formatLocalDate(now),
     repeat_enabled: false,
     repeat_every: 1,
     repeat_unit: "weeks",
-    time: roundFallbackTime(now, input.task.deadline),
-    focus_minutes: Math.round(clamp(input.preferences.focus_minutes, 1, 240)),
-    break_minutes: Math.round(clamp(input.preferences.break_minutes, 0, 120)),
-    total_pomodoros: Math.round(clamp(input.preferences.total_pomodoros, 1, 12)),
-    notes: input.task.description?.trim() || "Review the task requirements and make progress before the deadline.",
-    description_as_checklist: false,
+    time: input.session?.scheduled_time || roundFallbackTime(now, deadline),
+    focus_minutes: Math.round(clamp(
+      input.session?.focus_minutes ?? input.preferences.focus_minutes,
+      1,
+      240,
+    )),
+    break_minutes: Math.round(clamp(
+      input.session?.break_minutes ?? input.preferences.break_minutes,
+      0,
+      120,
+    )),
+    total_pomodoros: Math.round(clamp(
+      input.session?.total_pomodoros ?? input.preferences.total_pomodoros,
+      1,
+      12,
+    )),
+    notes: getStudyDraftNotes(input) || "Review your material and make focused progress.",
+    description_as_checklist: input.session?.description_as_checklist ?? false,
   };
   const slot = findFirstAvailableSlot(input, now, fallbackTrack);
 
@@ -419,11 +492,11 @@ function buildFallbackStudyTrack(
     fallbackTrack.time,
   );
 
-  if (scheduledAt > input.task.deadline) {
+  if (scheduledAt > deadline) {
     return {
       ...fallbackTrack,
-      start_date: formatLocalDate(input.task.deadline),
-      time: formatLocalTime(input.task.deadline),
+      start_date: formatLocalDate(deadline),
+      time: formatLocalTime(deadline),
     };
   }
 
@@ -600,10 +673,19 @@ export async function generateStudyTrackDraft(
 ): Promise<StudyTrackDraftResult> {
   const now = input.now ?? new Date();
   const currentLocalDate = formatLocalDate(now);
-  const deadlineLocalDate = formatLocalDate(input.task.deadline);
+  const deadline = getStudyDraftDeadline(input, now);
+  const deadlineLocalDate = formatLocalDate(deadline);
+  const hasTaskContext = Boolean(input.task);
+  const draftTitle = getStudyDraftTitle(input);
+  const draftNotes = getStudyDraftNotes(input);
 
   assertSafeDraftInputs(
-    [input.task.title, input.task.description],
+    [
+      input.task?.title,
+      input.task?.description,
+      input.session?.title,
+      input.session?.notes,
+    ],
     input.attachments,
   );
 
@@ -613,16 +695,17 @@ export async function generateStudyTrackDraft(
 
   const prompt = `
     TRUSTED STUDY TRACK PLANNING INSTRUCTIONS
-    You are currently looking at the data of a task that the student is trying to fulfill, along with their study preferences and availability.
-    Your job is to help the student by creating a study track: a schedule of specific study sessions that lead up to the task deadline.
-    They will provide attachments to provide additional context for the study sessions and you should ALWAYS prioritize using that information and not hallucinate new context. Follow these rules:
+    You are currently looking at ${hasTaskContext ? "a task plus an optional study-session form" : "a standalone study session form"}, along with the student's study preferences and availability.
+    Your job is to help the student by creating useful study-session suggestions${hasTaskContext ? " that lead up to the task deadline" : " for this standalone study session"}.
+    They may provide attachments through task context to provide additional academic context for the study sessions and you should ALWAYS prioritize using that information and not hallucinate new context. Follow these rules:
 
     - Current server time: ${now.toISOString()}
     - Current local date: ${currentLocalDate}
-    - Task deadline: ${input.task.deadline.toISOString()}
+    - ${hasTaskContext ? `Task deadline: ${input.task?.deadline.toISOString()}` : `Standalone planning window ends: ${deadline.toISOString()}`}
     - Allowed scheduling window: ${currentLocalDate} through ${deadlineLocalDate}
     - Availability day_of_week uses 0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday.
-    - Create realistic study sessions before the deadline for this task.
+    - Create realistic study sessions before the deadline or standalone planning window ends.
+    - If this is a standalone study session, prioritize improving the user's current session title, notes, timing, and pomodoro settings instead of inventing a full task.
     - Split work into specific topics instead of broad generic sessions.
     - Respect study preferences and availability when they exist; if availability is empty, choose reasonable times before the deadline.
     - Use attachments only for academic context such as rubrics, readings, formulas, diagrams, and specific topics.
@@ -641,11 +724,19 @@ export async function generateStudyTrackDraft(
     - Only set repeat_enabled = false for genuine one-off sessions, when the deadline is within about one week, or when repeating would produce only one valid session.
 
     <untrusted_user_content>
-    Task id: ${input.task.id}
-    Task title: ${input.task.title}
-    Task description: ${input.task.description ?? "No description provided"}
-    Deadline: ${input.task.deadline.toISOString()}
-    Priority: ${input.task.priority} out of 5
+    Task id: ${input.task?.id ?? "No linked task"}
+    Task title: ${input.task?.title ?? "No linked task"}
+    Task description: ${input.task?.description ?? "No task description provided"}
+    Deadline: ${input.task?.deadline.toISOString() ?? deadline.toISOString()}
+    Priority: ${input.task?.priority ?? "Not set"} out of 5
+    Standalone session title: ${input.session?.title || draftTitle}
+    Standalone notes: ${input.session?.notes || draftNotes || "No notes provided"}
+    Requested date: ${input.session?.scheduled_date ?? "Not set"}
+    Requested time: ${input.session?.scheduled_time ?? "Not set"}
+    Current focus minutes: ${input.session?.focus_minutes ?? input.preferences.focus_minutes}
+    Current break minutes: ${input.session?.break_minutes ?? input.preferences.break_minutes}
+    Current pomodoros: ${input.session?.total_pomodoros ?? input.preferences.total_pomodoros}
+    Current checklist mode: ${input.session?.description_as_checklist ?? false}
     Study preferences: ${JSON.stringify(input.preferences)}
     Availability: ${JSON.stringify(input.availability)}
     Behavior profile: ${JSON.stringify(input.behaviorProfile)}

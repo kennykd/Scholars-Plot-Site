@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import "@testing-library/jest-dom";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import StudyNewPage from "@/app/(app)/study/new/page"; // Adjusted to standard Next.js routing conventions
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
@@ -38,6 +38,8 @@ beforeAll(() => {
             value: () => "mocked-uuid-1234",
         });
     }
+
+    window.HTMLElement.prototype.scrollIntoView = jest.fn();
 });
 
 describe("StudyNewPage Component", () => {
@@ -164,12 +166,196 @@ describe("StudyNewPage Component", () => {
         expect(reminderBlocks.length).toBe(4); // 3 original presets + 1 newly appended item
     });
 
-    it("should broadcast standard temporary toast warning information items when trigger parameters click AI context sparkles components", () => {
+    it("applies AI suggestions to a single linked study session", async () => {
+        (global.fetch as jest.Mock).mockImplementation((url: string, options?: RequestInit) => {
+            if (url === "/api/task") {
+                return Promise.resolve({
+                    ok: true,
+                    json: () =>
+                        Promise.resolve({
+                            tasks: [
+                                {
+                                    id: 7,
+                                    title: "Database exam",
+                                    description: "Review normalization and indexes",
+                                    deadline: "2099-06-20T15:00:00.000Z",
+                                    priority: 4,
+                                    status: "Pending",
+                                    projectId: null,
+                                    createdAt: "2099-06-01T00:00:00.000Z",
+                                    completedAt: null,
+                                },
+                            ],
+                        }),
+                } as Response);
+            }
+
+            if (url === "/api/ai/study-track-draft" && options?.method === "POST") {
+                return Promise.resolve({
+                    ok: true,
+                    json: () =>
+                        Promise.resolve({
+                            draft: {
+                                tracks: [
+                                    {
+                                        title: "Review database normalization",
+                                        start_date: "2099-06-18",
+                                        repeat_enabled: false,
+                                        repeat_every: 1,
+                                        repeat_unit: "weeks",
+                                        time: "14:30",
+                                        focus_minutes: 50,
+                                        break_minutes: 10,
+                                        total_pomodoros: 2,
+                                        notes: "Study 1NF, 2NF, and 3NF.",
+                                        description_as_checklist: true,
+                                    },
+                                ],
+                                warnings: [],
+                                reasoning: "Fits before the deadline.",
+                                skippedAttachments: [],
+                            },
+                        }),
+                } as Response);
+            }
+
+            return Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve({ success: true }),
+            } as Response);
+        });
+
         render(<StudyNewPage />);
 
-        const aiBtn = screen.getByRole("button", { name: /AI Suggestions/i });
-        fireEvent.click(aiBtn);
+        await waitFor(() => {
+            expect(global.fetch).toHaveBeenCalledWith("/api/task");
+        });
 
-        expect(toast.warning).toHaveBeenCalledWith("AI suggestions coming soon!");
+        fireEvent.change(screen.getByPlaceholderText(/e.g. Biology chapter 6 review/i), {
+            target: { value: "Database sprint" },
+        });
+        fireEvent.change(screen.getByPlaceholderText(/Add notes for this study session.../i), {
+            target: { value: "Focus on ERD and normalization" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: /No task/i }));
+        fireEvent.click(await screen.findByText("Database exam"));
+        fireEvent.click(screen.getByRole("button", { name: /AI Suggestions/i }));
+
+        await waitFor(() => {
+            expect(
+                (global.fetch as jest.Mock).mock.calls.some(
+                    ([url]) => url === "/api/ai/study-track-draft",
+                ),
+            ).toBe(true);
+        });
+        const aiCall = (global.fetch as jest.Mock).mock.calls.find(
+            ([url]) => url === "/api/ai/study-track-draft",
+        );
+        expect(aiCall?.[1]).toEqual(expect.objectContaining({ method: "POST" }));
+        expect(JSON.parse(aiCall?.[1]?.body as string)).toEqual(
+            expect.objectContaining({
+                taskId: 7,
+                title: "Database sprint",
+                notes: "Focus on ERD and normalization",
+                focusMinutes: 25,
+                breakMinutes: 5,
+                totalPomodoro: 2,
+            }),
+        );
+
+        expect(
+            screen.getByDisplayValue("Review database normalization"),
+        ).toBeInTheDocument();
+        expect(screen.getByDisplayValue("14:30")).toBeInTheDocument();
+        expect(screen.getByDisplayValue("50")).toBeInTheDocument();
+        expect(screen.getByDisplayValue("10")).toBeInTheDocument();
+        expect(screen.getByDisplayValue("2")).toBeInTheDocument();
+        expect(
+            screen.getByDisplayValue("Study 1NF, 2NF, and 3NF."),
+        ).toBeInTheDocument();
+        expect(toast.success).toHaveBeenCalledWith("AI study session applied");
+    });
+
+    it("applies AI suggestions to a standalone study session without a task", async () => {
+        (global.fetch as jest.Mock).mockImplementation((url: string, options?: RequestInit) => {
+            if (url === "/api/task") {
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ tasks: [] }),
+                } as Response);
+            }
+
+            if (url === "/api/ai/study-track-draft" && options?.method === "POST") {
+                return Promise.resolve({
+                    ok: true,
+                    json: () =>
+                        Promise.resolve({
+                            draft: {
+                                tracks: [
+                                    {
+                                        title: "Standalone calculus practice",
+                                        start_date: "2099-06-18",
+                                        repeat_enabled: false,
+                                        repeat_every: 1,
+                                        repeat_unit: "weeks",
+                                        time: "11:00",
+                                        focus_minutes: 40,
+                                        break_minutes: 10,
+                                        total_pomodoros: 3,
+                                        notes: "Practice derivatives and integrals.",
+                                        description_as_checklist: true,
+                                    },
+                                ],
+                                warnings: [],
+                                reasoning: "Uses the form context.",
+                                skippedAttachments: [],
+                            },
+                        }),
+                } as Response);
+            }
+
+            return Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve({ success: true }),
+            } as Response);
+        });
+
+        render(<StudyNewPage />);
+
+        fireEvent.change(screen.getByPlaceholderText(/e.g. Biology chapter 6 review/i), {
+            target: { value: "Independent calculus review" },
+        });
+        fireEvent.change(screen.getByPlaceholderText(/Add notes for this study session.../i), {
+            target: { value: "Practice derivatives and integrals" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: /AI Suggestions/i }));
+
+        await waitFor(() => {
+            expect(
+                (global.fetch as jest.Mock).mock.calls.some(
+                    ([url]) => url === "/api/ai/study-track-draft",
+                ),
+            ).toBe(true);
+        });
+        const aiCall = (global.fetch as jest.Mock).mock.calls.find(
+            ([url]) => url === "/api/ai/study-track-draft",
+        );
+        const payload = JSON.parse(aiCall?.[1]?.body as string);
+        expect(payload).toEqual(
+            expect.objectContaining({
+                title: "Independent calculus review",
+                notes: "Practice derivatives and integrals",
+                focusMinutes: 25,
+                breakMinutes: 5,
+                totalPomodoro: 2,
+            }),
+        );
+        expect(payload).not.toHaveProperty("taskId");
+        expect(
+            screen.getByDisplayValue("Standalone calculus practice"),
+        ).toBeInTheDocument();
+        expect(toast.error).not.toHaveBeenCalledWith(
+            "Choose a linked task before asking AI for session suggestions",
+        );
     });
 });

@@ -14,11 +14,12 @@ import type {
 } from "react";
 
 const pushMock = jest.fn();
+const mockRouter = {
+    push: pushMock,
+};
 
 jest.mock("next/navigation", () => ({
-    useRouter: () => ({
-        push: pushMock,
-    }),
+    useRouter: () => mockRouter,
     useParams: () => ({
         id: "study-1",
     }),
@@ -203,6 +204,195 @@ describe("StudyEditPage", () => {
         });
 
         expect(pushMock).toHaveBeenCalledWith("/study");
+    });
+
+    it("applies AI suggestions from the linked task", async () => {
+        const linkedStudySession = {
+            studySession: {
+                ...mockStudySession.studySession,
+                study_session_user: [{ task_id: 7 }],
+            },
+        };
+
+        (global.fetch as jest.Mock).mockImplementation(
+            async (url: string, options?: RequestInit) => {
+                if (url === "/api/ai/study-track-draft" && options?.method === "POST") {
+                    return {
+                        ok: true,
+                        json: async () => ({
+                            draft: {
+                                tracks: [
+                                    {
+                                        title: "Refresh graph algorithms",
+                                        start_date: "2099-06-18",
+                                        time: "16:45",
+                                        focus_minutes: 45,
+                                        break_minutes: 15,
+                                        total_pomodoros: 3,
+                                        notes: "Revisit BFS, DFS, and Dijkstra.",
+                                        description_as_checklist: true,
+                                    },
+                                ],
+                            },
+                        }),
+                    };
+                }
+
+                if (url === "/api/task") {
+                    return {
+                        ok: true,
+                        json: async () => ({
+                            tasks: [
+                                {
+                                    id: 7,
+                                    title: "Algorithms exam",
+                                    description: "Graph review",
+                                    deadline: "2099-06-20T15:00:00.000Z",
+                                    priority: 4,
+                                    status: "Pending",
+                                    projectId: null,
+                                    createdAt: "2099-06-01T00:00:00.000Z",
+                                    completedAt: null,
+                                },
+                            ],
+                        }),
+                    };
+                }
+
+                return {
+                    ok: true,
+                    json: async () => linkedStudySession,
+                };
+            },
+        );
+
+        render(<StudyEditPage />);
+
+        expect(await screen.findByDisplayValue("Algorithms")).toBeInTheDocument();
+
+        await userEvent.click(
+            screen.getByRole("button", { name: /AI Suggestions/i }),
+        );
+
+        await waitFor(() => {
+            expect(
+                (global.fetch as jest.Mock).mock.calls.some(
+                    ([url]) => url === "/api/ai/study-track-draft",
+                ),
+            ).toBe(true);
+        });
+        const aiCall = (global.fetch as jest.Mock).mock.calls.find(
+            ([url]) => url === "/api/ai/study-track-draft",
+        );
+        expect(aiCall?.[1]).toEqual(expect.objectContaining({ method: "POST" }));
+        expect(JSON.parse(aiCall?.[1]?.body as string)).toEqual(
+            expect.objectContaining({
+                taskId: 7,
+                title: "Algorithms",
+                notes: "Graphs and Trees",
+                scheduledDate: "2026-01-01",
+                scheduledTime: "16:00",
+                focusMinutes: 25,
+                breakMinutes: 5,
+                totalPomodoro: 2,
+            }),
+        );
+
+        await waitFor(() => {
+            expect(toast.success).toHaveBeenCalledWith("AI study session applied");
+        });
+
+        await waitFor(() => {
+            expect(
+                screen.getByDisplayValue("Refresh graph algorithms"),
+            ).toBeInTheDocument();
+        });
+
+        expect(screen.getByDisplayValue("16:45")).toBeInTheDocument();
+        expect(screen.getByDisplayValue("45")).toBeInTheDocument();
+        expect(screen.getByDisplayValue("15")).toBeInTheDocument();
+        expect(screen.getByDisplayValue("3")).toBeInTheDocument();
+        expect(
+            screen.getByDisplayValue("Revisit BFS, DFS, and Dijkstra."),
+        ).toBeInTheDocument();
+    });
+
+    it("applies AI suggestions without a linked task", async () => {
+        (global.fetch as jest.Mock).mockImplementation(
+            async (url: string, options?: RequestInit) => {
+                if (url === "/api/ai/study-track-draft" && options?.method === "POST") {
+                    return {
+                        ok: true,
+                        json: async () => ({
+                            draft: {
+                                tracks: [
+                                    {
+                                        title: "Standalone algorithm refresh",
+                                        start_date: "2099-06-18",
+                                        time: "13:15",
+                                        focus_minutes: 35,
+                                        break_minutes: 10,
+                                        total_pomodoros: 2,
+                                        notes: "Review sorting and graph basics.",
+                                        description_as_checklist: false,
+                                    },
+                                ],
+                            },
+                        }),
+                    };
+                }
+
+                if (url === "/api/task") {
+                    return {
+                        ok: true,
+                        json: async () => ({ tasks: [] }),
+                    };
+                }
+
+                return {
+                    ok: true,
+                    json: async () => mockStudySession,
+                };
+            },
+        );
+
+        render(<StudyEditPage />);
+
+        expect(await screen.findByDisplayValue("Algorithms")).toBeInTheDocument();
+
+        await userEvent.click(
+            screen.getByRole("button", { name: /AI Suggestions/i }),
+        );
+
+        await waitFor(() => {
+            expect(
+                (global.fetch as jest.Mock).mock.calls.some(
+                    ([url]) => url === "/api/ai/study-track-draft",
+                ),
+            ).toBe(true);
+        });
+        const aiCall = (global.fetch as jest.Mock).mock.calls.find(
+            ([url]) => url === "/api/ai/study-track-draft",
+        );
+        const payload = JSON.parse(aiCall?.[1]?.body as string);
+        expect(payload).toEqual(
+            expect.objectContaining({
+                title: "Algorithms",
+                notes: "Graphs and Trees",
+                scheduledDate: "2026-01-01",
+                scheduledTime: "16:00",
+                focusMinutes: 25,
+                breakMinutes: 5,
+                totalPomodoro: 2,
+            }),
+        );
+        expect(payload).not.toHaveProperty("taskId");
+        expect(
+            await screen.findByDisplayValue("Standalone algorithm refresh"),
+        ).toBeInTheDocument();
+        expect(toast.error).not.toHaveBeenCalledWith(
+            "Choose a linked task before asking AI for session suggestions",
+        );
     });
 
     it("redirects when loading fails", async () => {

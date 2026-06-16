@@ -66,20 +66,22 @@ type StudyTrack = {
   attachments: File[];
 };
 
+type StudyTrackDraft = {
+  title: string;
+  start_date: string;
+  repeat_enabled: boolean;
+  repeat_every: number;
+  repeat_unit: "days" | "weeks";
+  time: string;
+  focus_minutes: number;
+  break_minutes: number;
+  total_pomodoros: number;
+  notes: string;
+  description_as_checklist: boolean;
+};
+
 type StudyTrackDraftPreview = {
-  tracks: {
-    title: string;
-    start_date: string;
-    repeat_enabled: boolean;
-    repeat_every: number;
-    repeat_unit: "days" | "weeks";
-    time: string;
-    focus_minutes: number;
-    break_minutes: number;
-    total_pomodoros: number;
-    notes: string;
-    description_as_checklist: boolean;
-  }[];
+  tracks: StudyTrackDraft[];
   warnings?: string[];
   reasoning?: string;
   skippedAttachments?: {
@@ -114,6 +116,14 @@ const combineDateTime = (date: Date, time: string) => {
   next.setMinutes(minutes);
   next.setSeconds(0, 0);
   return next;
+};
+
+const parseStudyTrackDate = (dateValue: string) => {
+  const [year, month, day] = dateValue.split("-").map(Number);
+  if (!year || !month || !day) return undefined;
+
+  const parsed = new Date(year, month - 1, day);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
 };
 
 const localDateValue = (date = new Date()) => format(date, "yyyy-MM-dd");
@@ -643,6 +653,67 @@ export default function StudyNewPage() {
     );
     setPlannerError(null);
     toast.success("AI study plan applied");
+  };
+
+  const applyStudyTrackToSingleSession = (track: StudyTrackDraft) => {
+    setTitle(track.title);
+    setNotes(track.notes);
+    setScheduledTime(track.time);
+    setFocusMinutes(track.focus_minutes);
+    setBreakMinutes(track.break_minutes);
+    setTotalPomodoro(track.total_pomodoros);
+    setDescriptionAsChecklist(track.description_as_checklist);
+    setRepeatEnabled(track.repeat_enabled);
+    setRepeatEvery(track.repeat_every);
+    setRepeatUnit(track.repeat_unit);
+
+    const draftDate = parseStudyTrackDate(track.start_date);
+    if (draftDate) setScheduledDate(draftDate);
+  };
+
+  const buildSingleStudyDraftPayload = () => ({
+    ...(selectedTask ? { taskId: selectedTask.id } : {}),
+    title: title.trim(),
+    notes: notes.trim(),
+    scheduledDate: scheduledDate ? localDateValue(scheduledDate) : null,
+    scheduledTime: scheduledTime || null,
+    focusMinutes: Math.max(1, Number(focusMinutes) || 25),
+    breakMinutes: Math.max(0, Number(breakMinutes) || 5),
+    totalPomodoro: Math.max(1, Number(totalPomodoro) || 2),
+    descriptionAsChecklist,
+  });
+
+  const requestSingleStudySessionDraft = async () => {
+    setStudyDraftLoading(true);
+    try {
+      const response = await fetch("/api/ai/study-track-draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildSingleStudyDraftPayload()),
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message ?? "Could not generate study session");
+      }
+
+      const firstTrack = (data?.draft as StudyTrackDraftPreview | undefined)
+        ?.tracks?.[0];
+      if (!firstTrack) {
+        throw new Error("AI did not return a study session suggestion");
+      }
+
+      applyStudyTrackToSingleSession(firstTrack);
+      toast.success("AI study session applied");
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Could not generate study session";
+      toast.error(message);
+    } finally {
+      setStudyDraftLoading(false);
+    }
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1767,7 +1838,11 @@ export default function StudyNewPage() {
               ) : null}
             </div>
 
-            <AiSuggestionsButton description="Get session ideas based on your title and attachments." />
+            <AiSuggestionsButton
+              description="Generate one study session from this form and optional linked task."
+              loading={studyDraftLoading}
+              onClick={requestSingleStudySessionDraft}
+            />
 
             <div className="flex gap-3 pt-2">
               <Button

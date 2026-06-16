@@ -207,23 +207,3 @@ export interface Project {
   createdAt: Date;
 }
 
-/** Type for the json format expected in AI responses */
-import type { AIResponseData } from '../lib/validation/ai';
-
-export interface AIRequest {
-  /** User's text message/prompt */
-  message: string;
-  /** Optional file names for attachments */
-  attachments?: string[];
-}
-
-export interface AIResponse {
-  /** Unique identifier for the AI response */
-  id: string;
-  /** AI's language response for the user's input */
-  chatResponse: string;
-  /** Structured JSON result from AI processing */
-  jsonFormat?: AIResponseData['jsonFormat'];
-  /** Timestamp when the response was created */
-  createdAt: Date;
-}
