@@ -30,9 +30,12 @@ jobs:
           cache: npm
 
       - name: Install dependencies
+        run: npm ci
+
+      - name: Migrate Prisma
         env:
           DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci?sslmode=disable
-        run: npm ci
+        run: npx prisma generate
 
       # - name: Lint
         # run: npm run lint
