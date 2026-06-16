@@ -160,6 +160,12 @@ describe("QuickTimerPage Component", () => {
             jest.advanceTimersByTime(60000);
         });
 
+        // Completion runs through a setTimeout(0) scheduled by an effect once the
+        // countdown hits zero; flush that pending timer so the status/toast apply.
+        act(() => {
+            jest.runOnlyPendingTimers();
+        });
+
         expect(screen.getByText(/completed/i)).toBeInTheDocument();
         expect(toast.success).toHaveBeenCalledWith("Session complete: WADS Security Sprint");
     });

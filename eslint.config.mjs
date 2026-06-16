@@ -13,6 +13,15 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  // Test files lean on `any` for partial mocks and resolved-value stubs, where
+  // full typing adds noise without catching real bugs. Keep the rule strict for
+  // production code; relax it only under __tests__.
+  {
+    files: ["__tests__/**"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;
