@@ -116,12 +116,82 @@ Explain:
 ---
 
 ## 9. Security Implementation (MANDATORY)
-Describe how your project handles:
-* Authentication (JWT / session)
-* Authorization (roles)
-* Input validation
-* Protection against: SQL/NoSQL Injection, XSS, and CSRF
-* Secure API key handling
+## Registration Process
+### (Frontend)
+- User fills in the registration form: `display_name`, `email`, `password`, `password confirmation`
+- User clicks **Sign Up**
+- Firebase SDK calls the function `createUserWithEmailAndPassword()`
+- Firebase creates a new user in the Firebase Auth console and returns a JSON web token
+- Frontend makes a `POST` request to `api/auth/firebase` (Note: The token is placed in the `Authorization` header as “Bearer <token>”)
+
+### (API)
+- The API extracts the JSON web token from the `Authorization` header
+- It calls `adminAuth.verifyIdToken()` to ensure that the token is a valid Firebase user
+- The API decodes the token and gets the `uid` and `email`
+
+### (Database Layer)
+- The API performs an upsert: it creates a new table row using the Firebase `uid` (which becomes the `user_id`), `user_name`, `user_email`, `avatar_url`, and updates the `user_last_login`
+
+### (API)
+- The API creates a session cookie to store the Firebase `idToken` to keep the user logged in
+- Lastly, it sends a `200 OK` status to the frontend, along with the newly created database user object
+
+### (Frontend)
+- Frontend receives the success response
+- User is redirected to the dashboard route
+- Because the session cookie is set, the function `getSession()` will recognize that the user has already been authenticated
+
+## Login Process
+
+### (Frontend)
+- User fills in email and password of an already authenticated account
+- User clicks **Sign In**
+- Firebase SDK calls the function `signInWithEmailAndPassword()`
+- Firebase validates the credentials
+- If found, it will return a JSON web token to the client
+- Frontend makes a `POST` request to `api/auth/firebase` (Note: The token is placed in the `Authorization` header as “Bearer <token>”)
+
+### (API)
+- The API extracts the string after the word “Bearer”
+- It calls `adminAuth.verifyIdToken(idToken)`
+- The API validates if the token is expired, does not exist, etc.
+- The API decodes the token which returns: `uid`, `email`, `profile picture`
+
+### (Database Layer)
+- The API looks at the Prisma database to find a matching email with the token
+- If it is found: it will update the `user_last_login` data
+- If it is not found: it will create a new table row
+
+### (API)
+- The API generates a session cookie to save the `idToken`
+- API sends a `200 OK` if the whole process is successful, as well as sending some of the user data to be used for the frontend
+
+### (Frontend)
+- User page is redirected to dashboard by using `router.push()`
+
+### Authentication:
+Our web app handles authentication by keeping it simple and secure with Firebase. When a user logs in or signs up, Firebase handles the heavy lifting of credential validation and hands back a JSON web token. We then pass that token to our API in the `Authorization` header, where we use `adminAuth.verifyIdToken()` to make sure the user is legit. 
+
+From there, we sync with our Prisma database to either update their last login or create a new row. Finally, the API creates a session cookie using Firebase's `createSessionCookie()`, which allows our `getSession()` function to call `verifySessionCookie()` on subsequent requests to keep them securely logged in. It’s a clean loop: authenticate with Firebase, verify at the API, sync with the database, and maintain the session with a secure cookie.
+
+### Authorization
+For authorization, we build on our authentication flow to ensure users only access what they are supposed to. Every time a protected route is requested, our API uses `getSession()` to run `verifySessionCookie()`, confirming the user is still valid. Once authenticated, we use the `uid` from that session to fetch the user’s specific roles or permissions from our Prisma database. We then compare those permissions against the requirements for the requested resource; if the user doesn’t have the necessary access, the API blocks the request with a `403 Forbidden` status.
+
+### Input validation
+To ensure data integrity and security, our web app uses Zod validation schemas for all incoming requests. This approach guarantees that the input provided by the user is correctly formatted, type-safe, and sanitized before it ever reaches our business logic or database layer. By enforcing these strict schema definitions at the API entry point, we can prevent malicious data from processing, ensuring a reliable and secure user experience.
+  
+### Protection against: SQL/NoSQL Injection, XSS, and CSRF
+#### Security: Injection Protection
+To keep our data safe from SQL and NoSQL injection attacks, we rely on **Prisma ORM** as our primary line of defense. By using Prisma’s parameterized queries, we ensure that user input is never executed as code; instead, it is treated strictly as data parameters, which effectively neutralizes injection attempts at the database driver level. Furthermore, our strict **Zod validation schemas** act as a critical gatekeeper, ensuring that any input reaching the database layer is already type-checked, sanitized, and stripped of unexpected characters or structures before it is ever processed.
+
+#### XSS
+For XSS, same as protection against SQL/NoSQL injection, we rely on the **Zod validation schemas** in sanitizing incoming data, as well as ensuring that the user requests is never treated as executable code.
+
+#### CSRF
+We defend against CSRF by making use of the proxy.ts (middleware). The proxy will check the CORS domain list and blocks any other unauthorized domains which tries to get resources and running malicious scripts.
+
+### Secure API key handling
+We kept our secret API keys in environment variables, making sure that it is in the gitignore file, this ensures that our secrets is not pushed to the github repo which lives in the public internet. For cicd deployment process, we added our API keys in github secrets, in order for the automatic github actions to be able to run smoothly and securely.
 
 ---
 
