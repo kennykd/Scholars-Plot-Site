@@ -60,7 +60,6 @@ AI features:<br>
 - A task and deadline manager where the user can describe a task in plain language, and an NLP parser extracts the deadline, grade weight, and estimated time required, instead of forcing the user to fill out multiple form fields by hand.
 - An AI priority score that combines deadline urgency (weighted more heavily as the deadline approaches, using a decay curve rather than a flat countdown), grade weight, and estimated effort into a single ranking, so the task list orders itself.
 - A schedule optimizer that proposes study sessions based on the user's actual weekly availability. Proposals stay as "ghost sessions" until the user explicitly confirms them, so the calendar never gets cluttered with suggestions nobody asked for.
-- An overload detector that flags when a given week's total estimated workload exceeds the time the user actually has available, surfacing a warning before the student is already buried.
 - A weight adapter that runs on a weekly schedule and quietly re-tunes how much each factor (urgency, grade weight, effort) matters for that specific user, based on how their actual study behavior compared to what the system originally predicted, so the system gets more personalized the longer it is used.
 - Ploty, an AI chat assistant, powered by Gemini, that lets the user ask questions about their workload, request a study plan, or create and modify tasks directly through conversation, with the assistant having context on the user's current tasks, availability, and past behavior.
 
