@@ -15,7 +15,7 @@ Class:
 Group Members (Max 3 – same class only):
 | Name | Student ID | Role | GitHub Username |
 | :--- | :--- | :--- | :--- |
-| Barri Nur Pratama | 2802501142 | | |
+| Barri Nur Pratama | 2802501142 | developer | Barrizzz |
 | Kenny Krixiadi | 2802529191 | | |
 | Rafie Mustika Ramasna | 2802522815 | | |
 
@@ -311,12 +311,17 @@ Which parts were assisted:
 ---
 
 ## 14. Known Limitations & Future Improvements
-* Current limitations:<br>
+Current limitations:<br>
+- Push notifications does not appear when you close the web app
+- There is not much things you can change in settings
 
-* Possible future enhancements:<br>
+Possible future enhancements:<br>
+- Improve the settings page to add more personalization
+- Implement outside app notifications
+- Clean up project section
 
-* AI limitations and risks:<br>
-
+AI limitations and risks:<br>
+- Unable to modify or delete tasks/study sessions (create only)
 
 ---
 
@@ -332,6 +337,57 @@ We declare that:
 * Rafie Mustika Ramasna
 
 ## 16. SETUP
+Setting up this automated deployment pipeline requires configuring four local configuration files, preparing your remote server, and linking them together via a GitHub Actions self-hosted runner.
+<br>
+### 1. Required Configuration Files
+<br>
+First we need to have these files in the github repository:
+<br>
+* **`.github/workflows/cicd.yml`:** The automated blueprint that coordinates the CI/CD pipeline stages (linting, testing, building, and deploying). It handles the trigger rules and specifies which jobs execute on the GitHub action runners.
+* **`Dockerfile`:** A multi-stage Dockerfile that manages our application's environments. It compiles project dependencies, initializes essential build arguments, runs a database migrator step, and defines the lightweight production runtime environment.
+* **`docker-compose.yml`:** The configuration file that manages our containers on the target server. It opens network ports (routing traffic to port `3026,` since this is our assigned port), references environment variables, and isolates application runtime layers from database migration states using custom profiles.
+* **`.dockerignore`:** Explicitly prevents build overhead and security leaks by ensuring local files like `node_modules`, `.next`, source code test directories, and local `.env` files are not sent to the Docker daemon.
+* **`.env.production`:** A file that holds our production secrets (database credentials, Firebase private keys, api endpoints, etc.). This file is **never** committed to Git for security purposes. Instead, it is dynamically generated on the server by the runner during a deployment run.
+
+---
 
 ## 17. DEPLOYMENT INSTRUCTIONS
-(Instructions on how to deploy the project)
+Before the GitHub Actions runner can fully automate your deployments, you must manually log into your production server and prepare the environment. This setup involves prepping the folder structure, verifying system access, and registering the runner application with GitHub.
+
+### SSH Remote Connection
+Connect to the secure server using the environment terminal (configured through the Cloudflare Access portal gateway)
+
+### Step 2: Configure & Enable Rootless Docker
+#### 1. Initialize rootless Docker setup script
+dockerd-rootless-setuptool.sh install
+
+#### 2. Reload and re-execute the user system daemon
+systemctl --user daemon-reexec
+systemctl --user daemon-reload
+
+#### 3. Enable and start the user-level Docker service
+systemctl --user enable --now docker.service
+
+#### 4. Verify Docker engine is running and fully accessible
+docker ps
+
+### Step 3: Install & Start the GitHub Actions Self-Hosted Runner
+#### 1. Create a dedicated workspace directory and download the runner package
+mkdir actions-runner && cd actions-runner
+curl -o actions-runner-linux-x64-2.324.0.tar.gz -L [https://github.com/actions/runner/releases/download/v2.324.0/actions-runner-linux-x64-2.324.0.tar.gz](https://github.com/actions/runner/releases/download/v2.324.0/actions-runner-linux-x64-2.324.0.tar.gz)
+
+#### 2. Unpack the compressed binaries
+tar xzf ./actions-runner-linux-x64-2.324.0.tar.gz
+
+#### 3. Register the runner against your repository using your GitHub configuration token
+./config.sh --url [https://github.com/your-username/your-repo](https://github.com/your-username/your-repo) --token YOUR_GITHUB_RUNNER_TOKEN
+
+#### 4. Install and launch the runner to run persistently as a system background service
+sudo ./svc.sh install
+sudo ./svc.sh start
+<br>
+Verify that the runner status turns Idle (Green) under your GitHub Repository Settings → Actions → Runners.
+
+### Step 4: Running the runner
+Lastly, push the code to `main` or any other branch that is set in the cicd, and the github runner will make a temporary .env.production in the server by looking at the github secrets and it will automatically deploy your latest commit.
+
