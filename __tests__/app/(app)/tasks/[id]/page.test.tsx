@@ -58,6 +58,30 @@ jest.mock(
   }),
 );
 
+// The page reaches the database/session through these modules; mock them so the
+// typed mock handles below are real jest mock functions.
+jest.mock("@/lib/firebase/auth", () => ({
+  getSession: jest.fn(),
+}));
+
+jest.mock("@/lib/services/taskService", () => ({
+  getTaskById: jest.fn(),
+  getStudySessionsForTask: jest.fn(),
+  serializeTask: jest.fn(),
+  TaskServiceError: class TaskServiceError extends Error {
+    status: number;
+    constructor(status: number, message: string) {
+      super(message);
+      this.name = "TaskServiceError";
+      this.status = status;
+    }
+  },
+}));
+
+jest.mock("@/lib/services/attachmentService", () => ({
+  listTaskAttachments: jest.fn(),
+}));
+
 // ---- Typed mocks ----
 const mockGetSession = getSession as jest.MockedFunction<typeof getSession>;
 const mockGetTaskById = getTaskById as jest.MockedFunction<typeof getTaskById>;
