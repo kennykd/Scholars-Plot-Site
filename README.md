@@ -300,41 +300,39 @@ We kept our secret API keys in environment variables, making sure that it is in 
 ### 10.2 Backend & API Testing
 | Test Case | Endpoint | Input | Expected Output | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| API-01 | `/api/ai/overload` | Authenticated overload run, list request, and mark-read request | Overload warning operations return the expected scoped responses; 5/5 assertions passed | Pass |
-| API-02 | `/api/ai/schedule` | Authenticated schedule generation and confirmation payloads | Schedule proposal and confirmation are scoped to the session user; 4/4 assertions passed | Pass |
-| API-03 | `/api/ai/study-track-draft` | Authenticated task ID for study-track draft generation | Study-track draft route validates task access and returns expected JSON/errors; 3/3 assertions passed | Pass |
-| API-04 | `/api/ai/task-draft` | Multipart task draft input with text and optional file | Task draft route uploads supported files and returns expected draft/error JSON; 3/3 assertions passed | Pass |
-| API-05 | `/api/ai/weight-adapter` | Session request and cron-secret batch request | Weight adaptation handles authenticated and cron-protected paths; 4/4 assertions passed | Pass |
-| API-06 | `/api/auth/firebase` | Firebase ID token login payload | Session cookie is created and user record is synchronized; 1/1 assertion passed | Pass |
-| API-07 | `/api/auth/logout` | Logout request | Session cookie is cleared; 1/1 assertion passed | Pass |
-| API-08 | `/api/chat/{conversationId}` | Conversation ID plus message action update/delete requests | Conversation reads, deletes, and action-status updates are session scoped; 5/5 assertions passed | Pass |
-| API-09 | `/api/chat` | Chat message payload and optional conversation ID | Chat creates or continues a conversation without trusting client user IDs; 4/4 assertions passed | Pass |
-| API-10 | Project API client helper | Project API success and failure responses | Client helper normalizes project responses and errors; 7/7 assertions passed | Pass |
-| API-11 | `/api/project/invite` | Project invite creation/listing payloads | Invite route validates ownership and invitee state; 4/4 assertions passed | Pass |
-| API-12 | `/api/project` | Project create/list payloads | Project route creates and lists session-visible projects correctly; 4/4 assertions passed | Pass |
-| API-13 | `/api/project/task/{id}/attachment` | Project task attachment upload/list request | Attachment route enforces project task access; 1/1 assertion passed | Pass |
-| API-14 | `/api/project/task/{id}` | Project task update/delete request | Project task mutation is authorized and validated; 1/1 assertion passed | Pass |
-| API-15 | `/api/project/task` | Project task creation payload | Project task create route validates and persists expected data; 1/1 assertion passed | Pass |
-| API-16 | `/api/study/attachment` | Study attachment multipart upload payload | Attachment is uploaded and linked only to valid study sessions; 3/3 assertions passed | Pass |
-| API-17 | `/api/study/batch` | Task-linked batch study-session plans | Batch route creates valid study sessions and rejects invalid plans; 5/5 assertions passed | Pass |
-| API-18 | `/api/study` | Study-session create/list payloads | Study sessions are created and listed for the authenticated user; 4/4 assertions passed | Pass |
-| API-19 | `/api/task/{id}/attachment` | Task attachment upload/list request | Attachment route enforces task ownership; 1/1 assertion passed | Pass |
-| API-20 | `/api/task/{id}` | Task read/update/delete request | Task route validates IDs, authorization, update fields, and delete behavior; 6/6 assertions passed | Pass |
-| API-21 | `/api/task` | Personal task create/list payload | Task route creates personal tasks and triggers expected service calls; 1/1 assertion passed | Pass |
-| API-22 | `/api/users/me` | Profile read/update/delete payloads | User profile route returns, updates, and deletes only the session user; 4/4 assertions passed | Pass |
-| API-23 | `/api/web-push/send` | Authenticated notification send payload | Web-push send route handles success, stale subscriptions, and auth checks; 5/5 assertions passed | Pass |
-| API-24 | Backend module: chat agent | Chat prompt, context, and draft-tool calls | Chat agent returns text or confirmable actions as expected; 4/4 assertions passed | Pass |
-| API-25 | Backend module: overload detector | Weekly scheduled sessions and unscheduled tasks | Detector returns expected overload severity and fallback behavior; 16/16 assertions passed | Pass |
-| API-26 | Backend module: schedule optimizer | Pending tasks, availability, and study preferences | Optimizer generates schedule-shaped output and handles edge cases; 16/16 assertions passed | Pass |
-| API-27 | Backend module: weight adapter | Completed-task history and current formula weights | Adapter updates, clamps, or preserves weights correctly; 18/18 assertions passed | Pass |
-| API-28 | Backend module: B2 bucket storage | Upload, signed URL, and delete storage inputs | Storage helper calls B2-compatible APIs correctly; 3/3 assertions passed | Pass |
-| API-29 | Backend module: crypto helpers | Plain numeric analytics values | Encryption/decryption helpers preserve metric values; 7/7 assertions passed | Pass |
-| API-30 | Backend module: AI service | Draft, attachment, prompt-safety, and timeout inputs | AI service validates outputs and returns expected draft/error behavior; 9/9 assertions passed | Pass |
-| API-31 | Backend module: project service | Project, member, invite, and task service inputs | Project service enforces ownership and returns expected records/errors; 13/13 assertions passed | Pass |
-| API-32 | Backend module: study session service | Study-session create/update/delete and repeat inputs | Study service persists sessions, repeats, reminders, and membership correctly; 16/16 assertions passed | Pass |
-| API-33 | Backend module: task service | Task create/update/delete service inputs | Task service serializes and mutates task data correctly; 4/4 assertions passed | Pass |
-| API-34 | Backend module: task status analytics | Task completion timing inputs | Analytics counters update for early/on-time/late completions; 3/3 assertions passed | Pass |
-| API-35 | Backend module: user service | User profile and public-user service inputs | User service returns safe user data and profile operations correctly; 4/4 assertions passed | Pass |
+| API-01 | `/api/ai/study-track-draft` | Authenticated task ID for study-track draft generation | Study-track draft route validates task access and returns expected JSON/errors; 3/3 assertions passed | Pass |
+| API-02 | `/api/ai/task-draft` | Multipart task draft input with text and optional file | Task draft route uploads supported files and returns expected draft/error JSON; 3/3 assertions passed | Pass |
+| API-03 | `/api/ai/weight-adapter` | Session request and cron-secret batch request | Weight adaptation handles authenticated and cron-protected paths; 4/4 assertions passed | Pass |
+| API-04 | `/api/auth/firebase` | Firebase ID token login payload | Session cookie is created and user record is synchronized; 1/1 assertion passed | Pass |
+| API-05 | `/api/auth/logout` | Logout request | Session cookie is cleared; 1/1 assertion passed | Pass |
+| API-06 | `/api/chat/{conversationId}` | Conversation ID plus message action update/delete requests | Conversation reads, deletes, and action-status updates are session scoped; 5/5 assertions passed | Pass |
+| API-07 | `/api/chat` | Chat message payload and optional conversation ID | Chat creates or continues a conversation without trusting client user IDs; 4/4 assertions passed | Pass |
+| API-08 | Project API client helper | Project API success and failure responses | Client helper normalizes project responses and errors; 7/7 assertions passed | Pass |
+| API-09 | `/api/project/invite` | Project invite creation/listing payloads | Invite route validates ownership and invitee state; 4/4 assertions passed | Pass |
+| API-10 | `/api/project` | Project create/list payloads | Project route creates and lists session-visible projects correctly; 4/4 assertions passed | Pass |
+| API-11 | `/api/project/task/{id}/attachment` | Project task attachment upload/list request | Attachment route enforces project task access; 1/1 assertion passed | Pass |
+| API-12 | `/api/project/task/{id}` | Project task update/delete request | Project task mutation is authorized and validated; 1/1 assertion passed | Pass |
+| API-13 | `/api/project/task` | Project task creation payload | Project task create route validates and persists expected data; 1/1 assertion passed | Pass |
+| API-14 | `/api/study/attachment` | Study attachment multipart upload payload | Attachment is uploaded and linked only to valid study sessions; 3/3 assertions passed | Pass |
+| API-15 | `/api/study/batch` | Task-linked batch study-session plans | Batch route creates valid study sessions and rejects invalid plans; 5/5 assertions passed | Pass |
+| API-16 | `/api/study` | Study-session create/list payloads | Study sessions are created and listed for the authenticated user; 4/4 assertions passed | Pass |
+| API-17 | `/api/task/{id}/attachment` | Task attachment upload/list request | Attachment route enforces task ownership; 1/1 assertion passed | Pass |
+| API-18 | `/api/task/{id}` | Task read/update/delete request | Task route validates IDs, authorization, update fields, and delete behavior; 6/6 assertions passed | Pass |
+| API-19 | `/api/task` | Personal task create/list payload | Task route creates personal tasks and triggers expected service calls; 1/1 assertion passed | Pass |
+| API-20 | `/api/users/me` | Profile read/update/delete payloads | User profile route returns, updates, and deletes only the session user; 4/4 assertions passed | Pass |
+| API-21 | `/api/web-push/send` | Authenticated notification send payload | Web-push send route handles success, stale subscriptions, and auth checks; 5/5 assertions passed | Pass |
+| API-22 | Backend module: chat agent | Chat prompt, context, and draft-tool calls | Chat agent returns text or confirmable actions as expected; 4/4 assertions passed | Pass |
+| API-23 | Backend module: overload detector | Weekly scheduled sessions and unscheduled tasks | Detector returns expected overload severity and fallback behavior; 16/16 assertions passed | Pass |
+| API-24 | Backend module: schedule optimizer | Pending tasks, availability, and study preferences | Optimizer generates schedule-shaped output and handles edge cases; 16/16 assertions passed | Pass |
+| API-25 | Backend module: weight adapter | Completed-task history and current formula weights | Adapter updates, clamps, or preserves weights correctly; 18/18 assertions passed | Pass |
+| API-26 | Backend module: B2 bucket storage | Upload, signed URL, and delete storage inputs | Storage helper calls B2-compatible APIs correctly; 3/3 assertions passed | Pass |
+| API-27 | Backend module: crypto helpers | Plain numeric analytics values | Encryption/decryption helpers preserve metric values; 7/7 assertions passed | Pass |
+| API-28 | Backend module: AI service | Draft, attachment, prompt-safety, and timeout inputs | AI service validates outputs and returns expected draft/error behavior; 9/9 assertions passed | Pass |
+| API-29 | Backend module: project service | Project, member, invite, and task service inputs | Project service enforces ownership and returns expected records/errors; 13/13 assertions passed | Pass |
+| API-30 | Backend module: study session service | Study-session create/update/delete and repeat inputs | Study service persists sessions, repeats, reminders, and membership correctly; 16/16 assertions passed | Pass |
+| API-31 | Backend module: task service | Task create/update/delete service inputs | Task service serializes and mutates task data correctly; 4/4 assertions passed | Pass |
+| API-32 | Backend module: task status analytics | Task completion timing inputs | Analytics counters update for early/on-time/late completions; 3/3 assertions passed | Pass |
+| API-33 | Backend module: user service | User profile and public-user service inputs | User service returns safe user data and profile operations correctly; 4/4 assertions passed | Pass |
 
 ### 10.3 Security Testing
 | Test Case | Attack Type | Expected Behavior | Result |
@@ -392,7 +390,7 @@ This subsection is intentionally left for the contributor handling AI functional
 | AI-15 | Gemini response contains injected extra fields (`injected_field`, `admin_mode`) | Extra fields stripped from result; not present on returned object | Pass |
 | AI-16 | Session `task_name` that is 5000 characters long | Function resolves without crashing | Pass |
 
-**Failure Handling:** Network errors and timeouts from Gemini are allowed to propagate as thrown exceptions rather than being swallowed, so the calling layer (the cron job or API route) can decide how to handle the failure — for example, skipping that user for the current run via `Promise.allSettled` rather than failing the entire batch. Missing fields in an otherwise-valid JSON response fall back to safe defaults (`overload_detected: false`, `severity: "none"`) instead of crashing or reporting a false overload.
+**Failure Handling:** Network errors and timeouts from Gemini are allowed to propagate as thrown exceptions rather than being swallowed, so the calling layer (the cron job or API route) can decide how to handle the failure — for example, skipping that user for the current run via `Promise.allSettled` rather than failing the entire batch. Missing fields in an otherwise-valid JSON response fall back to safe defaults instead of crashing.
 
 **AI Feature: Weight Adapter**
 
@@ -493,8 +491,6 @@ API endpoints handled:<br>
 - /api/project/[id]/member
 - /api/project/[id]/member/[memberId]
 - /api/ai
-- /api/ai/overload
-- /api/ai/schedule
 - /api/ai/weight-adapter
 - /api/chat
 - /api/chat/[conversationId]
