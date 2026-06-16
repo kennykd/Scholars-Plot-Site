@@ -340,14 +340,12 @@ We declare that:
 Setting up this automated deployment pipeline requires configuring four local configuration files, preparing your remote server, and linking them together via a GitHub Actions self-hosted runner.
 <br>
 ### 1. Required Configuration Files
-<br>
-First we need to have these files in the github repository:
-<br>
-* **`.github/workflows/cicd.yml`:** The automated blueprint that coordinates the CI/CD pipeline stages (linting, testing, building, and deploying). It handles the trigger rules and specifies which jobs execute on the GitHub action runners.
-* **`Dockerfile`:** A multi-stage Dockerfile that manages our application's environments. It compiles project dependencies, initializes essential build arguments, runs a database migrator step, and defines the lightweight production runtime environment.
-* **`docker-compose.yml`:** The configuration file that manages our containers on the target server. It opens network ports (routing traffic to port `3026,` since this is our assigned port), references environment variables, and isolates application runtime layers from database migration states using custom profiles.
-* **`.dockerignore`:** Explicitly prevents build overhead and security leaks by ensuring local files like `node_modules`, `.next`, source code test directories, and local `.env` files are not sent to the Docker daemon.
-* **`.env.production`:** A file that holds our production secrets (database credentials, Firebase private keys, api endpoints, etc.). This file is **never** committed to Git for security purposes. Instead, it is dynamically generated on the server by the runner during a deployment run.
+#### First we need to have these files in the github repository:
+- **`.github/workflows/cicd.yml:`** The automated blueprint that coordinates the CI/CD pipeline stages (linting, testing, building, and deploying). It handles the trigger rules and specifies which jobs execute on the GitHub action runners.
+- **`Dockerfile`:** A multi-stage Dockerfile that manages our application's environments. It compiles project dependencies, initializes essential build arguments, runs a database migrator step, and defines the lightweight production runtime environment.
+- **`docker-compose.yml`:** The configuration file that manages our containers on the target server. It opens network ports (routing traffic to port `3026,` since this is our assigned port), references environment variables, and isolates application runtime layers from database migration states using custom profiles.
+- **`.dockerignore`:** Explicitly prevents build overhead and security leaks by ensuring local files like `node_modules`, `.next`, source code test directories, and local `.env` files are not sent to the Docker daemon.
+- **`.env.production`:** A file that holds our production secrets (database credentials, Firebase private keys, api endpoints, etc.). This file is **never** committed to Git for security purposes. Instead, it is dynamically generated on the server by the runner during a deployment run.
 
 ---
 
