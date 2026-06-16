@@ -6,17 +6,17 @@ Institution: BINUS University International<br>
 
 ## 1. Project Information
 
-Project Title: Scholar's Plan Site<br>
+Project Title: Scholar's Plot Site<br>
 Project Domain: Study Planner & Productivity Tracker
 
 Class:
-[Class Code] – L4BC
+L4BC – B4BC
 
 Group Members (Max 3 – same class only):
 | Name | Student ID | Role | GitHub Username |
 | :--- | :--- | :--- | :--- |
 | Barri Nur Pratama | 2802501142 | developer | Barrizzz |
-| Kenny Krixiadi | 2802529191 | | |
+| Kenny Krixiadi | 2802529191 | developer | kennykd |
 | Rafie Mustika Ramasna | 2802522815 | | |
 
 ---
@@ -35,15 +35,36 @@ This repository must be shared with:
 ## 3. Project Overview
 
 ### 3.1 Problem Statement
-Explain:
-* What problem does this application solve?
-* Who are the target users?
+
+University students usually struggle not from a lack of tools to write tasks down, but from the lack of knowledge in using the list once it's written. Across a single semester, a student is juggling assignments from multiple courses at once, each with a different deadline, a different weight toward the final grade, and a different amount of actual work behind it. Mentally managing and organizing all of that every day is tiring, so what usually happens is people default to whatever feels most urgent right now rather than whatever would actually holds the strongest influence on their grade. That mismatch becomes most visible during midterms or finals, when several heavy assignments land in the same window, leading to last-minute scrambling, missed easy points, or burnout from cramming everything into the last few days.
+
+Most existing tools, such as Notion, Todoist, or a plain calendar app, are good at storage, capable of holding tasks and their dates, but they leave the actual decision-making (which task to tackle first, how much time to block off, when "busy" has crossed into "unsustainable") entirely on the user. They do not reason about the data that they are holding.
+
+The target users for this application are university students managing several concurrent courses where assignments carry different weight toward the final grade. This application is designed around a student who is organized enough to log their tasks, but does not have the time or mental bandwidth to manually recalculate priority and reschedule everything every time something new comes in. The project was built in hopes of helping any student carrying a multi-course workload at the same time.
 
 ### 3.2 Solution Overview
-Briefly describe:
-* Main features
-* Why this solution is appropriate
-* Where AI is used
+
+Scholar's Plot Site is built around one core idea: keep the ranking logic transparent and explainable, but let AI handle the parts that genuinely require language understanding, estimation, or pattern recognition. The application uses a priority ranking system, where priority calculation is determined by a strong foundational static formula that the AI sits on top of to handle the things a fixed rule cannot do well by itself.
+
+Concretely, the system consists of:
+
+Main Features:<br>
+- User authentication with email/password and Google sign-in,
+- Task management,
+- Study session management,
+- Project management + collaboration,
+- User dashboard and history,
+- Analytics,
+
+AI features:<br>
+- A task and deadline manager where the user can describe a task in plain language, and an NLP parser extracts the deadline, grade weight, and estimated time required, instead of forcing the user to fill out multiple form fields by hand.
+- An AI priority score that combines deadline urgency (weighted more heavily as the deadline approaches, using a decay curve rather than a flat countdown), grade weight, and estimated effort into a single ranking, so the task list orders itself.
+- A schedule optimizer that proposes study sessions based on the user's actual weekly availability. Proposals stay as "ghost sessions" until the user explicitly confirms them, so the calendar never gets cluttered with suggestions nobody asked for.
+- An overload detector that flags when a given week's total estimated workload exceeds the time the user actually has available, surfacing a warning before the student is already buried.
+- A weight adapter that runs on a weekly schedule and quietly re-tunes how much each factor (urgency, grade weight, effort) matters for that specific user, based on how their actual study behavior compared to what the system originally predicted, so the system gets more personalized the longer it is used.
+- Ploty, an AI chat assistant, powered by Gemini, that lets the user ask questions about their workload, request a study plan, or create and modify tasks directly through conversation, with the assistant having context on the user's current tasks, availability, and past behavior.
+
+This application fulfills the AI requirement not by simply sticking one AI feature into a regular to-do app, but by utilizing AI specifically where a fixed rule cannot do the job well: turning free text into structured data, estimating something inherently uncertain like how long a task will take, spotting workload patterns over time, and adapting to each user instead of treating everyone the same.
 
 ---
 
@@ -53,7 +74,7 @@ Frontend : Next.js<br>
 Backend : Node.js or Next.js<br>
 API REST : API<br>
 Database : PostgreSQL / Firebase (for auth only)<br>
-Containerization: Docker<br>
+Containerization : Docker<br>
 Deployment : University Server<br>
 Version Control : GitHub<br>
 
