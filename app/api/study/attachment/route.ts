@@ -28,6 +28,47 @@ function parseStudySessionIds(raw: FormDataEntryValue | null) {
   }
 }
 
+/**
+ * @swagger
+ * /api/study/attachment:
+ *   post:
+ *     summary: Upload an attachment and link it to study sessions
+ *     tags:
+ *       - Study Sessions
+ *     description: >
+ *       Requires the session cookie. Accepts multipart form data, uploads the file to
+ *       storage, creates an attachment row for the user, and links it to each supplied
+ *       study session owned by the user.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [file, studySessionIds]
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: Required file, maximum 10MB.
+ *               studySessionIds:
+ *                 type: string
+ *                 description: JSON array of positive integer study session IDs.
+ *                 example: "[1,2,3]"
+ *     responses:
+ *       201:
+ *         description: Attachment uploaded and linked.
+ *       400:
+ *         description: Invalid form data, missing file, file exceeds 10MB, or no valid study session IDs.
+ *       401:
+ *         description: Not authenticated.
+ *       404:
+ *         description: Attachment or study session not found for this user.
+ *       409:
+ *         description: Account record needs repair (foreign key error).
+ *       500:
+ *         description: Error uploading attachment.
+ */
 export async function POST(request: Request) {
   try {
     const session = await getSession();

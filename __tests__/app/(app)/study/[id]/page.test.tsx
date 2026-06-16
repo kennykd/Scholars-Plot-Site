@@ -44,10 +44,17 @@ const mockSessionResponse = {
         focus_minutes: 25,
         break_minutes: 5,
         total_minutes: 60,
-        study_session_user: [
+        study_session_user: [],
+        // The page reads attachments from study_session_attachments[].attachment.
+        study_session_attachments: [
             {
                 attachment: {
+                    attachment_id: 1,
                     file_name: "notes.pdf",
+                    file_path: "uploads/notes.pdf",
+                    file_type: "application/pdf",
+                    url: "https://example.com/notes.pdf",
+                    attachment_uploaded_at: "2025-01-01T09:00:00.000Z",
                 },
             },
         ],

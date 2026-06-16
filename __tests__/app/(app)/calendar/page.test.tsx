@@ -6,6 +6,11 @@ import { getSession } from "@/lib/firebase/auth";
 import { getTasks, serializeTask } from "@/lib/services/taskService";
 import prisma from "@/lib/prisma";
 
+type Session = Awaited<ReturnType<typeof getSession>>;
+type TaskRows = Awaited<ReturnType<typeof getTasks>>;
+type SerializedTask = ReturnType<typeof serializeTask>;
+type StudySessionRows = Awaited<ReturnType<typeof prisma.studySessionUser.findMany>>;
+
 jest.mock("next/navigation", () => ({
     redirect: jest.fn(() => {
         throw new Error("NEXT_REDIRECT");
@@ -31,7 +36,13 @@ jest.mock("@/lib/prisma", () => ({
 }));
 
 jest.mock("@/app/components/calendar/calendar-view", () => ({
-    CalendarView: ({ tasks, sessions }: any) => (
+    CalendarView: ({
+        tasks,
+        sessions,
+    }: {
+        tasks: unknown[];
+        sessions: unknown[];
+    }) => (
         <div data-testid="calendar-view">
             <div data-testid="task-count">{tasks.length}</div>
             <div data-testid="session-count">{sessions.length}</div>
@@ -65,7 +76,10 @@ describe("CalendarPage", () => {
     it("renders calendar with tasks and study sessions", async () => {
         mockedGetSession.mockResolvedValue({
             id: "user-123",
-        } as any);
+            email: "user@example.com",
+            name: null,
+            image: null,
+        } satisfies Session);
 
         const taskRows = [
             { id: "task-1", title: "Task 1" },
@@ -77,11 +91,11 @@ describe("CalendarPage", () => {
             { id: "task-2", title: "Task 2" },
         ];
 
-        mockedGetTasks.mockResolvedValue(taskRows as any);
+        mockedGetTasks.mockResolvedValue(taskRows as unknown as TaskRows);
 
         mockedSerializeTask
-            .mockReturnValueOnce(serializedTasks[0] as any)
-            .mockReturnValueOnce(serializedTasks[1] as any);
+            .mockReturnValueOnce(serializedTasks[0] as unknown as SerializedTask)
+            .mockReturnValueOnce(serializedTasks[1] as unknown as SerializedTask);
 
         mockedFindMany.mockResolvedValue([
             {
@@ -104,7 +118,7 @@ describe("CalendarPage", () => {
                     focus_minutes: 45,
                 },
             },
-        ] as any);
+        ] as unknown as StudySessionRows);
 
         const Page = await CalendarPage();
 
@@ -139,7 +153,10 @@ describe("CalendarPage", () => {
     it("serializes all tasks", async () => {
         mockedGetSession.mockResolvedValue({
             id: "user-123",
-        } as any);
+            email: "user@example.com",
+            name: null,
+            image: null,
+        } satisfies Session);
 
         const taskRows = [
             { id: "1" },
@@ -147,10 +164,10 @@ describe("CalendarPage", () => {
             { id: "3" },
         ];
 
-        mockedGetTasks.mockResolvedValue(taskRows as any);
+        mockedGetTasks.mockResolvedValue(taskRows as unknown as TaskRows);
 
         mockedSerializeTask.mockImplementation(
-            (task) => task as any
+            (task) => task as unknown as SerializedTask
         );
 
         mockedFindMany.mockResolvedValue([]);
@@ -178,7 +195,10 @@ describe("CalendarPage", () => {
     it("renders empty state data", async () => {
         mockedGetSession.mockResolvedValue({
             id: "user-123",
-        } as any);
+            email: "user@example.com",
+            name: null,
+            image: null,
+        } satisfies Session);
 
         mockedGetTasks.mockResolvedValue([]);
         mockedFindMany.mockResolvedValue([]);
@@ -199,11 +219,14 @@ describe("CalendarPage", () => {
     it("maps study session data correctly", async () => {
         mockedGetSession.mockResolvedValue({
             id: "user-123",
-        } as any);
+            email: "user@example.com",
+            name: null,
+            image: null,
+        } satisfies Session);
 
         mockedGetTasks.mockResolvedValue([]);
         mockedSerializeTask.mockImplementation(
-            (task) => task as any
+            (task) => task as unknown as SerializedTask
         );
 
         const sessionDate = new Date(
@@ -219,7 +242,7 @@ describe("CalendarPage", () => {
                     focus_minutes: 90,
                 },
             },
-        ] as any);
+        ] as unknown as StudySessionRows);
 
         const Page = await CalendarPage();
 

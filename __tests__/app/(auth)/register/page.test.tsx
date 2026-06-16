@@ -28,7 +28,9 @@ jest.mock("firebase/auth", () => ({
     createUserWithEmailAndPassword: jest.fn(),
     signInWithPopup: jest.fn(),
     sendEmailVerification: jest.fn(),
-    GoogleAuthProvider: jest.fn(),
+    GoogleAuthProvider: jest.fn(() => ({
+        setCustomParameters: jest.fn(),
+    })),
 }));
 
 jest.mock("sonner", () => ({
@@ -346,6 +348,8 @@ describe("RegisterPage", () => {
 
     it("registers successfully with Google", async () => {
         const user = userEvent.setup();
+
+        mockFetch.mockResolvedValue({ ok: true });
 
         (signInWithPopup as jest.Mock).mockResolvedValue({
             user: {

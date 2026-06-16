@@ -22,6 +22,109 @@ function parseConversationId(params: { conversationId: string }): number | null 
   return Number.isNaN(id) || id <= 0 ? null : id;
 }
 
+/**
+ * @swagger
+ * /api/chat/{conversationId}:
+ *   get:
+ *     summary: Get a chat conversation and its messages
+ *     tags:
+ *       - Chat
+ *     parameters:
+ *       - in: path
+ *         name: conversationId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *     responses:
+ *       200:
+ *         description: Conversation retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 conversation:
+ *                   type: object
+ *       400:
+ *         description: Invalid conversation ID.
+ *       401:
+ *         description: Not authenticated.
+ *       404:
+ *         description: Conversation not found.
+ *       500:
+ *         description: Failed to fetch conversation.
+ *   delete:
+ *     summary: Delete a chat conversation
+ *     tags:
+ *       - Chat
+ *     parameters:
+ *       - in: path
+ *         name: conversationId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *     responses:
+ *       200:
+ *         description: Conversation deleted.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 deleted_id:
+ *                   type: integer
+ *       400:
+ *         description: Invalid conversation ID.
+ *       401:
+ *         description: Not authenticated.
+ *       404:
+ *         description: Conversation not found.
+ *       500:
+ *         description: Failed to delete conversation.
+ *   patch:
+ *     summary: Update a chat message action status
+ *     tags:
+ *       - Chat
+ *     parameters:
+ *       - in: path
+ *         name: conversationId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *         description: Parsed and validated, but the update is scoped by message ownership.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [message_id, action_status]
+ *             properties:
+ *               message_id:
+ *                 type: integer
+ *                 minimum: 1
+ *               action_status:
+ *                 type: string
+ *                 enum: [confirmed, dismissed]
+ *     responses:
+ *       200:
+ *         description: Action status updated.
+ *       400:
+ *         description: Invalid conversation ID or JSON body.
+ *       401:
+ *         description: Not authenticated.
+ *       404:
+ *         description: Message not found.
+ *       422:
+ *         description: Validation failed.
+ *       500:
+ *         description: Failed to update action status.
+ */
 export async function GET(
   _req: NextRequest,
   { params }: ConversationRouteContext,

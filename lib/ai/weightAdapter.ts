@@ -43,12 +43,6 @@ const SYSTEM_PROMPT = `You are a behavioral analysis assistant for a student pro
 Analyze the student's task completion history and suggest personalized formula weight adjustments.
 Return structured JSON only. No preamble, no explanation, no text outside the JSON object.`;
 
-const BASELINE_WEIGHTS: CurrentWeights = {
-  w_impact: 3.0,
-  w_ease: 3.0,
-  w_urgency: 4.0,
-};
-
 const MAX_DEVIATION = {
   conservative: 0.5,
   moderate: 1.0,
@@ -70,7 +64,6 @@ function clampWeight(
   magnitude: "conservative" | "moderate" | "full"
 ): number {
   const maxDev = MAX_DEVIATION[magnitude];
-  const baseline = BASELINE_WEIGHTS.w_impact; // all baselines are in 1-5 range
   const min = Math.max(0.5, current - maxDev);
   const max = Math.min(8.0, current + maxDev);
   return Math.round(Math.min(max, Math.max(min, suggested)) * 100) / 100;

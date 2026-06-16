@@ -12,6 +12,53 @@ import {
 
 export const runtime = 'nodejs';
 
+/**
+ * @swagger
+ * /api/ai/study-track-draft:
+ *   post:
+ *     summary: Generate an AI study-track draft (batch of study sessions) for a task
+ *     description: >
+ *       Builds a study plan for the given task using the user's availability, preferences,
+ *       behavior profile, and task attachments. Authenticated; the user comes from the
+ *       session cookie.
+ *     tags:
+ *       - AI
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - taskId
+ *             properties:
+ *               taskId:
+ *                 type: integer
+ *                 minimum: 1
+ *     responses:
+ *       200:
+ *         description: Draft generated.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 draft:
+ *                   type: object
+ *       400:
+ *         description: Invalid JSON body or validation failure.
+ *       401:
+ *         description: Not authenticated.
+ *       403:
+ *         description: No access to this task.
+ *       404:
+ *         description: Task not found.
+ *       504:
+ *         description: AI request timed out.
+ *       500:
+ *         description: Error generating study track draft.
+ */
+
 const requestSchema = z.object({
   taskId: z.coerce.number().int().positive(),
 });

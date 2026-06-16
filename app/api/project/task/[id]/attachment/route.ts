@@ -16,6 +16,76 @@ type RouteContext = {
 const idSchema = z.coerce.number().int().positive();
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
+/**
+ * @swagger
+ * /api/project/task/{id}/attachment:
+ *   get:
+ *     summary: List attachments for a project task
+ *     tags:
+ *       - Projects
+ *     description: Requires the session cookie and project task membership.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *     responses:
+ *       200:
+ *         description: Attachments retrieved successfully.
+ *       400:
+ *         description: Invalid task id.
+ *       401:
+ *         description: Not authenticated.
+ *       403:
+ *         description: User is not a project member.
+ *       404:
+ *         description: Project task not found.
+ *       500:
+ *         description: Error retrieving attachments.
+ *   post:
+ *     summary: Upload an attachment for a project task
+ *     tags:
+ *       - Projects
+ *     description: >
+ *       Requires the session cookie. Owners and assigned members can manage task
+ *       attachments. Uploads the file to storage and creates an attachment row.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [file]
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: Required file, maximum 10MB.
+ *     responses:
+ *       201:
+ *         description: Attachment uploaded successfully.
+ *       400:
+ *         description: Invalid task id, invalid form data, missing file, or file exceeds 10MB.
+ *       401:
+ *         description: Not authenticated.
+ *       403:
+ *         description: User cannot manage attachments for this project task.
+ *       404:
+ *         description: Project task not found.
+ *       409:
+ *         description: Account record needs repair (foreign key error).
+ *       500:
+ *         description: Error uploading attachment.
+ */
 export async function GET(_: Request, context: RouteContext) {
   try {
     const session = await getSession();

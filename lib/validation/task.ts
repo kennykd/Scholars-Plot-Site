@@ -28,7 +28,6 @@ export const updateTaskSchema = z.object({
   deadline: z.coerce.date()
     .optional(),
   status: z.enum(['Pending', 'In_Progress', 'Completed'])
-    .default('Pending')
     .optional(),
   description: z.string()
     .optional(),

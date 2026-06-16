@@ -96,6 +96,12 @@ function getWeekBounds(now: Date): { start: Date; end: Date } {
   return { start, end };
 }
 
+function jsonObject(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
 // ─── Context Builder ──────────────────────────────────────────────────────────
 
 export async function buildChatContext(userId: string): Promise<ChatContext> {
@@ -164,18 +170,23 @@ export async function buildChatContext(userId: string): Promise<ChatContext> {
       scheduled_at: formattedDate, 
       total_minutes: s.total_minutes,
       task_name: s.task_name,
-      // 1. Add the missing status property here!
-      // Try s.status, s.sessionStatus, or use a fallback string if it isn't on the database object
-      status: (s as any).status || (s as any).sessionStatus || "idle", 
+      status: "idle",
     };
   });
 
   // Active overload warning — most recent unread only
   const latestWarning = rawWarnings.find((w) => !w.is_read) ?? null;
+  const latestWarningBody = jsonObject(latestWarning?.warnings);
   const active_overload_warning = latestWarning
     ? {
-      severity: (latestWarning.warnings as any)?.severity ?? "unknown",
-      summary: (latestWarning.warnings as any)?.summary ?? null,
+      severity:
+        typeof latestWarningBody?.severity === "string"
+          ? latestWarningBody.severity
+          : "unknown",
+      summary:
+        typeof latestWarningBody?.summary === "string"
+          ? latestWarningBody.summary
+          : null,
     }
     : null;
 

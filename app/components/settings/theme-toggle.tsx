@@ -1,7 +1,7 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 const themes = [
   { id: "light", name: "LIGHT", bg: "bg-[#F2F2F2]", border: "border-gray-300" },
@@ -10,11 +10,19 @@ const themes = [
   { id: "emerald", name: "EMERALD", bg: "bg-[#0A1C10]", border: "border-emerald-950" },
 ];
 
+function subscribeToMounted(onStoreChange: () => void) {
+  onStoreChange();
+  return () => {};
+}
+
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(
+    subscribeToMounted,
+    () => true,
+    () => false,
+  );
 
-  useEffect(() => setMounted(true), []);
   if (!mounted) return <div className="h-24 animate-pulse bg-white/5 rounded-xl" />;
 
   return (

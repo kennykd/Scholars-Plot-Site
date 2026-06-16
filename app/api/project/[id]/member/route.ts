@@ -18,10 +18,9 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *         name: id
  *         required: true
  *         schema:
- *           type: string
- *           format: uuid
- *         description: The unique ID of the project
- *         example: "123e4567-e89b-12d3-a456-426614174000"
+ *           type: integer
+ *           minimum: 1
+ *         description: Numeric project ID.
  *     requestBody:
  *       required: true
  *       content:
@@ -47,7 +46,7 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *                 example: "jordan@scholar.plot"
  *               role:
  *                 type: string
- *                 enum: [owner, moderator, member]
+ *                 enum: [owner, moderator, collaborator, member]
  *                 example: member
  *     responses:
  *       201:
@@ -63,7 +62,7 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *                 member:
  *                   $ref: '#/components/schemas/ProjectMember'
  *       400:
- *         description: Validation failed or invalid JSON
+ *         description: Invalid project id, invalid JSON, validation failed, or referenced member does not exist
  *         content:
  *           application/json:
  *             schema:
@@ -78,6 +77,10 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *                     type: array
  *                     items:
  *                       type: string
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Only the project owner can manage members
  *       404:
  *         description: Project not found
  *         content:
@@ -89,7 +92,7 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *                   type: string
  *                   example: Project not found
  *       409:
- *         description: Member already in project
+ *         description: Member already in project or account record needs repair
  *         content:
  *           application/json:
  *             schema:

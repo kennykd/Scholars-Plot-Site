@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import "@testing-library/jest-dom";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import StudyNewPage from "@/app/(app)/study/new/page"; // Adjusted to standard Next.js routing conventions
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
@@ -19,6 +19,7 @@ jest.mock("sonner", () => ({
         success: jest.fn(),
         error: jest.fn(),
         info: jest.fn(),
+        warning: jest.fn(),
     },
 }));
 
@@ -67,7 +68,7 @@ describe("StudyNewPage Component", () => {
         expect(screen.getByText("NEW STUDY SESSION")).toBeInTheDocument();
 
         // Default computation check: (25m Focus + 5m Break) * 2 Pomodoros = 60m
-        expect(screen.getByText("Total Minutes: 60m")).toBeInTheDocument();
+        expect(screen.getByText("Total minutes: 60m")).toBeInTheDocument();
     });
 
     it("should dynamically recalculate total minutes when session structural parameters alter", () => {
@@ -88,7 +89,7 @@ describe("StudyNewPage Component", () => {
         fireEvent.change(pomodoroInput, { target: { value: "3" } });
 
         // 3. Verify computation updates correctly: (45 + 15) * 3 = 180m
-        expect(screen.getByText("Total Minutes: 180m")).toBeInTheDocument();
+        expect(screen.getByText("Total minutes: 180m")).toBeInTheDocument();
     });
 
     it("should display validation toast exceptions if submission properties are absent", async () => {
@@ -100,7 +101,7 @@ describe("StudyNewPage Component", () => {
         expect(toast.error).toHaveBeenCalledWith("Session title is required");
 
         // Add valid title input text strings
-        const titleInput = screen.getByPlaceholderText(/e.g. Website Application Design/i);
+        const titleInput = screen.getByPlaceholderText(/e.g. Biology chapter 6 review/i);
         fireEvent.change(titleInput, { target: { value: "WADS Revision Marathon" } });
 
         // Test missing date configurations exception
@@ -169,6 +170,6 @@ describe("StudyNewPage Component", () => {
         const aiBtn = screen.getByRole("button", { name: /AI Suggestions/i });
         fireEvent.click(aiBtn);
 
-        expect(toast.info).toHaveBeenCalledWith("AI suggestions coming soon!");
+        expect(toast.warning).toHaveBeenCalledWith("AI suggestions coming soon!");
     });
 });

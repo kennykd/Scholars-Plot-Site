@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight, Mail, PencilRuler } from "lucide-react";
+import { ArrowRight, PencilRuler } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const PRODUCT_LINKS = [

@@ -28,6 +28,53 @@ function getPushStatusCode(error: unknown) {
   return null;
 }
 
+/**
+ * @swagger
+ * /api/web-push/send:
+ *   post:
+ *     summary: Send a web-push notification to the authenticated user
+ *     description: Sends a push notification to the signed-in user's stored subscription. Stale subscriptions (404/410 from the push service, or unparseable stored data) are cleared automatically.
+ *     tags:
+ *       - Web Push
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - title
+ *               - body
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 minLength: 1
+ *                 maxLength: 120
+ *               body:
+ *                 type: string
+ *                 minLength: 1
+ *                 maxLength: 500
+ *               url:
+ *                 type: string
+ *                 default: "/"
+ *                 description: Must start with "/". Used as the notification target and default tag.
+ *               tag:
+ *                 type: string
+ *                 maxLength: 200
+ *     responses:
+ *       200:
+ *         description: Notification sent.
+ *       400:
+ *         description: Invalid JSON body or validation failure.
+ *       401:
+ *         description: Not authenticated.
+ *       404:
+ *         description: User not found or not subscribed to push notifications.
+ *       410:
+ *         description: Stored subscription is invalid or no longer valid (it is cleared).
+ *       500:
+ *         description: Push service not configured or sending failed.
+ */
 export async function POST(request: Request) {
   const session = await getSession();
   if (!session) {

@@ -15,6 +15,74 @@ function isServiceError(error: unknown): error is { status: number; message: str
     );
 }
 
+/**
+ * @swagger
+ * /api/project/invite:
+ *   get:
+ *     summary: List pending project invites for the authenticated user
+ *     tags:
+ *       - Projects
+ *     description: Requires the session cookie and returns pending invites where the user is the invitee.
+ *     responses:
+ *       200:
+ *         description: Pending invites returned.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 invites:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       401:
+ *         description: Not Authenticated.
+ *       500:
+ *         description: Internal Server Error.
+ *   post:
+ *     summary: Invite a user to a project
+ *     tags:
+ *       - Projects
+ *     description: >
+ *       Requires the session cookie. The sender must be the project owner. The target
+ *       can be supplied by user ID or email. Creates or resets a pending invite.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [projectId]
+ *             properties:
+ *               projectId:
+ *                 oneOf:
+ *                   - type: integer
+ *                   - type: string
+ *                 description: Numeric project ID; strings may include a project- prefix.
+ *               targetUserId:
+ *                 type: string
+ *               targetUserEmail:
+ *                 type: string
+ *                 format: email
+ *             anyOf:
+ *               - required: [targetUserId]
+ *               - required: [targetUserEmail]
+ *     responses:
+ *       201:
+ *         description: Invite sent successfully.
+ *       400:
+ *         description: Invalid JSON body or missing/invalid required fields.
+ *       401:
+ *         description: Not Authenticated.
+ *       403:
+ *         description: Sender is not the project owner.
+ *       404:
+ *         description: Target user not found.
+ *       409:
+ *         description: Target user is already a project member.
+ *       500:
+ *         description: Internal Server Error.
+ */
 export async function GET() {
     try {
         const session = await getSession();

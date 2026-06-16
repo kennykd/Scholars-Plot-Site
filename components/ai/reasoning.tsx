@@ -3,7 +3,7 @@
 import { useControllableState } from "@radix-ui/react-use-controllable-state";
 import { BrainIcon, ChevronDownIcon } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
-import { createContext, memo, useContext, useEffect, useState } from "react";
+import { createContext, memo, useContext, useEffect, useRef, useState } from "react";
 import { Streamdown } from "streamdown";
 import {
   Collapsible,
@@ -63,19 +63,19 @@ export const Reasoning = memo(
     });
 
     const [hasAutoClosed, setHasAutoClosed] = useState(false);
-    const [startTime, setStartTime] = useState<number | null>(null);
+    const startTimeRef = useRef<number | null>(null);
 
     // Track duration when streaming starts and ends
     useEffect(() => {
       if (isStreaming) {
-        if (startTime === null) {
-          setStartTime(Date.now());
+        if (startTimeRef.current === null) {
+          startTimeRef.current = Date.now();
         }
-      } else if (startTime !== null) {
-        setDuration(Math.ceil((Date.now() - startTime) / MS_IN_S));
-        setStartTime(null);
+      } else if (startTimeRef.current !== null) {
+        setDuration(Math.ceil((Date.now() - startTimeRef.current) / MS_IN_S));
+        startTimeRef.current = null;
       }
-    }, [isStreaming, startTime, setDuration]);
+    }, [isStreaming, setDuration]);
 
     // Auto-open when streaming starts, auto-close when streaming ends (once only)
     useEffect(() => {
@@ -194,7 +194,7 @@ export default function ReasoningDemo() {
         <ReasoningTrigger />
         <ReasoningContent>
           Let me think through this step by step... First, I need to consider
-          the user's requirements. They want a solution that is both efficient
+          the user&apos;s requirements. They want a solution that is both efficient
           and maintainable. Looking at the codebase, I can see several potential
           approaches: 1. **Refactor the existing module** - This would minimize
           disruption 2. **Create a new abstraction layer** - More work but

@@ -11,6 +11,9 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  * /api/project/task:
  *   post:
  *     summary: Create a new task within a project
+ *     description: >
+ *       Requires the session cookie. Only the project owner can create project tasks.
+ *       Optionally assigns a user and attaches draft attachment IDs owned by the caller.
  *     tags:
  *       - Projects
  *     requestBody:
@@ -22,14 +25,15 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *             required:
  *               - projectId
  *               - title
+ *               - deadline
  *               - priority
  *               - status
  *             properties:
  *               projectId:
- *                 type: string
- *                 minLength: 1
+ *                 type: integer
+ *                 minimum: 1
  *                 description: ID of the project to add the task to
- *                 example: "project-001"
+ *                 example: 1
  *               title:
  *                 type: string
  *                 minLength: 1
@@ -38,14 +42,19 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *               description:
  *                 type: string
  *                 example: "Lock requirements and success criteria for the MVP."
- *               priority:
+ *               deadline:
  *                 type: string
- *                 enum: [low, medium, high]
- *                 example: high
+ *                 format: date-time
+ *                 description: Must be in the future.
+ *               priority:
+ *                 type: number
+ *                 minimum: 0.5
+ *                 maximum: 5
+ *                 example: 3
  *               status:
  *                 type: string
- *                 enum: [not-done, pending, done]
- *                 example: not-done
+ *                 enum: [Pending, In_Progress, Completed]
+ *                 example: Pending
  *               assignedTo:
  *                 type: string
  *                 description: Member ID to assign the task to
@@ -55,6 +64,12 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *                 items:
  *                   type: string
  *                 example: ["spec.pdf"]
+ *               attachmentIds:
+ *                 type: array
+ *                 maxItems: 20
+ *                 items:
+ *                   type: integer
+ *                   minimum: 1
  *     responses:
  *       201:
  *         description: Project task created successfully
@@ -69,7 +84,7 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *                 task:
  *                   $ref: '#/components/schemas/ProjectTask'
  *       400:
- *         description: Validation failed or invalid JSON
+ *         description: Invalid JSON, validation failed, assigned user does not exist, or draft attachments are unavailable
  *         content:
  *           application/json:
  *             schema:
@@ -84,6 +99,10 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *                     type: array
  *                     items:
  *                       type: string
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Only the project owner can create project tasks
  *       404:
  *         description: Project not found
  *         content:
@@ -94,6 +113,8 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *                 message:
  *                   type: string
  *                   example: Project not found
+ *       409:
+ *         description: Account record needs repair (foreign key error)
  *       500:
  *         description: Internal server error
  *         content:

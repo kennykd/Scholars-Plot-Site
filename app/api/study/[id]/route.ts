@@ -7,8 +7,8 @@ import { getSession } from '@/lib/firebase/auth';
 /**
  * @swagger
  * /api/study/{id}:
- *   patch:
- *     summary: Update a study session by ID
+ *   get:
+ *     summary: Get one study session for the authenticated user
  *     tags:
  *       - Study Sessions
  *     parameters:
@@ -16,10 +16,44 @@ import { getSession } from '@/lib/firebase/auth';
  *         name: id
  *         required: true
  *         schema:
- *           type: string
- *           format: uuid
- *         description: The unique ID of the study session to update
- *         example: "123e4567-e89b-12d3-a456-426614174000"
+ *           type: integer
+ *           minimum: 1
+ *     responses:
+ *       200:
+ *         description: Study session retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 studySession:
+ *                   type: object
+ *                 userSessionData:
+ *                   type: object
+ *       400:
+ *         description: Invalid Study Session ID.
+ *       401:
+ *         description: Unauthorized.
+ *       404:
+ *         description: Study session not found for this user.
+ *       500:
+ *         description: Error retrieving study session.
+ *   patch:
+ *     summary: Update a study session by ID
+ *     description: >
+ *       Updates authenticated-user membership fields and/or shared study session fields.
+ *       Completing a session can update focus-minute analytics and streak activity.
+ *     tags:
+ *       - Study Sessions
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           minimum: 1
  *     requestBody:
  *       required: true
  *       content:
@@ -28,86 +62,71 @@ import { getSession } from '@/lib/firebase/auth';
  *             type: object
  *             minProperties: 1
  *             properties:
- *               taskId:
- *                 type: string
- *                 example: "task-002"
- *               taskTitle:
+ *               study_session_name:
  *                 type: string
  *                 minLength: 1
  *                 maxLength: 100
- *                 example: "Data Structures Assignment 3"
- *               duration:
- *                 type: number
+ *               study_session_description:
+ *                 type: string
+ *               focus_minutes:
+ *                 type: integer
  *                 minimum: 1
- *                 description: Updated study duration in minutes
- *                 example: 50
- *               breakDuration:
- *                 type: number
+ *               break_minutes:
+ *                 type: integer
  *                 minimum: 0
- *                 description: Updated break duration in minutes
- *                 example: 10
- *               checklist:
+ *               total_pomodoros:
+ *                 type: integer
+ *                 minimum: 1
+ *               total_minutes:
+ *                 type: integer
+ *                 minimum: 1
+ *               checklist_json:
  *                 type: array
+ *                 nullable: true
  *                 items:
  *                   $ref: '#/components/schemas/ChecklistItem'
- *               status:
- *                 type: string
- *                 enum: [pending, active, completed]
- *                 example: active
- *               scheduledAt:
+ *               reminder_enabled:
+ *                 type: boolean
+ *               reminders:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *                   minimum: 0
+ *               study_session_scheduled_at:
  *                 type: string
  *                 format: date-time
- *                 description: Updated scheduled time (must be in the future)
- *                 example: "2026-04-02T10:00:00.000Z"
+ *               task_id:
+ *                 type: integer
+ *                 nullable: true
+ *                 minimum: 1
+ *               status:
+ *                 type: string
+ *                 enum: [idle, running, paused, completed]
+ *               started_at:
+ *                 type: string
+ *                 format: date-time
+ *               current_time:
+ *                 type: integer
+ *                 minimum: 0
+ *               completed_at:
+ *                 type: string
+ *                 format: date-time
+ *               actual_duration:
+ *                 type: integer
+ *                 minimum: 0
  *     responses:
  *       200:
- *         description: Study session updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Study session updated successfully
- *                 studySession:
- *                   $ref: '#/components/schemas/StudySession'
+ *         description: Study session updated successfully.
  *       400:
- *         description: Validation failed, invalid JSON, or no fields provided
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Validation failed
- *                 errors:
- *                   type: object
- *                   additionalProperties:
- *                     type: array
- *                     items:
- *                       type: string
+ *         description: Invalid ID, invalid JSON, validation failed, or no fields provided.
+ *       401:
+ *         description: Unauthorized.
+ *       403:
+ *         description: No access to linked task.
  *       404:
- *         description: Study session not found
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Study session not found
+ *         description: Study session or linked task not found.
  *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Error updating study session
+ *         description: Error updating study session.
  *   delete:
  *     summary: Delete a study session by ID
  *     tags:
@@ -117,41 +136,19 @@ import { getSession } from '@/lib/firebase/auth';
  *         name: id
  *         required: true
  *         schema:
- *           type: string
- *           format: uuid
- *         description: The unique ID of the study session to delete
- *         example: "123e4567-e89b-12d3-a456-426614174000"
+ *           type: integer
+ *           minimum: 1
  *     responses:
  *       200:
- *         description: Study session deleted successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Study session deleted successfully
+ *         description: Study session deleted successfully.
+ *       400:
+ *         description: Invalid Study Session ID.
+ *       401:
+ *         description: Unauthorized.
  *       404:
- *         description: Study session not found
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Study session not found
+ *         description: Study session not found for this user.
  *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Error deleting study session
+ *         description: Error deleting study session.
  */
 
 type RouteContext = {

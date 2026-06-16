@@ -57,11 +57,15 @@ const basePreferences: StudyPreferences = {
 
 const targetDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-const makeValidGeminiResponse = (sessions: object[]) => ({
+type GeminiSession = {
+  total_minutes?: number;
+};
+
+const makeValidGeminiResponse = (sessions: GeminiSession[]) => ({
   text: JSON.stringify({
     proposed_sessions: sessions,
     warnings: [],
-    total_scheduled_minutes: sessions.reduce((sum: number, s: any) => sum + (s.total_minutes ?? 0), 0),
+    total_scheduled_minutes: sessions.reduce((sum, session) => sum + (session.total_minutes ?? 0), 0),
     total_available_minutes: 480,
   }),
 });

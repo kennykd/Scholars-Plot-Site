@@ -8,6 +8,66 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
 
 export const runtime = 'nodejs';
 
+/**
+ * @swagger
+ * /api/ai/task-draft:
+ *   post:
+ *     summary: Generate an AI task draft from a description and optional attachments
+ *     description: >
+ *       Accepts multipart form data, uploads any files as draft attachments, and returns an
+ *       AI-generated task draft. Authenticated; the user comes from the session cookie.
+ *     tags:
+ *       - AI
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 maxLength: 100
+ *               description:
+ *                 type: string
+ *                 maxLength: 4000
+ *               deadline:
+ *                 type: string
+ *                 format: date-time
+ *               priority:
+ *                 type: number
+ *               file:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *                 description: Optional attachments, max 10MB each.
+ *     responses:
+ *       200:
+ *         description: Draft generated.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 draft:
+ *                   type: object
+ *                 attachmentIds:
+ *                   type: array
+ *                   items:
+ *                     type: integer
+ *       400:
+ *         description: Invalid form data, validation failure, or file exceeds the 10MB limit.
+ *       401:
+ *         description: Not authenticated.
+ *       409:
+ *         description: Account record needs repair (foreign key error).
+ *       504:
+ *         description: AI request timed out.
+ *       500:
+ *         description: Error generating task draft.
+ */
+
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
 const formSchema = z.object({

@@ -1,10 +1,19 @@
 import { render, screen } from "@testing-library/react";
 import SettingsPage from "@/app/(app)/settings/page";
 import { getSession } from "@/lib/firebase/auth";
+import { getUserProfileForSession } from "@/lib/services/userService";
 import { redirect } from "next/navigation";
+import type { PropsWithChildren } from "react";
+
+type Session = Awaited<ReturnType<typeof getSession>>;
+type Profile = Awaited<ReturnType<typeof getUserProfileForSession>>;
 
 jest.mock("@/lib/firebase/auth", () => ({
     getSession: jest.fn(),
+}));
+
+jest.mock("@/lib/services/userService", () => ({
+    getUserProfileForSession: jest.fn(),
 }));
 
 jest.mock("next/navigation", () => ({
@@ -14,27 +23,21 @@ jest.mock("next/navigation", () => ({
 }));
 
 jest.mock("@/components/ui/card", () => ({
-    Card: ({ children }: any) => <div>{children}</div>,
-    CardHeader: ({ children }: any) => <div>{children}</div>,
-    CardTitle: ({ children }: any) => <div>{children}</div>,
-    CardContent: ({ children }: any) => <div>{children}</div>,
+    Card: ({ children }: PropsWithChildren) => <div>{children}</div>,
+    CardHeader: ({ children }: PropsWithChildren) => <div>{children}</div>,
+    CardTitle: ({ children }: PropsWithChildren) => <div>{children}</div>,
+    CardContent: ({ children }: PropsWithChildren) => <div>{children}</div>,
 }));
 
-jest.mock("@/components/ui/avatar", () => ({
-    Avatar: ({ children }: any) => <div>{children}</div>,
-    AvatarImage: ({ src, alt }: any) => (
-        <img data-testid="avatar-image" src={src} alt={alt} />
-    ),
-    AvatarFallback: ({ children }: any) => (
-        <div data-testid="avatar-fallback">{children}</div>
+jest.mock("@/app/components/settings/profile-display-name-form", () => ({
+    ProfileDisplayNameForm: ({ user }: { user?: Profile }) => (
+        <div data-testid="profile-form">{user?.name ?? "no-name"}</div>
     ),
 }));
 
-jest.mock("@/app/components/auth/logout-button", () => {
-    return function LogoutButton() {
-        return <button>Logout</button>;
-    };
-});
+jest.mock("@/app/components/settings/theme-toggle", () => ({
+    ThemeToggle: () => <div>Theme Toggle</div>,
+}));
 
 jest.mock("@/app/components/settings/push-notifications-toggle", () => {
     return function PushNotificationsToggle() {
@@ -42,11 +45,14 @@ jest.mock("@/app/components/settings/push-notifications-toggle", () => {
     };
 });
 
-jest.mock("@/app/components/settings/theme-toggle", () => ({
-    ThemeToggle: () => <div>Theme Toggle</div>,
-}));
+jest.mock("@/app/components/auth/logout-button", () => {
+    return function LogoutButton() {
+        return <button>Logout</button>;
+    };
+});
 
 const mockedGetSession = jest.mocked(getSession);
+const mockedGetProfile = jest.mocked(getUserProfileForSession);
 const mockedRedirect = jest.mocked(redirect);
 
 describe("SettingsPage", () => {
@@ -57,108 +63,58 @@ describe("SettingsPage", () => {
     it("redirects to login when no session exists", async () => {
         mockedGetSession.mockResolvedValue(null);
 
-        await expect(SettingsPage()).rejects.toThrow(
-            "NEXT_REDIRECT"
-        );
+        await expect(SettingsPage()).rejects.toThrow("NEXT_REDIRECT");
 
         expect(mockedRedirect).toHaveBeenCalledWith("/login");
+        expect(mockedGetProfile).not.toHaveBeenCalled();
     });
 
-    it("renders user profile information", async () => {
+    it("renders the settings sections for an authenticated user", async () => {
         mockedGetSession.mockResolvedValue({
+            id: "user-1",
             name: "John Doe",
             email: "john@example.com",
-            image: "https://example.com/avatar.png",
-        } as any);
+            image: null,
+        } satisfies Session);
+        mockedGetProfile.mockResolvedValue({
+            id: "user-1",
+            name: "John Doe",
+            email: "john@example.com",
+            image: null,
+        } satisfies Profile);
 
         const Page = await SettingsPage();
-
         render(Page);
 
         expect(screen.getByText("SETTINGS")).toBeInTheDocument();
-        expect(screen.getByText("John Doe")).toBeInTheDocument();
-        expect(screen.getByText("john@example.com")).toBeInTheDocument();
-
-        expect(screen.getByTestId("avatar-image")).toHaveAttribute(
-            "src",
-            "https://example.com/avatar.png"
-        );
-
         expect(screen.getByText("Theme Toggle")).toBeInTheDocument();
-
-        expect(
-            screen.getByText("Push Notifications Toggle")
-        ).toBeInTheDocument();
-
+        expect(screen.getByText("Push Notifications Toggle")).toBeInTheDocument();
         expect(
             screen.getByRole("button", { name: /logout/i })
         ).toBeInTheDocument();
     });
 
-    it("uses email prefix when name is missing", async () => {
+    it("loads the profile from the database and passes it to the display-name form", async () => {
         mockedGetSession.mockResolvedValue({
-            email: "jane@example.com",
-            image: "",
-        } as any);
-
-        const Page = await SettingsPage();
-
-        render(Page);
-
-        expect(screen.getByText("jane")).toBeInTheDocument();
-
-        expect(
-            screen.getByTestId("avatar-fallback")
-        ).toHaveTextContent("J");
-    });
-
-    it("uses initials from display name", async () => {
-        mockedGetSession.mockResolvedValue({
-            name: "John Doe",
+            id: "user-1",
+            name: "Session Name",
             email: "john@example.com",
-        } as any);
-
-        const Page = await SettingsPage();
-
-        render(Page);
-
-        expect(
-            screen.getByTestId("avatar-fallback")
-        ).toHaveTextContent("JD");
-    });
-
-    it("falls back to User when name and email are unavailable", async () => {
-        mockedGetSession.mockResolvedValue({
-            name: undefined,
-            email: undefined,
-            image: undefined,
-        } as any);
-
-        const Page = await SettingsPage();
-
-        render(Page);
-
-        expect(screen.getByText("User")).toBeInTheDocument();
-
-        expect(
-            screen.getByTestId("avatar-fallback")
-        ).toHaveTextContent("U");
-    });
-
-    it("does not use blank avatar image", async () => {
-        mockedGetSession.mockResolvedValue({
-            name: "John Doe",
+            image: null,
+        } satisfies Session);
+        mockedGetProfile.mockResolvedValue({
+            id: "user-1",
+            name: "Stored Name",
             email: "john@example.com",
-            image: "   ",
-        } as any);
+            image: null,
+        } satisfies Profile);
 
         const Page = await SettingsPage();
-
         render(Page);
 
-        expect(screen.getByTestId("avatar-image")).not.toHaveAttribute(
-            "src",
-            "   "
+        expect(mockedGetProfile).toHaveBeenCalledWith(
+            expect.objectContaining({ id: "user-1" })
         );
+        // The form is rendered with the DB-backed profile, not the raw session.
+        expect(screen.getByTestId("profile-form")).toHaveTextContent("Stored Name");
     });
 });

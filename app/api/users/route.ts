@@ -63,6 +63,10 @@ import { getPublicUsers } from "@/lib/services/userService";
  *           type: string
  *           nullable: true
  *           example: "Barry Allen"
+ *         email:
+ *           type: string
+ *           format: email
+ *           example: "barry@example.com"
  *         image:
  *           type: string
  *           nullable: true

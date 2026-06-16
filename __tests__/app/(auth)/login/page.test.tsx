@@ -26,7 +26,9 @@ jest.mock("@/lib/firebase/firebase", () => ({
 jest.mock("firebase/auth", () => ({
     signInWithPopup: jest.fn(),
     signInWithEmailAndPassword: jest.fn(),
-    GoogleAuthProvider: jest.fn(),
+    GoogleAuthProvider: jest.fn(() => ({
+        setCustomParameters: jest.fn(),
+    })),
 }));
 
 jest.mock("sonner", () => ({
@@ -61,7 +63,7 @@ describe("LoginPage", () => {
         render(<LoginPage />);
 
         expect(
-            screen.getByText("SCHOLAR'S PLOT")
+            screen.getByText("Welcome back")
         ).toBeInTheDocument();
 
         expect(

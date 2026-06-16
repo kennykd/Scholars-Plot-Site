@@ -75,6 +75,8 @@ export async function getTotalAvailableMinutes(
   user_id: string,
   week_start: Date
 ): Promise<number> {
+  void week_start;
+
   const availability = await prisma.userAvailability.findMany({
     where: { user_id, is_active: true },
   });

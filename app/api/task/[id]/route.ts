@@ -40,6 +40,10 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *                   type: string
  *                 task:
  *                   $ref: '#/components/schemas/Task'
+ *                 linkedStudySessionIds:
+ *                   type: array
+ *                   items:
+ *                     type: integer
  *       400:
  *         description: Invalid task id
  *       401:
@@ -50,6 +54,9 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *         description: Task not found
  *   patch:
  *     summary: Update a task by ID
+ *     description: >
+ *       Requires ownership of a personal task. When status changes to Completed,
+ *       completion analytics are updated and the weight adapter may run asynchronously.
  *     tags:
  *       - Tasks
  *     parameters:
@@ -102,8 +109,11 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *         description: No access to this task
  *       404:
  *         description: Task not found
+ *       409:
+ *         description: Account record needs repair (foreign key error)
  *   delete:
  *     summary: Delete a task by ID
+ *     description: Requires ownership of a personal task. Deleting a task also adjusts task analytics.
  *     tags:
  *       - Tasks
  *     parameters:

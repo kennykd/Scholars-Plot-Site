@@ -8,7 +8,7 @@ import {
   XIcon,
 } from "lucide-react";
 import type { ComponentProps, HTMLAttributes, ReactElement } from "react";
-import { createContext, memo, useContext, useEffect, useState } from "react";
+import { createContext, memo, useContext, useEffect, useMemo, useState } from "react";
 import { Streamdown } from "streamdown";
 import { Button } from "../ui/button";
 import { ButtonGroup, ButtonGroupText } from "../ui/button-group";
@@ -185,7 +185,10 @@ export const MessageBranchContent = ({
   ...props
 }: MessageBranchContentProps) => {
   const { currentBranch, setBranches, branches } = useMessageBranch();
-  const childrenArray = Array.isArray(children) ? children : [children];
+  const childrenArray = useMemo(
+    () => (Array.isArray(children) ? children : [children]),
+    [children],
+  );
 
   // Use useEffect to update branches when they change
   useEffect(() => {
@@ -218,6 +221,7 @@ export const MessageBranchSelector = ({
   ...props
 }: MessageBranchSelectorProps) => {
   const { totalBranches } = useMessageBranch();
+  void from;
 
   // Don't render if there's only one branch
   if (totalBranches <= 1) {
@@ -226,7 +230,10 @@ export const MessageBranchSelector = ({
 
   return (
     <ButtonGroup
-      className="[&>*:not(:first-child)]:rounded-l-md [&>*:not(:last-child)]:rounded-r-md"
+      className={cn(
+        "[&>*:not(:first-child)]:rounded-l-md [&>*:not(:last-child)]:rounded-r-md",
+        className,
+      )}
       orientation="horizontal"
       {...props}
     />
@@ -268,6 +275,7 @@ export const MessageBranchNext = ({
   return (
     <Button
       aria-label="Next branch"
+      className={className}
       disabled={totalBranches <= 1}
       onClick={goToNext}
       size="icon-sm"

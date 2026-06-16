@@ -5,6 +5,9 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/firebase/auth";
 import { getAnalyticsByUserId } from "@/lib/services/analyticService";
 
+type Session = Awaited<ReturnType<typeof getSession>>;
+type Analytics = Awaited<ReturnType<typeof getAnalyticsByUserId>>;
+
 jest.mock("next/navigation", () => ({
     redirect: jest.fn(() => {
         throw new Error("NEXT_REDIRECT");
@@ -22,7 +25,7 @@ jest.mock("@/lib/services/analyticService", () => ({
 jest.mock(
     "@/app/components/analytics/analytics-client",
     () => ({
-        AnalyticsDashboardView: ({ data }: any) => (
+        AnalyticsDashboardView: ({ data }: { data: unknown }) => (
             <div data-testid="analytics-dashboard">
                 {JSON.stringify(data)}
             </div>
@@ -61,10 +64,13 @@ describe("AnalyticsPage", () => {
 
         mockedGetSession.mockResolvedValue({
             id: "user-123",
-        } as any);
+            email: "user@example.com",
+            name: null,
+            image: null,
+        } satisfies Session);
 
         mockedGetAnalytics.mockResolvedValue(
-            analyticsData as any
+            analyticsData as unknown as Analytics
         );
 
         const Page = await AnalyticsPage();
@@ -88,10 +94,13 @@ describe("AnalyticsPage", () => {
 
         mockedGetSession.mockResolvedValue({
             id: "user-123",
-        } as any);
+            email: "user@example.com",
+            name: null,
+            image: null,
+        } satisfies Session);
 
         mockedGetAnalytics.mockResolvedValue(
-            analyticsData as any
+            analyticsData as unknown as Analytics
         );
 
         const Page = await AnalyticsPage();

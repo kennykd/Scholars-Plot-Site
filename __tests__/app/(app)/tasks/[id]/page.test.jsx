@@ -28,11 +28,11 @@ jest.mock("@/lib/services/attachmentService", () => ({
   listTaskAttachments: jest.fn(),
 }));
 
-jest.mock("../../../components/tasks/task-delete-button", () => ({
+jest.mock("@/app/components/tasks/task-delete-button", () => ({
   TaskDeleteButton: () => <button type="button">Delete</button>,
 }));
 
-jest.mock("../../../components/tasks/task-complete-button", () => ({
+jest.mock("@/app/components/tasks/task-complete-button", () => ({
   TaskCompleteButton: ({ initialStatus }) => (
     <button type="button">
       {initialStatus === "Completed" ? "Mark incomplete" : "Mark Complete"}
@@ -40,7 +40,7 @@ jest.mock("../../../components/tasks/task-complete-button", () => ({
   ),
 }));
 
-jest.mock("../../../components/tasks/task-in-progress-button", () => ({
+jest.mock("@/app/components/tasks/task-in-progress-button", () => ({
   TaskInProgressButton: ({ initialStatus }) => (
     <button type="button">
       {initialStatus === "In_Progress" ? "Mark incomplete from progress" : "Mark in progress"}
@@ -48,7 +48,7 @@ jest.mock("../../../components/tasks/task-in-progress-button", () => ({
   ),
 }));
 
-jest.mock("../../../components/tasks/task-attachment-delete-button", () => ({
+jest.mock("@/app/components/tasks/task-attachment-delete-button", () => ({
   TaskAttachmentDeleteButton: () => <button type="button">Remove attachment</button>,
 }));
 

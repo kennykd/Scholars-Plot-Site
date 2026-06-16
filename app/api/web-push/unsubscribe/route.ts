@@ -2,6 +2,21 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/firebase/auth';
 import { clearUserPushSubscription } from '@/lib/services/webPushService';
 
+/**
+ * @swagger
+ * /api/web-push/unsubscribe:
+ *   delete:
+ *     summary: Clear the authenticated user's web-push subscription
+ *     tags:
+ *       - Web Push
+ *     responses:
+ *       200:
+ *         description: Subscription cleared.
+ *       401:
+ *         description: Not authenticated.
+ *       500:
+ *         description: Failed to clear subscription.
+ */
 export async function DELETE() {
     try {
         // Make sure the user is authenticated 

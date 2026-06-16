@@ -6,6 +6,12 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import StudyEditPage from "@/app/(app)/study/[id]/edit/page";
 import { toast } from "sonner";
+import type {
+    ButtonHTMLAttributes,
+    InputHTMLAttributes,
+    PropsWithChildren,
+    TextareaHTMLAttributes,
+} from "react";
 
 const pushMock = jest.fn();
 
@@ -32,23 +38,32 @@ jest.mock("sonner", () => ({
 }));
 
 jest.mock("@/components/ui/button", () => ({
-    Button: ({ children, asChild, ...props }: any) => (
-        <button {...props}>{children}</button>
-    ),
+    Button: ({
+        children,
+        asChild,
+        ...props
+    }: PropsWithChildren<
+        ButtonHTMLAttributes<HTMLButtonElement> & { asChild?: boolean }
+    >) => {
+        void asChild;
+        return <button {...props}>{children}</button>;
+    },
 }));
 
 jest.mock("@/components/ui/input", () => ({
-    Input: (props: any) => <input {...props} />,
+    Input: (props: InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
 }));
 
 jest.mock("@/components/ui/textarea", () => ({
-    Textarea: (props: any) => <textarea {...props} />,
+    Textarea: (props: TextareaHTMLAttributes<HTMLTextAreaElement>) => (
+        <textarea {...props} />
+    ),
 }));
 
 jest.mock("@/components/ui/popover", () => ({
-    Popover: ({ children }: any) => <>{children}</>,
-    PopoverTrigger: ({ children }: any) => <>{children}</>,
-    PopoverContent: ({ children }: any) => <>{children}</>,
+    Popover: ({ children }: PropsWithChildren) => <>{children}</>,
+    PopoverTrigger: ({ children }: PropsWithChildren) => <>{children}</>,
+    PopoverContent: ({ children }: PropsWithChildren) => <>{children}</>,
 }));
 
 jest.mock("@/components/ui/calendar", () => ({
@@ -71,14 +86,17 @@ jest.mock("@/components/ui/checkbox", () => ({
     ),
 }));
 
-// Icons aren't important for these tests
-jest.mock("lucide-react", () => ({
-    ArrowLeft: () => <span />,
-    CalendarIcon: () => <span />,
-    Paperclip: () => <span />,
-    X: () => <span />,
-    Sparkles: () => <span />,
-}));
+// Icons aren't important for these tests. Use a Proxy so any icon the page imports
+// resolves to a harmless stub (avoids "Element type is invalid" when icons change).
+jest.mock("lucide-react", () =>
+    new Proxy(
+        { __esModule: true },
+        {
+            get: (_target, prop) =>
+                prop === "__esModule" ? true : () => <span />,
+        },
+    ),
+);
 
 const mockStudySession = {
     studySession: {

@@ -3,8 +3,25 @@ import { encrypt, decrypt } from "../crypto";
 import { AnalyticsInput, AnalyticsData } from "@/types";
 import { startOfWeek, endOfWeek, eachDayOfInterval, format } from "date-fns";
 
-function decryptToNumber(encryptedText: string | null | undefined): number {
+type AnalyticsSource = {
+  tasks_completed_early?: string | null;
+  tasksCompletedEarly?: string | number | null;
+  tasks_completed_on_time?: string | null;
+  tasksCompletedOnTime?: string | number | null;
+  tasks_completed_late?: string | null;
+  tasksCompletedLate?: string | number | null;
+  tasks_pending?: string | null;
+  total_focus_minutes?: string | null;
+  total_tasks_completed?: string | null;
+  streak?: string | null;
+};
+
+function decryptToNumber(encryptedText: string | number | null | undefined): number {
   if (!encryptedText) return 0;
+
+  if (typeof encryptedText === "number") {
+    return Number.isFinite(encryptedText) ? encryptedText : 0;
+  }
 
   if (typeof encryptedText !== "string" || !encryptedText.includes(":")) {
     const parsed = parseInt(encryptedText, 10);
@@ -15,13 +32,13 @@ function decryptToNumber(encryptedText: string | null | undefined): number {
     const decrypted = decrypt(encryptedText);
     const num = parseInt(decrypted, 10);
     return isNaN(num) ? 0 : num;
-  } catch (err) {
+  } catch {
     return 0;
   }
 }
 
 export async function transformToAnalyticsData(
-  dbAnalytics: any,
+  dbAnalytics: AnalyticsSource | null | undefined,
   userId: string
 ): Promise<AnalyticsData> {
   const now = new Date();

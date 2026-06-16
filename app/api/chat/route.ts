@@ -20,6 +20,83 @@ type ChatHistory = NonNullable<
   Awaited<ReturnType<typeof getConversation>>
 >["messages"];
 
+/**
+ * @swagger
+ * /api/chat:
+ *   post:
+ *     summary: Send a message to the authenticated AI chat agent
+ *     tags:
+ *       - Chat
+ *     description: >
+ *       Requires the session cookie. Builds user-specific task, study, and project context,
+ *       calls the chat agent, creates a conversation when needed, persists the user and
+ *       assistant messages, and best-effort generates a title for new conversations.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [message]
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 minLength: 1
+ *                 maxLength: 2000
+ *               conversation_id:
+ *                 type: integer
+ *                 minimum: 1
+ *                 description: Existing conversation to continue. Omit to create one.
+ *     responses:
+ *       200:
+ *         description: Chat turn processed and persisted.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 conversation_id:
+ *                   type: integer
+ *                 user_message_id:
+ *                   type: integer
+ *                 assistant_message_id:
+ *                   type: integer
+ *                 text:
+ *                   type: string
+ *                 action:
+ *                   nullable: true
+ *                   description: Optional structured action returned by the agent.
+ *       400:
+ *         description: Invalid JSON body.
+ *       401:
+ *         description: Not authenticated.
+ *       404:
+ *         description: Conversation not found for this user.
+ *       422:
+ *         description: Validation failed.
+ *       500:
+ *         description: Failed to process message.
+ *   get:
+ *     summary: List chat conversations for the authenticated user
+ *     tags:
+ *       - Chat
+ *     responses:
+ *       200:
+ *         description: Conversations retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 conversations:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       401:
+ *         description: Not authenticated.
+ *       500:
+ *         description: Failed to fetch conversations.
+ */
 export async function POST(req: NextRequest) {
   const session = await getSession();
   if (!session) {

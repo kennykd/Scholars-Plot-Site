@@ -12,6 +12,43 @@ type RouteContext = {
 
 const idSchema = z.coerce.number().int().positive();
 
+/**
+ * @swagger
+ * /api/project/task/{id}/attachment/{attachmentId}:
+ *   delete:
+ *     summary: Delete an attachment from a project task
+ *     tags:
+ *       - Projects
+ *     description: >
+ *       Requires the session cookie. Owners and assigned members can manage task
+ *       attachments. Deletes the stored file best-effort, then deletes the attachment row.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *       - in: path
+ *         name: attachmentId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *     responses:
+ *       200:
+ *         description: Attachment deleted successfully.
+ *       400:
+ *         description: Invalid task id or attachment id.
+ *       401:
+ *         description: Not authenticated.
+ *       403:
+ *         description: User cannot manage attachments for this project task.
+ *       404:
+ *         description: Project task or attachment not found.
+ *       500:
+ *         description: Error deleting attachment.
+ */
 export async function DELETE(_: Request, context: RouteContext) {
   try {
     const session = await getSession();

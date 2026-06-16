@@ -180,7 +180,6 @@ model Task {
   project        Project?       @relation(fields: [project_id], references: [project_id], onDelete: SetNull)
   task_users     TaskUser[]
   study_session_user StudySessionUser[]
-  task_reminders TaskReminder[]
   attachments    Attachment[]
 
   @@map("task")
@@ -285,20 +284,6 @@ model StudySessionReminder {
   study_session StudySession @relation(fields: [study_session_id], references: [study_session_id])
 
   @@map("study_session_reminder")
-}
-
-model TaskReminder {
-  reminder_id         Int                  @id @default(autoincrement())
-  task_id             Int
-  interval_type       ReminderIntervalType
-  interval_value      Int?
-  remind_at           DateTime
-  is_active           Boolean              @default(true)
-  reminder_created_at DateTime             @default(now())
-
-  task   Task    @relation(fields: [task_id], references: [task_id])
-
-  @@map("task_reminder")
 }
 
 model ProjectInvite {

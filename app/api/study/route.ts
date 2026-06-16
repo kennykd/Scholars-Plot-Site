@@ -13,54 +13,59 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *   schemas:
  *     ChecklistItem:
  *       type: object
+ *       required: [id, text, completed]
  *       properties:
  *         id:
  *           type: string
  *           format: uuid
- *           example: "123e4567-e89b-12d3-a456-426614174000"
  *         text:
  *           type: string
- *           example: "Read chapter 3"
+ *           minLength: 1
  *         completed:
  *           type: boolean
- *           example: false
  *     StudySession:
  *       type: object
  *       properties:
  *         id:
  *           type: string
- *           format: uuid
- *           example: "123e4567-e89b-12d3-a456-426614174000"
- *         taskId:
+ *           description: Stringified numeric study session ID.
+ *         title:
  *           type: string
- *           example: "task-001"
- *         taskTitle:
+ *         notes:
  *           type: string
- *           example: "Calculus II Problem Set 5"
- *         duration:
- *           type: number
- *           description: Study duration in minutes
- *           example: 25
- *         breakDuration:
- *           type: number
- *           description: Break duration in minutes
- *           example: 5
- *         checklist:
+ *         attachments:
  *           type: array
  *           items:
- *             $ref: '#/components/schemas/ChecklistItem'
- *         status:
- *           type: string
- *           enum: [pending, active, completed]
- *           example: pending
+ *             type: object
  *         scheduledAt:
  *           type: string
  *           format: date-time
- *           example: "2026-04-01T09:00:00.000Z"
+ *         focusMinutes:
+ *           type: integer
+ *         breakMinutes:
+ *           type: integer
+ *         totalMinutes:
+ *           type: integer
+ *         sessionStatus:
+ *           type: string
+ *           enum: [idle, running, paused, completed]
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         reminderEnabled:
+ *           type: boolean
+ *         reminderOffsets:
+ *           type: array
+ *           items:
+ *             type: integer
+ *         isTimerOnly:
+ *           type: boolean
+ *         current_time:
+ *           type: integer
  *
  * /api/study:
  *   get:
- *     summary: Get all study sessions
+ *     summary: Get the authenticated user's study sessions
  *     tags:
  *       - Study Sessions
  *     responses:
@@ -73,23 +78,20 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Study sessions retrieved successfully
  *                 studySessions:
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/StudySession'
+ *       401:
+ *         description: User is not authenticated.
  *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Error retrieving study sessions
+ *         description: Error retrieving study sessions.
  *   post:
- *     summary: Create a new study session
+ *     summary: Create one or more study sessions for the authenticated user
+ *     description: >
+ *       Creates a study session and optionally expands repeats into multiple sessions
+ *       bounded by the linked task deadline. Writes study_session and study_session_user
+ *       rows and may link an existing attachment.
  *     tags:
  *       - Study Sessions
  *     requestBody:
@@ -99,49 +101,66 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *           schema:
  *             type: object
  *             required:
- *               - taskId
- *               - taskTitle
- *               - duration
- *               - breakDuration
- *               - checklist
- *               - status
- *               - scheduledAt
+ *               - study_session_name
+ *               - focus_minutes
+ *               - break_minutes
+ *               - total_pomodoros
+ *               - total_minutes
+ *               - checklist_json
+ *               - study_session_scheduled_at
  *             properties:
- *               taskId:
- *                 type: string
- *                 description: ID of the associated task
- *                 example: "task-001"
- *               taskTitle:
+ *               study_session_name:
  *                 type: string
  *                 minLength: 1
  *                 maxLength: 100
- *                 example: "Calculus II Problem Set 5"
- *               duration:
- *                 type: number
+ *               study_session_description:
+ *                 type: string
+ *               focus_minutes:
+ *                 type: integer
  *                 minimum: 1
- *                 description: Study duration in minutes
- *                 example: 25
- *               breakDuration:
- *                 type: number
+ *               break_minutes:
+ *                 type: integer
  *                 minimum: 0
- *                 description: Break duration in minutes
- *                 example: 5
- *               checklist:
+ *               total_pomodoros:
+ *                 type: integer
+ *                 minimum: 1
+ *               total_minutes:
+ *                 type: integer
+ *                 minimum: 1
+ *               task_id:
+ *                 type: integer
+ *                 nullable: true
+ *                 minimum: 1
+ *               attachment_id:
+ *                 type: integer
+ *                 nullable: true
+ *                 minimum: 1
+ *               checklist_json:
  *                 type: array
+ *                 nullable: true
  *                 items:
  *                   $ref: '#/components/schemas/ChecklistItem'
- *               status:
+ *               reminder_enabled:
+ *                 type: boolean
+ *               reminders:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *                   minimum: 0
+ *               repeat_enabled:
+ *                 type: boolean
+ *               repeat_every:
+ *                 type: integer
+ *               repeat_unit:
  *                 type: string
- *                 enum: [pending, active, completed]
- *                 example: pending
- *               scheduledAt:
+ *                 enum: [days, weeks]
+ *               study_session_scheduled_at:
  *                 type: string
  *                 format: date-time
- *                 description: Must be a future date
- *                 example: "2026-04-01T09:00:00.000Z"
+ *                 description: Must be in the future.
  *     responses:
  *       201:
- *         description: Study session created successfully
+ *         description: Study session created successfully.
  *         content:
  *           application/json:
  *             schema:
@@ -149,35 +168,24 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Study session created successfully
  *                 studySession:
- *                   $ref: '#/components/schemas/StudySession'
- *       400:
- *         description: Validation failed or invalid JSON
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Validation failed
- *                 errors:
  *                   type: object
- *                   additionalProperties:
- *                     type: array
- *                     items:
- *                       type: string
+ *                 sessionIds:
+ *                   type: array
+ *                   items:
+ *                     type: integer
+ *       400:
+ *         description: Validation failed, invalid JSON, repeat without task, or no sessions fit.
+ *       401:
+ *         description: User is not authenticated.
+ *       403:
+ *         description: No access to linked task.
+ *       404:
+ *         description: Linked task not found.
+ *       409:
+ *         description: Account record needs repair (foreign key error).
  *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Error creating study session
+ *         description: Error creating study session.
  */
 
 export async function GET() {

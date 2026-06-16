@@ -1,15 +1,14 @@
 import { z } from "zod";
+import { getSession } from "@/lib/firebase/auth";
 import { runScheduleOptimizer } from "@/lib/services/aiService";
 import { confirmStudySessions } from "@/lib/services/scheduleService";
 import { NextResponse } from "next/server";
 
 const GenerateScheduleSchema = z.object({
-  user_id: z.string().min(1),
   target_date: z.string().datetime("Invalid date format"),
 });
 
 const ConfirmScheduleSchema = z.object({
-  user_id: z.string().min(1),
   sessions: z.array(
     z.object({
       task_id: z.number().int().positive(),
@@ -23,8 +22,79 @@ const ConfirmScheduleSchema = z.object({
   ).min(1),
 });
 
-// Generate proposed schedule
+/**
+ * @swagger
+ * /api/ai/schedule:
+ *   post:
+ *     summary: Generate a proposed study schedule for the authenticated user
+ *     description: The user is taken from the session cookie, not the request body.
+ *     tags:
+ *       - AI
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [target_date]
+ *             properties:
+ *               target_date:
+ *                 type: string
+ *                 format: date-time
+ *     responses:
+ *       200:
+ *         description: Proposed schedule.
+ *       400:
+ *         description: Invalid body.
+ *       401:
+ *         description: Not authenticated.
+ *       500:
+ *         description: Failed to generate schedule.
+ *   put:
+ *     summary: Confirm selected sessions and persist them for the authenticated user
+ *     description: Writes the supplied study sessions to the database under the signed-in user.
+ *     tags:
+ *       - AI
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [sessions]
+ *             properties:
+ *               sessions:
+ *                 type: array
+ *                 minItems: 1
+ *                 items:
+ *                   type: object
+ *                   required: [task_id, study_session_name, scheduled_at, focus_minutes, break_minutes, total_pomodoros, total_minutes]
+ *                   properties:
+ *                     task_id: { type: integer }
+ *                     study_session_name: { type: string }
+ *                     scheduled_at: { type: string, format: date-time }
+ *                     focus_minutes: { type: integer }
+ *                     break_minutes: { type: integer }
+ *                     total_pomodoros: { type: integer }
+ *                     total_minutes: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Confirmed sessions.
+ *       400:
+ *         description: Invalid body.
+ *       401:
+ *         description: Not authenticated.
+ *       500:
+ *         description: Failed to confirm sessions.
+ */
+
+// Generate proposed schedule for the authenticated user
 export async function POST(request: Request) {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
   const body = await request.json();
   const parsed = GenerateScheduleSchema.safeParse(body);
 
@@ -37,7 +107,7 @@ export async function POST(request: Request) {
 
   try {
     const result = await runScheduleOptimizer(
-      parsed.data.user_id,
+      session.id,
       new Date(parsed.data.target_date)
     );
     return NextResponse.json(result);
@@ -50,8 +120,13 @@ export async function POST(request: Request) {
   }
 }
 
-// Confirm selected sessions and write to database
+// Confirm selected sessions and write to database for the authenticated user
 export async function PUT(request: Request) {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
   const body = await request.json();
   const parsed = ConfirmScheduleSchema.safeParse(body);
 
@@ -66,7 +141,7 @@ export async function PUT(request: Request) {
     const confirmed = await confirmStudySessions(
       parsed.data.sessions.map((s) => ({
         ...s,
-        user_id: parsed.data.user_id,
+        user_id: session.id,
         study_session_scheduled_at: new Date(s.scheduled_at),
       }))
     );

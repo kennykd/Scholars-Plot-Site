@@ -15,6 +15,7 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  * /api/task/{id}/attachment:
  *   get:
  *     summary: List attachments for a task (owner only)
+ *     description: Requires the session cookie and access to the personal task.
  *     tags:
  *       - Tasks
  *     parameters:
@@ -26,8 +27,30 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *     responses:
  *       200:
  *         description: Attachments retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 attachments:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       400:
+ *         description: Invalid task id
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: No access to this task
+ *       404:
+ *         description: Task not found
+ *       500:
+ *         description: Error retrieving attachments
  *   post:
  *     summary: Upload an attachment for a task (multipart/form-data with `file`)
+ *     description: Requires the session cookie and task ownership. Uploads the file to storage and creates a task attachment record.
  *     tags:
  *       - Tasks
  *     parameters:
@@ -46,9 +69,22 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *               file:
  *                 type: string
  *                 format: binary
+ *                 description: Required file, maximum 10MB.
  *     responses:
  *       201:
  *         description: Attachment uploaded successfully
+ *       400:
+ *         description: Invalid task id, invalid form data, missing file, or file exceeds 10MB
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: No access to this task
+ *       404:
+ *         description: Task not found
+ *       409:
+ *         description: Account record needs repair (foreign key error)
+ *       500:
+ *         description: Error uploading attachment
  */
 
 type RouteContext = {

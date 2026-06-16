@@ -12,6 +12,13 @@ jest.mock("@/lib/gemini", () => ({
   },
 }));
 
+// chatAgent imports FunctionCallingConfigMode (a runtime enum value) directly from
+// "@google/genai", whose published entry point is ESM that Jest cannot parse. Mock the
+// package so the module graph loads without pulling in the real ESM build.
+jest.mock("@google/genai", () => ({
+  FunctionCallingConfigMode: { AUTO: "AUTO", ANY: "ANY", NONE: "NONE" },
+}));
+
 jest.mock("@/lib/services/aiService", () => ({
   generateTaskDraft: jest.fn(),
   generateStudyTrackDraft: jest.fn(),

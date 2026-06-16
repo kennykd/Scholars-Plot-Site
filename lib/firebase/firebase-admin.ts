@@ -26,6 +26,6 @@ export function getAdminAuth() {
 // Default export for lazy initialization
 export const adminAuth = new Proxy({} as admin.auth.Auth, {
   get(_, prop) {
-    return (getAdminAuth() as any)[prop];
+    return Reflect.get(getAdminAuth(), prop);
   },
 });

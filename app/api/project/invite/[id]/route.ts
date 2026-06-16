@@ -15,6 +15,50 @@ function isServiceError(error: unknown): error is { status: number; message: str
 }
 
 // Handle accepting or declining an invitation to the project
+/**
+ * @swagger
+ * /api/project/invite/{id}:
+ *   patch:
+ *     summary: Accept or decline a project invitation
+ *     tags:
+ *       - Projects
+ *     description: >
+ *       Requires the session cookie. Only the invited user can respond. Accepting
+ *       updates the invite and creates a project membership with role `member` if
+ *       needed; declining only updates the invite status.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *         description: Numeric invite ID.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [action]
+ *             properties:
+ *               action:
+ *                 type: string
+ *                 enum: [accepted, declined]
+ *     responses:
+ *       200:
+ *         description: Invitation response processed.
+ *       400:
+ *         description: Invalid invite ID, invalid action, or invite already answered.
+ *       401:
+ *         description: Not Authenticated.
+ *       403:
+ *         description: User is not the invitee.
+ *       404:
+ *         description: Invitation not found.
+ *       500:
+ *         description: Internal Server Error.
+ */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
         // Authenticate user session

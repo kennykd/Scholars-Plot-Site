@@ -22,10 +22,9 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *         name: id
  *         required: true
  *         schema:
- *           type: string
- *           format: uuid
- *         description: The unique ID of the project
- *         example: "123e4567-e89b-12d3-a456-426614174000"
+ *           type: integer
+ *           minimum: 1
+ *         description: Numeric project ID.
  *       - in: path
  *         name: memberId
  *         required: true
@@ -44,7 +43,7 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *             properties:
  *               role:
  *                 type: string
- *                 enum: [owner, moderator, member]
+ *                 enum: [owner, moderator, collaborator, member]
  *                 example: moderator
  *     responses:
  *       200:
@@ -60,7 +59,7 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *                 member:
  *                   $ref: '#/components/schemas/ProjectMember'
  *       400:
- *         description: Validation failed or invalid JSON
+ *         description: Invalid project id, invalid JSON, or validation failed
  *         content:
  *           application/json:
  *             schema:
@@ -75,6 +74,10 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *                     type: array
  *                     items:
  *                       type: string
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Only the project owner can manage members
  *       404:
  *         description: Project or member not found
  *         content:
@@ -85,6 +88,8 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *                 message:
  *                   type: string
  *                   example: Member not found
+ *       409:
+ *         description: Account record needs repair (foreign key error)
  *       500:
  *         description: Internal server error
  *         content:
@@ -104,10 +109,9 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *         name: id
  *         required: true
  *         schema:
- *           type: string
- *           format: uuid
- *         description: The unique ID of the project
- *         example: "123e4567-e89b-12d3-a456-426614174000"
+ *           type: integer
+ *           minimum: 1
+ *         description: Numeric project ID.
  *       - in: path
  *         name: memberId
  *         required: true
@@ -126,8 +130,12 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *                 message:
  *                   type: string
  *                   example: Member removed successfully
+ *       400:
+ *         description: Invalid project id
+ *       401:
+ *         description: Unauthorized
  *       403:
- *         description: Cannot remove the project owner
+ *         description: Cannot remove the project owner or only the project owner can manage members
  *         content:
  *           application/json:
  *             schema:
@@ -146,6 +154,8 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *                 message:
  *                   type: string
  *                   example: Member not found
+ *       409:
+ *         description: Account record needs repair (foreign key error)
  *       500:
  *         description: Internal server error
  *         content:

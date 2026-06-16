@@ -22,10 +22,9 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *         name: id
  *         required: true
  *         schema:
- *           type: string
- *           format: uuid
- *         description: The unique ID of the project to update
- *         example: "123e4567-e89b-12d3-a456-426614174000"
+ *           type: integer
+ *           minimum: 1
+ *         description: Numeric project ID.
  *     requestBody:
  *       required: true
  *       content:
@@ -42,6 +41,14 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *               description:
  *                 type: string
  *                 example: "Updated project description."
+ *               deadline:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Must be in the future.
+ *               priority:
+ *                 type: number
+ *                 minimum: 0.5
+ *                 maximum: 5
  *               project_status:
  *                 type: string
  *                 enum: [active, completed, archived]
@@ -64,7 +71,7 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *                 project:
  *                   $ref: '#/components/schemas/Project'
  *       400:
- *         description: Validation failed, invalid JSON, or no fields provided
+ *         description: Invalid project id, invalid JSON, validation failed, no fields provided, or referenced member does not exist
  *         content:
  *           application/json:
  *             schema:
@@ -79,6 +86,10 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *                     type: array
  *                     items:
  *                       type: string
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Only the project owner can update the project
  *       404:
  *         description: Project not found
  *         content:
@@ -89,6 +100,8 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *                 message:
  *                   type: string
  *                   example: Project not found
+ *       409:
+ *         description: Account record needs repair (foreign key error)
  *       500:
  *         description: Internal server error
  *         content:
@@ -108,10 +121,9 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *         name: id
  *         required: true
  *         schema:
- *           type: string
- *           format: uuid
- *         description: The unique ID of the project to delete
- *         example: "123e4567-e89b-12d3-a456-426614174000"
+ *           type: integer
+ *           minimum: 1
+ *         description: Numeric project ID.
  *     responses:
  *       200:
  *         description: Project deleted successfully
@@ -123,6 +135,12 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *                 message:
  *                   type: string
  *                   example: Project deleted successfully
+ *       400:
+ *         description: Invalid project id
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Only the project owner can delete the project
  *       404:
  *         description: Project not found
  *         content:
@@ -133,6 +151,8 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *                 message:
  *                   type: string
  *                   example: Project not found
+ *       409:
+ *         description: Account record needs repair (foreign key error)
  *       500:
  *         description: Internal server error
  *         content:

@@ -22,10 +22,9 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *         name: id
  *         required: true
  *         schema:
- *           type: string
- *           format: uuid
- *         description: The unique ID of the project task to update
- *         example: "123e4567-e89b-12d3-a456-426614174000"
+ *           type: integer
+ *           minimum: 1
+ *         description: Numeric project task ID.
  *     requestBody:
  *       required: true
  *       content:
@@ -42,14 +41,18 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *               description:
  *                 type: string
  *                 example: "Updated task description."
- *               priority:
+ *               deadline:
  *                 type: string
- *                 enum: [low, medium, high]
- *                 example: medium
+ *                 format: date-time
+ *               priority:
+ *                 type: number
+ *                 minimum: 0.5
+ *                 maximum: 5
+ *                 example: 3
  *               status:
  *                 type: string
- *                 enum: [not-done, pending, done]
- *                 example: pending
+ *                 enum: [Pending, In_Progress, Completed]
+ *                 example: In_Progress
  *               assignedTo:
  *                 type: string
  *                 example: "member-002"
@@ -72,7 +75,7 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *                 task:
  *                   $ref: '#/components/schemas/ProjectTask'
  *       400:
- *         description: Validation failed, invalid JSON, or no fields provided
+ *         description: Invalid task id, invalid JSON, validation failed, no fields provided, or assigned user does not exist
  *         content:
  *           application/json:
  *             schema:
@@ -87,6 +90,10 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *                     type: array
  *                     items:
  *                       type: string
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: User is not allowed to make the requested task change
  *       404:
  *         description: Project task not found
  *         content:
@@ -97,6 +104,8 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *                 message:
  *                   type: string
  *                   example: Project task not found
+ *       409:
+ *         description: Account record needs repair (foreign key error)
  *       500:
  *         description: Internal server error
  *         content:
@@ -116,10 +125,9 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *         name: id
  *         required: true
  *         schema:
- *           type: string
- *           format: uuid
- *         description: The unique ID of the project task to delete
- *         example: "123e4567-e89b-12d3-a456-426614174000"
+ *           type: integer
+ *           minimum: 1
+ *         description: Numeric project task ID.
  *     responses:
  *       200:
  *         description: Project task deleted successfully
@@ -131,6 +139,12 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *                 message:
  *                   type: string
  *                   example: Project task deleted successfully
+ *       400:
+ *         description: Invalid project task id
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Only the project owner can delete project tasks
  *       404:
  *         description: Project task not found
  *         content:
@@ -141,6 +155,8 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *                 message:
  *                   type: string
  *                   example: Project task not found
+ *       409:
+ *         description: Account record needs repair (foreign key error)
  *       500:
  *         description: Internal server error
  *         content:

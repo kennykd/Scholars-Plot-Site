@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import RegisterVerifyPage from "@/app/(auth)/register/verify/page";
+import { auth } from "@/lib/firebase/firebase";
 
 import {
     applyActionCode,
@@ -42,6 +43,7 @@ jest.mock("sonner", () => ({
 const mockFetch = jest.fn();
 
 global.fetch = mockFetch as typeof fetch;
+const mutableAuth = auth as unknown as { currentUser: unknown };
 
 describe("RegisterVerifyPage", () => {
     beforeEach(() => {
@@ -112,9 +114,7 @@ describe("RegisterVerifyPage", () => {
             uid: "user1",
         };
 
-        const { auth } = require("@/lib/firebase/firebase");
-
-        auth.currentUser = currentUser;
+        mutableAuth.currentUser = currentUser;
 
         (onAuthStateChanged as jest.Mock).mockImplementation(
             (_auth, callback) => {
@@ -147,9 +147,7 @@ describe("RegisterVerifyPage", () => {
     it("redirects to register when resending without session", async () => {
         const user = userEvent.setup();
 
-        const { auth } = require("@/lib/firebase/firebase");
-
-        auth.currentUser = null;
+        mutableAuth.currentUser = null;
 
         (onAuthStateChanged as jest.Mock).mockImplementation(
             (_auth, callback) => {
@@ -182,9 +180,7 @@ describe("RegisterVerifyPage", () => {
             emailVerified: false,
         };
 
-        const { auth } = require("@/lib/firebase/firebase");
-
-        auth.currentUser = currentUser;
+        mutableAuth.currentUser = currentUser;
 
         (onAuthStateChanged as jest.Mock).mockImplementation(
             (_auth, callback) => {
@@ -223,9 +219,7 @@ describe("RegisterVerifyPage", () => {
             emailVerified: false,
         };
 
-        const { auth } = require("@/lib/firebase/firebase");
-
-        auth.currentUser = currentUser;
+        mutableAuth.currentUser = currentUser;
 
         (deleteUser as jest.Mock).mockRejectedValue(
             new Error("Delete failed")

@@ -3,9 +3,7 @@ import { z } from 'zod';
 import { getSession } from '@/lib/firebase/auth';
 import {
   getAnalyticsByUserId,
-  createAnalytics,
   updateAnalyticsByUserId,
-  transformToAnalyticsData,
 } from '@/lib/services/analyticService';
 import { updateAnalyticsSchema } from '@/lib/validation/analytics';
 

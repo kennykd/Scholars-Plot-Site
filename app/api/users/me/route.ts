@@ -36,6 +36,16 @@ import { updateUserSchema } from "@/lib/validation/user";
  *                 error:
  *                   type: string
  *                   example: Unauthorized
+ *       500:
+ *         description: Failed to retrieve user profile
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Failed to retrieve user
  *   put:
  *     summary: Update the authenticated user's profile
  *     tags:

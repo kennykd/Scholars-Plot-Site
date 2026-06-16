@@ -27,7 +27,7 @@ import { ensureUserRecordForSession } from "@/lib/services/userService";
  *           schema:
  *             type: object
  *             properties:
- *               displayName:
+ *               name:
  *                 type: string
  *                 description: >
  *                   Optional display name for the user. Takes priority over the
@@ -49,11 +49,17 @@ import { ensureUserRecordForSession } from "@/lib/services/userService";
  *               properties:
  *                 status:
  *                   type: string
- *                   example: success
- *                 userId:
+ *                   example: successfully authenticated
+ *       400:
+ *         description: Firebase token is valid but does not contain an email address
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
  *                   type: string
- *                   description: The user's database ID
- *                   example: "clxyz123abc"
+ *                   example: An email address is required to register.
  *       401:
  *         description: Missing, malformed, or invalid Firebase ID token
  *         content:

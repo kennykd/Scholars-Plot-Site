@@ -25,9 +25,50 @@ function isValidPushService(endpoint: string): boolean {
     }
 }
 
+/**
+ * @swagger
+ * /api/web-push/subscribe:
+ *   post:
+ *     summary: Register the authenticated user's web-push subscription
+ *     description: Stores the browser PushSubscription on the user. The endpoint must belong to an allowed push service (FCM, Mozilla, or Apple) and the payload must be under 5000 bytes.
+ *     tags:
+ *       - Web Push
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - endpoint
+ *               - keys
+ *             properties:
+ *               endpoint:
+ *                 type: string
+ *                 format: uri
+ *               keys:
+ *                 type: object
+ *                 required:
+ *                   - p256dh
+ *                   - auth
+ *                 properties:
+ *                   p256dh:
+ *                     type: string
+ *                   auth:
+ *                     type: string
+ *     responses:
+ *       200:
+ *         description: Subscription stored.
+ *       400:
+ *         description: Invalid JSON, validation failure, unrecognized push service, or payload too large.
+ *       401:
+ *         description: Not authenticated.
+ *       500:
+ *         description: Failed to store subscription.
+ */
 export async function POST(request: Request) {
 try {
-    // Make sure the user is authenticated 
+    // Make sure the user is authenticated
     const session = await getSession();
     if (!session){
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -38,7 +79,7 @@ try {
     try{
         body = await request.json();
     } catch {
-        return NextResponse.json({ error: "Invalid JSON body" }, { status: 200 });
+        return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
     }
 
     // Validate subsciption JSON structure
