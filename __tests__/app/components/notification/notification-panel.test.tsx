@@ -182,4 +182,109 @@ describe("NotificationPanel", () => {
       expect(screen.queryByText("Capstone")).not.toBeInTheDocument();
     });
   });
+
+  it("dismisses a stored web push notification when its dismiss button is clicked", async () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([
+        {
+          id: "study-reminder:session-1",
+          title: "Physics review",
+          body: "Starts in 5 minutes",
+          url: "/study/session-1",
+          tag: "study-reminder:session-1",
+          read: false,
+          createdAt: "2026-06-15T09:00:00.000Z",
+        },
+      ]),
+    );
+
+    const user = userEvent.setup();
+    render(<NotificationPanel />);
+
+    await user.click(screen.getByRole("button", { name: /notifications/i }));
+    expect(await screen.findByText("Physics review")).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: /dismiss physics review/i }),
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText("Physics review")).not.toBeInTheDocument();
+    });
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]")).toEqual([]);
+  });
+
+  it("only shows notifications stored under the current user's key", async () => {
+    localStorage.setItem(
+      `${STORAGE_KEY}:user-1`,
+      JSON.stringify([
+        {
+          id: "mine",
+          title: "Your reminder",
+          body: "Only for user-1",
+          url: "/",
+          tag: "mine",
+          read: false,
+          createdAt: "2026-06-15T09:00:00.000Z",
+        },
+      ]),
+    );
+    localStorage.setItem(
+      `${STORAGE_KEY}:user-2`,
+      JSON.stringify([
+        {
+          id: "theirs",
+          title: "Someone elses reminder",
+          body: "Only for user-2",
+          url: "/",
+          tag: "theirs",
+          read: false,
+          createdAt: "2026-06-15T09:00:00.000Z",
+        },
+      ]),
+    );
+
+    const user = userEvent.setup();
+    render(<NotificationPanel userId="user-1" />);
+
+    await user.click(screen.getByRole("button", { name: /notifications/i }));
+
+    expect(await screen.findByText("Your reminder")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Someone elses reminder"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("stores incoming push messages under the current user's key", async () => {
+    const { listeners } = mockServiceWorker();
+
+    render(<NotificationPanel userId="user-1" />);
+
+    act(() => {
+      listeners.get("message")?.({
+        data: {
+          type: "WEB_PUSH_NOTIFICATION_RECEIVED",
+          notification: {
+            title: "Chemistry sprint",
+            body: "Open the study session",
+            tag: "study-reminder:session-2",
+            data: { url: "/study/session-2" },
+          },
+        },
+      } as MessageEvent);
+    });
+
+    await waitFor(() => {
+      expect(
+        JSON.parse(localStorage.getItem(`${STORAGE_KEY}:user-1`) ?? "[]"),
+      ).toEqual([
+        expect.objectContaining({
+          title: "Chemistry sprint",
+          tag: "study-reminder:session-2",
+        }),
+      ]);
+    });
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+  });
 });

@@ -26,6 +26,7 @@ jest.mock("sonner", () => ({
 describe("LogoutButton", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    localStorage.clear();
     global.fetch = jest.fn().mockResolvedValue({ ok: true });
     (signOut as jest.Mock).mockResolvedValue(undefined);
     (useRouter as jest.Mock).mockReturnValue({
@@ -47,6 +48,35 @@ describe("LogoutButton", () => {
     });
     expect(global.fetch).toHaveBeenCalledWith("/api/auth/logout", {
       method: "POST",
+    });
+  });
+
+  it("clears stored web push notifications on logout", async () => {
+    localStorage.setItem(
+      "scholars-plot:notifications:user-1",
+      JSON.stringify([
+        {
+          id: "n1",
+          title: "A reminder",
+          body: "",
+          url: "/",
+          tag: "n1",
+          read: false,
+          createdAt: "2026-06-15T09:00:00.000Z",
+        },
+      ]),
+    );
+
+    const user = userEvent.setup();
+    render(<LogoutButton />);
+
+    await user.click(screen.getByRole("button", { name: /^logout$/i }));
+    await user.click(screen.getByRole("button", { name: /yes, logout/i }));
+
+    await waitFor(() => {
+      expect(
+        localStorage.getItem("scholars-plot:notifications:user-1"),
+      ).toBeNull();
     });
   });
 });
