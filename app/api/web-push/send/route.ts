@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSession } from "@/lib/firebase/auth";
+import { createUserNotification } from "@/lib/services/notificationService";
 import {
   clearUserPushSubscription,
   getUserPushSubscription,
@@ -32,8 +33,8 @@ function getPushStatusCode(error: unknown) {
  * @swagger
  * /api/web-push/send:
  *   post:
- *     summary: Send a web-push notification to the authenticated user
- *     description: Sends a push notification to the signed-in user's stored subscription. Stale subscriptions (404/410 from the push service, or unparseable stored data) are cleared automatically.
+ *     summary: Store and send a web-push notification to the authenticated user
+ *     description: Creates or reuses a general notification row for the signed-in user before attempting browser push delivery. Stale subscriptions (404/410 from the push service, or unparseable stored data) are cleared automatically.
  *     tags:
  *       - Web Push
  *     requestBody:
@@ -63,13 +64,13 @@ function getPushStatusCode(error: unknown) {
  *                 maxLength: 200
  *     responses:
  *       200:
- *         description: Notification sent.
+ *         description: Notification stored, and pushed when a valid subscription exists.
  *       400:
  *         description: Invalid JSON body or validation failure.
  *       401:
  *         description: Not authenticated.
  *       404:
- *         description: User not found or not subscribed to push notifications.
+ *         description: User not found.
  *       410:
  *         description: Stored subscription is invalid or no longer valid (it is cleared).
  *       500:
@@ -105,10 +106,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    const storedNotification = await createUserNotification(session.id, {
+      title: parsed.data.title,
+      body: parsed.data.body,
+      url: parsed.data.url,
+      tag: parsed.data.tag,
+    });
+
     if (!user.push_subscription) {
       return NextResponse.json(
-        { error: "User is not subscribed to push notifications" },
-        { status: 404 },
+        {
+          message: "Notification stored; user is not subscribed to push notifications.",
+          notification: storedNotification,
+        },
+        { status: 200 },
       );
     }
 
@@ -135,7 +146,10 @@ export async function POST(request: Request) {
     await sendWebPushNotification(subscription, payload);
 
     return NextResponse.json(
-      { message: "Successfully sent notification to the user!" },
+      {
+        message: "Successfully sent notification to the user!",
+        notification: storedNotification,
+      },
       { status: 200 },
     );
   } catch (error) {

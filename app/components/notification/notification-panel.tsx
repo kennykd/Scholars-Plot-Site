@@ -6,18 +6,19 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import {
-  type AppNotification,
-  NOTIFICATIONS_UPDATED_EVENT,
-  notificationFromPushPayload,
-  notificationStorageKey,
-  readStoredNotifications,
-  removeStoredNotification,
-  upsertStoredNotification,
-} from "@/lib/notifications/storage";
 
 type InviteStatus = "pending" | "accepted" | "declined";
 type InviteResponseAction = "accepted" | "declined";
+
+type AppNotification = {
+  id: string;
+  title: string;
+  body: string;
+  url: string;
+  tag: string;
+  read: boolean;
+  createdAt: string;
+};
 
 type ProjectInvite = {
   invite_id: number;
@@ -36,7 +37,6 @@ interface NotificationPanelProps {
 
 export function NotificationPanel({
   collapsed = false,
-  userId,
 }: NotificationPanelProps) {
   const [open, setOpen] = useState(false);
   const [invites, setInvites] = useState<ProjectInvite[]>([]);
@@ -44,11 +44,19 @@ export function NotificationPanel({
   const [respondingId, setRespondingId] = useState<number | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  const storageKey = notificationStorageKey(userId);
+  const refreshNotifications = useCallback(async () => {
+    try {
+      const res = await fetch("/api/notifications");
+      if (!res.ok) return;
 
-  const refreshNotifications = useCallback(() => {
-    setNotifications(readStoredNotifications(storageKey));
-  }, [storageKey]);
+      const data = await res.json().catch(() => null);
+      if (Array.isArray(data?.notifications)) {
+        setNotifications(data.notifications);
+      }
+    } catch {
+      // Keep the tray usable even if the general inbox cannot load.
+    }
+  }, []);
 
   const refreshInvites = useCallback(async () => {
     try {
@@ -65,26 +73,8 @@ export function NotificationPanel({
   }, []);
 
   useEffect(() => {
-    refreshNotifications();
+    void refreshNotifications();
     void refreshInvites();
-
-    const handleStoredNotificationsUpdate = () => {
-      refreshNotifications();
-    };
-
-    window.addEventListener("storage", handleStoredNotificationsUpdate);
-    window.addEventListener(
-      NOTIFICATIONS_UPDATED_EVENT,
-      handleStoredNotificationsUpdate,
-    );
-
-    return () => {
-      window.removeEventListener("storage", handleStoredNotificationsUpdate);
-      window.removeEventListener(
-        NOTIFICATIONS_UPDATED_EVENT,
-        handleStoredNotificationsUpdate,
-      );
-    };
   }, [refreshInvites, refreshNotifications]);
 
   useEffect(() => {
@@ -95,10 +85,7 @@ export function NotificationPanel({
     const handleServiceWorkerMessage = (event: MessageEvent) => {
       if (event.data?.type !== "WEB_PUSH_NOTIFICATION_RECEIVED") return;
 
-      const notification = notificationFromPushPayload(event.data.notification);
-      if (!notification) return;
-
-      setNotifications(upsertStoredNotification(storageKey, notification));
+      void refreshNotifications();
     };
 
     navigator.serviceWorker.addEventListener(
@@ -112,7 +99,7 @@ export function NotificationPanel({
         handleServiceWorkerMessage,
       );
     };
-  }, [storageKey]);
+  }, [refreshNotifications]);
 
   useEffect(() => {
     const handler = (event: MouseEvent) => {
@@ -129,7 +116,7 @@ export function NotificationPanel({
     if (!open) return;
 
     void refreshInvites();
-    refreshNotifications();
+    void refreshNotifications();
   }, [open, refreshInvites, refreshNotifications]);
 
   const pendingInvites = invites.filter((invite) => invite.status === "pending");
@@ -137,10 +124,26 @@ export function NotificationPanel({
     pendingInvites.length + notifications.filter((notification) => !notification.read).length;
 
   const dismissNotification = useCallback(
-    (id: string) => {
-      setNotifications(removeStoredNotification(storageKey, id));
+    async (id: string) => {
+      setNotifications((prev) =>
+        prev.filter((notification) => notification.id !== id),
+      );
+
+      try {
+        const res = await fetch(`/api/notifications/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "dismiss" }),
+        });
+
+        if (!res.ok) {
+          await refreshNotifications();
+        }
+      } catch {
+        await refreshNotifications();
+      }
     },
-    [storageKey],
+    [refreshNotifications],
   );
 
   const respondToInvite = async (
@@ -323,7 +326,7 @@ export function NotificationPanel({
                       <button
                         type="button"
                         aria-label={`Dismiss ${notification.title}`}
-                        onClick={() => dismissNotification(notification.id)}
+                        onClick={() => void dismissNotification(notification.id)}
                         className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
                       >
                         <X className="h-4 w-4" />

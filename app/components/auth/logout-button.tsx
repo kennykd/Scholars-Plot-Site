@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
 import { Button } from "@/components/ui/button";
 import { auth } from "@/lib/firebase/firebase";
-import { clearAllStoredNotifications } from "@/lib/notifications/storage";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,7 +35,6 @@ export default function LogoutButton() {
 
       if (!res.ok) throw new Error("Logout failed");
 
-      clearAllStoredNotifications();
       toast.success("logout success");
 
       router.push("/login");

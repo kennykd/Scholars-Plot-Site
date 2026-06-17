@@ -34,7 +34,6 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { NotificationPanel } from "../notification/notification-panel";
 import { auth } from "@/lib/firebase/firebase";
-import { clearAllStoredNotifications } from "@/lib/notifications/storage";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -80,7 +79,6 @@ export function Sidebar({ user }: { user: SidebarUser }) {
       });
       const res = await fetch("/api/auth/logout", { method: "POST" });
       if (!res.ok) throw new Error("Logout failed");
-      clearAllStoredNotifications();
       toast.success("Logged out successfully");
       router.push("/login");
       router.refresh();
