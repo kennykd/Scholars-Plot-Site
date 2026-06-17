@@ -54,9 +54,11 @@ function validateCronSecret(request: Request): boolean {
  */
 
 export async function POST(request: Request) {
+  // Parse and validate the request body against the RequestSchema
   const body = await request.json().catch(() => ({}));
   const parsed = RequestSchema.safeParse(body);
 
+  // If the request body is invalid, return a 400 Bad Request response with validation errors
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.flatten() },
@@ -64,7 +66,8 @@ export async function POST(request: Request) {
     );
   }
 
-  // All-users run requires cron secret — prevents abuse
+  // All-users run requires cron secret, which prevents abuse
+  // This process is run by a scheduled job and is not tied to any user session, so we check the secret instead of authentication
   if (parsed.data.run_all_users) {
     if (!validateCronSecret(request)) {
       return NextResponse.json(
@@ -74,10 +77,14 @@ export async function POST(request: Request) {
     }
 
     try {
+      // The result of the all-users run is a summary of the batch process, not individual results
       const summary = await runWeightAdapterForAllUsers();
+      // Return the batch summary as the response (status is code 200 by default from NextResponse.json)
       return NextResponse.json(summary);
     } catch (error) {
       console.error("Weight adapter all-users run failed:", error);
+
+      // Return a 500 Internal Server Error response if any unexpected error occurs during processing
       return NextResponse.json(
         { error: "Weight adapter failed" },
         { status: 500 }
@@ -86,16 +93,24 @@ export async function POST(request: Request) {
   }
 
   // Single user run — authenticated, scoped to the session user
+
+  // Get the session from the request (assuming request has the session, e.g., from cookies or headers)
   const session = await getSession();
+
+  // If the user is not authenticated, return a 401 Unauthorized response
   if (!session) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
   try {
+    // The result is the adapted weights for the user
     const result = await runWeightAdapter(session.id);
+    // Return the adapted weights as the response (status is code 200 by default from NextResponse.json)
     return NextResponse.json(result);
   } catch (error) {
     console.error("Weight adapter failed:", error);
+
+    // Return a 500 Internal Server Error response if any unexpected error occurs during processing
     return NextResponse.json(
       { error: "Weight adapter failed" },
       { status: 500 }

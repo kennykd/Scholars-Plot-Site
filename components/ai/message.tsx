@@ -19,6 +19,7 @@ import {
   TooltipTrigger,
 } from "../ui/tooltip";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: UIMessage["role"];
@@ -352,9 +353,9 @@ export function MessageAttachment({
       )}
       {...props}
     >
-      {isImage ? (
+      {isImage && data.url ? (
         <>
-          <img
+          <Image
             alt={filename || "attachment"}
             className="size-full object-cover"
             height={100}

@@ -10,6 +10,7 @@ const config: Config = {
   testEnvironment: "jsdom",
   setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
   moduleNameMapper: {
+    "^\\./lib/generated/prisma/client$": "<rootDir>/lib/generated/prisma/client",
     "^@/(.*)$": "<rootDir>/$1",
   },
   testMatch: ["**/__tests__/**/*.test.[jt]s?(x)"],

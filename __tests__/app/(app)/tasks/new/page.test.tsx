@@ -30,23 +30,33 @@ jest.mock("@/components/ui/calendar", () => ({
   ),
 }));
 
+// Mock useRouter type setup
+const mockUseRouter = useRouter as jest.Mock;
+
 describe("TaskForm", () => {
   const mockPush = jest.fn();
   const mockRefresh = jest.fn();
 
+  // Keep a safe reference to the original global fetch implementation
+  const originalFetch = global.fetch;
+  let mockFetch: jest.MockedFunction<typeof global.fetch>;
+
   beforeEach(() => {
     jest.clearAllMocks();
 
-    (useRouter as jest.Mock).mockReturnValue({
+    mockUseRouter.mockReturnValue({
       push: mockPush,
       refresh: mockRefresh,
     });
 
-    global.fetch = jest.fn();
+    // Explicitly create a properly typed mock function for fetch
+    mockFetch = jest.fn();
+    global.fetch = mockFetch;
   });
 
   afterEach(() => {
-    delete (global as any).fetch;
+    // Restore the runtime environment safely without 'as any'
+    global.fetch = originalFetch;
   });
 
   it("renders the task form", () => {
@@ -102,10 +112,10 @@ describe("TaskForm", () => {
   });
 
   it("posts to /api/task and shows the study-session choice prompt on success", async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({
+    mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({ task: { id: 42 } }),
-    });
+    } as Response);
 
     render(<TaskForm />);
 
@@ -123,7 +133,7 @@ describe("TaskForm", () => {
     fireEvent.submit(form);
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         "/api/task",
         expect.objectContaining({ method: "POST" }),
       );
@@ -148,10 +158,10 @@ describe("TaskForm", () => {
   });
 
   it("returns to the tasks list when the user skips study-session planning", async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({
+    mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({ task: { id: 42 } }),
-    });
+    } as Response);
 
     render(<TaskForm />);
 
@@ -162,9 +172,8 @@ describe("TaskForm", () => {
     fireEvent.click(screen.getByRole("button", { name: /pick a date/i }));
     fireEvent.click(screen.getByRole("button", { name: /select march 20/i }));
 
-    fireEvent.submit(
-      screen.getByRole("button", { name: /create task/i }).closest("form")!,
-    );
+    const form = screen.getByRole("button", { name: /create task/i }).closest("form");
+    if (form) fireEvent.submit(form);
 
     const skipButton = await screen.findByRole("button", {
       name: /not now/i,
@@ -177,10 +186,10 @@ describe("TaskForm", () => {
   });
 
   it("opens the linked study planner when the user chooses to plan sessions", async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({
+    mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({ task: { id: 42 } }),
-    });
+    } as Response);
 
     render(<TaskForm />);
 
@@ -191,9 +200,8 @@ describe("TaskForm", () => {
     fireEvent.click(screen.getByRole("button", { name: /pick a date/i }));
     fireEvent.click(screen.getByRole("button", { name: /select march 20/i }));
 
-    fireEvent.submit(
-      screen.getByRole("button", { name: /create task/i }).closest("form")!,
-    );
+    const form = screen.getByRole("button", { name: /create task/i }).closest("form");
+    if (form) fireEvent.submit(form);
 
     const planButton = await screen.findByRole("button", {
       name: /plan study sessions/i,
@@ -206,10 +214,10 @@ describe("TaskForm", () => {
   });
 
   it("does not send task reminder settings in the POST body", async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({
+    mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({ task: { id: 99 } }),
-    });
+    } as Response);
 
     render(<TaskForm />);
 
@@ -227,11 +235,12 @@ describe("TaskForm", () => {
     fireEvent.submit(form);
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalled();
+      expect(mockFetch).toHaveBeenCalled();
     });
 
-    const [, init] = (global.fetch as jest.Mock).mock.calls[0];
-    const payload = JSON.parse(init.body);
+    const mockCalls = mockFetch.mock.calls[0];
+    const init = mockCalls[1] as RequestInit;
+    const payload = JSON.parse(init.body as string) as Record<string, unknown>;
 
     expect(payload).toEqual(
       expect.objectContaining({
@@ -244,13 +253,13 @@ describe("TaskForm", () => {
   });
 
   it("shows an error toast when the API responds with a failure", async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({
+    mockFetch.mockResolvedValue({
       ok: false,
       json: async () => ({
         message: "Validation failed",
         errors: { title: ["bad"] },
       }),
-    });
+    } as Response);
 
     render(<TaskForm />);
 
@@ -275,7 +284,9 @@ describe("TaskForm", () => {
   });
 
   it("previews and applies AI task draft suggestions", async () => {
-    (global.fetch as jest.Mock) = jest.fn(async (url: string) => {
+    mockFetch.mockImplementation(async (input: URL | RequestInfo) => {
+      const url = typeof input === "string" ? input : (input as Request).url;
+
       if (url === "/api/ai/task-draft") {
         return {
           ok: true,
@@ -290,13 +301,13 @@ describe("TaskForm", () => {
             },
             attachmentIds: [],
           }),
-        };
+        } as Response;
       }
 
       return {
         ok: true,
         json: async () => ({ task: { id: 42 } }),
-      };
+      } as Response;
     });
 
     render(<TaskForm />);
@@ -328,7 +339,9 @@ describe("TaskForm", () => {
   });
 
   it("shows the specific AI draft error message from the route", async () => {
-    (global.fetch as jest.Mock) = jest.fn(async (url: string) => {
+    mockFetch.mockImplementation(async (input: URL | RequestInfo) => {
+      const url = typeof input === "string" ? input : (input as Request).url;
+
       if (url === "/api/ai/task-draft") {
         return {
           ok: false,
@@ -337,7 +350,7 @@ describe("TaskForm", () => {
             message:
               "AI suggestions were blocked because the task text or attachment appears to contain instructions that try to override the AI rules. Please remove those instructions and try again.",
           }),
-        };
+        } as Response;
       }
 
       throw new Error(`Unexpected fetch: ${url}`);
