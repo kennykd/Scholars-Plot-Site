@@ -703,8 +703,7 @@ export default function StudyNewPage() {
         throw new Error("AI did not return a study session suggestion");
       }
 
-      applyStudyTrackToSingleSession(firstTrack);
-      toast.success("AI study session applied");
+      setStudyDraft(data.draft);
     } catch (error) {
       const message =
         error instanceof Error
@@ -714,6 +713,15 @@ export default function StudyNewPage() {
     } finally {
       setStudyDraftLoading(false);
     }
+  };
+
+  const applySingleStudyDraft = () => {
+    const firstTrack = studyDraft?.tracks?.[0];
+    if (!firstTrack) return;
+
+    applyStudyTrackToSingleSession(firstTrack);
+    setStudyDraft(null);
+    toast.success("AI study session applied");
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1843,6 +1851,77 @@ export default function StudyNewPage() {
               loading={studyDraftLoading}
               onClick={requestSingleStudySessionDraft}
             />
+
+            {studyDraft ? (
+              <div className="space-y-3 rounded-lg border border-accent/30 bg-accent/5 p-4">
+                <div>
+                  <p className="font-mono text-xs tracking-wider text-muted-foreground">
+                    AI STUDY SESSION
+                  </p>
+                  {studyDraft.reasoning ? (
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {studyDraft.reasoning}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="space-y-2">
+                  {studyDraft.tracks.map((track, index) => (
+                    <div
+                      key={`${track.title}-${index}`}
+                      className="rounded-md border border-border/60 bg-background/60 p-3"
+                    >
+                      <p className="text-sm font-semibold">{track.title}</p>
+                      <p className="font-mono text-xs text-muted-foreground">
+                        {track.start_date} at {track.time} - {track.focus_minutes}m x{" "}
+                        {track.total_pomodoros}
+                      </p>
+                      {track.notes ? (
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          {track.notes}
+                        </p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+                {studyDraft.warnings?.length ? (
+                  <div className="space-y-1 rounded-md border border-border/60 bg-background/60 p-3">
+                    {studyDraft.warnings.map((warning) => (
+                      <p key={warning} className="text-xs text-muted-foreground">
+                        {warning}
+                      </p>
+                    ))}
+                  </div>
+                ) : null}
+                {studyDraft.skippedAttachments?.length ? (
+                  <div className="space-y-1 rounded-md border border-border/60 bg-background/60 p-3">
+                    <p className="font-mono text-[10px] tracking-wider text-muted-foreground">
+                      SKIPPED FILES
+                    </p>
+                    {studyDraft.skippedAttachments.map((attachment) => (
+                      <p
+                        key={`${attachment.fileName}-${attachment.reason}`}
+                        className="text-xs text-muted-foreground"
+                      >
+                        {attachment.fileName}: {attachment.reason}
+                      </p>
+                    ))}
+                  </div>
+                ) : null}
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" size="sm" onClick={applySingleStudyDraft}>
+                    Apply study session
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setStudyDraft(null)}
+                  >
+                    Dismiss
+                  </Button>
+                </div>
+              </div>
+            ) : null}
 
             <div className="flex gap-3 pt-2">
               <Button

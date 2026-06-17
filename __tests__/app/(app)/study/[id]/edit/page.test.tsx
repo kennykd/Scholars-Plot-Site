@@ -206,7 +206,7 @@ describe("StudyEditPage", () => {
         expect(pushMock).toHaveBeenCalledWith("/study");
     });
 
-    it("applies AI suggestions from the linked task", async () => {
+    it("previews AI suggestions from the linked task before applying them", async () => {
         const linkedStudySession = {
             studySession: {
                 ...mockStudySession.studySession,
@@ -298,15 +298,15 @@ describe("StudyEditPage", () => {
             }),
         );
 
-        await waitFor(() => {
-            expect(toast.success).toHaveBeenCalledWith("AI study session applied");
-        });
+        expect(await screen.findByText("Refresh graph algorithms")).toBeInTheDocument();
+        expect(screen.getByDisplayValue("Algorithms")).toBeInTheDocument();
+        expect(screen.getByDisplayValue("Graphs and Trees")).toBeInTheDocument();
+        expect(screen.queryByDisplayValue("16:45")).not.toBeInTheDocument();
+        expect(toast.success).not.toHaveBeenCalledWith("AI study session applied");
 
-        await waitFor(() => {
-            expect(
-                screen.getByDisplayValue("Refresh graph algorithms"),
-            ).toBeInTheDocument();
-        });
+        await userEvent.click(screen.getByRole("button", { name: /Apply study session/i }));
+
+        expect(screen.getByDisplayValue("Refresh graph algorithms")).toBeInTheDocument();
 
         expect(screen.getByDisplayValue("16:45")).toBeInTheDocument();
         expect(screen.getByDisplayValue("45")).toBeInTheDocument();
@@ -315,9 +315,10 @@ describe("StudyEditPage", () => {
         expect(
             screen.getByDisplayValue("Revisit BFS, DFS, and Dijkstra."),
         ).toBeInTheDocument();
+        expect(toast.success).toHaveBeenCalledWith("AI study session applied");
     });
 
-    it("applies AI suggestions without a linked task", async () => {
+    it("previews AI suggestions without a linked task before applying them", async () => {
         (global.fetch as jest.Mock).mockImplementation(
             async (url: string, options?: RequestInit) => {
                 if (url === "/api/ai/study-track-draft" && options?.method === "POST") {
@@ -387,12 +388,18 @@ describe("StudyEditPage", () => {
             }),
         );
         expect(payload).not.toHaveProperty("taskId");
-        expect(
-            await screen.findByDisplayValue("Standalone algorithm refresh"),
-        ).toBeInTheDocument();
+        expect(await screen.findByText("Standalone algorithm refresh")).toBeInTheDocument();
+        expect(screen.getByDisplayValue("Algorithms")).toBeInTheDocument();
+        expect(screen.getByDisplayValue("Graphs and Trees")).toBeInTheDocument();
         expect(toast.error).not.toHaveBeenCalledWith(
             "Choose a linked task before asking AI for session suggestions",
         );
+        expect(toast.success).not.toHaveBeenCalledWith("AI study session applied");
+
+        await userEvent.click(screen.getByRole("button", { name: /Apply study session/i }));
+
+        expect(screen.getByDisplayValue("Standalone algorithm refresh")).toBeInTheDocument();
+        expect(toast.success).toHaveBeenCalledWith("AI study session applied");
     });
 
     it("redirects when loading fails", async () => {
