@@ -5,6 +5,7 @@ import {
   clearUserPushSubscription,
   getUserPushSubscription,
 } from "@/lib/services/webPushService";
+import { createUserNotification } from "@/lib/services/notificationService";
 import { NextRequest } from "next/server";
 
 // 1. Mock Next.js Server Components
@@ -40,11 +41,16 @@ jest.mock("@/lib/services/webPushService", () => {
   };
 });
 
+jest.mock("@/lib/services/notificationService", () => ({
+  createUserNotification: jest.fn(),
+}));
+
 // ---- TypeScript Typed Mock Assertions ----
 const mockWebpush = webpush as jest.Mocked<typeof webpush>;
 const mockGetSession = getSession as jest.MockedFunction<typeof getSession>;
 const mockGetUserPushSubscription = getUserPushSubscription as jest.MockedFunction<typeof getUserPushSubscription>;
 const mockClearUserPushSubscription = clearUserPushSubscription as jest.MockedFunction<typeof clearUserPushSubscription>;
+const mockCreateUserNotification = createUserNotification as jest.MockedFunction<typeof createUserNotification>;
 
 // Helper types to extract exactly what the real functions resolve to
 type GetSessionResolved = Awaited<ReturnType<typeof getSession>>;
@@ -82,6 +88,15 @@ describe("POST /api/web-push/send", () => {
     } as GetUserPushSubscriptionResolved);
 
     (mockWebpush.sendNotification as jest.Mock).mockResolvedValue(undefined);
+    mockCreateUserNotification.mockResolvedValue({
+      id: "44",
+      title: "Study session",
+      body: "Starts soon",
+      url: "/study/1",
+      tag: "study-reminder:1",
+      read: false,
+      createdAt: "2026-06-17T10:00:00.000Z",
+    });
   });
 
   afterAll(() => {
@@ -113,6 +128,42 @@ describe("POST /api/web-push/send", () => {
     expect(mockGetUserPushSubscription).not.toHaveBeenCalledWith("attacker-id");
   });
 
+  it("stores the notification row before sending browser push", async () => {
+    const callOrder: string[] = [];
+    mockCreateUserNotification.mockImplementation(async () => {
+      callOrder.push("store");
+      return {
+        id: "44",
+        title: "Study session",
+        body: "Starts soon",
+        url: "/study/1",
+        tag: "study-reminder:1",
+        read: false,
+        createdAt: "2026-06-17T10:00:00.000Z",
+      };
+    });
+    (mockWebpush.sendNotification as jest.Mock).mockImplementation(async () => {
+      callOrder.push("push");
+    });
+
+    await POST(
+      request({
+        title: "Study session",
+        body: "Starts soon",
+        url: "/study/1",
+        tag: "study-reminder:1",
+      }),
+    );
+
+    expect(mockCreateUserNotification).toHaveBeenCalledWith("user-1", {
+      title: "Study session",
+      body: "Starts soon",
+      url: "/study/1",
+      tag: "study-reminder:1",
+    });
+    expect(callOrder).toEqual(["store", "push"]);
+  });
+
   it("sends the stored subscription with a stable notification payload", async () => {
     const response = await POST(
       request({
@@ -139,6 +190,31 @@ describe("POST /api/web-push/send", () => {
     );
   });
 
+  it("stores but does not push when the user is not subscribed", async () => {
+    mockGetUserPushSubscription.mockResolvedValue({
+      push_subscription: null,
+    } as GetUserPushSubscriptionResolved);
+
+    const response = await POST(
+      request({
+        title: "Study session",
+        body: "Starts soon",
+        url: "/study/1",
+      }),
+    );
+    const body = await response.json() as { message: string };
+
+    expect(response.status).toBe(200);
+    expect(body.message).toBe("Notification stored; user is not subscribed to push notifications.");
+    expect(mockCreateUserNotification).toHaveBeenCalledWith("user-1", {
+      title: "Study session",
+      body: "Starts soon",
+      url: "/study/1",
+      tag: undefined,
+    });
+    expect(mockWebpush.sendNotification).not.toHaveBeenCalled();
+  });
+
   it("clears stale subscriptions when the push service returns 410", async () => {
     (mockWebpush.sendNotification as jest.Mock).mockRejectedValue({ statusCode: 410 });
 
@@ -151,6 +227,7 @@ describe("POST /api/web-push/send", () => {
 
     expect(response.status).toBe(410);
     expect(mockClearUserPushSubscription).toHaveBeenCalledWith("user-1");
+    expect(mockCreateUserNotification).toHaveBeenCalled();
   });
 
   it("returns a controlled error when VAPID keys are missing", async () => {

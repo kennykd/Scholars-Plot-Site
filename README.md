@@ -122,6 +122,8 @@ The endpoint list is based on the Swagger comments inside `app/api/**/route.ts` 
 | DELETE | `/api/chat/{conversationId}` | Delete a chat conversation | Yes |
 | GET | `/api/docs` | Return the generated OpenAPI document | No |
 | POST | `/api/docs` | Return the generated OpenAPI document | No |
+| GET | `/api/notifications` | List the authenticated user's non-dismissed general notifications | Yes |
+| PATCH | `/api/notifications/{id}` | Soft-dismiss one owned general notification | Yes |
 | GET | `/api/project` | Get projects visible to the authenticated user | Yes |
 | POST | `/api/project` | Create a new project owned by the authenticated user | Yes |
 | GET | `/api/project/invite` | List pending project invites for the authenticated user | Yes |
@@ -305,12 +307,12 @@ We kept our secret API keys in environment variables, making sure that it is in 
 | FE-15 | Login page | Login form validation and Firebase sign-in states pass; 8/8 assertions passed | Pass |
 | FE-16 | Register page | Registration form validation and Firebase account creation states pass; 10/10 assertions passed | Pass |
 | FE-17 | Register verification page | Email verification flow and user feedback states pass; 7/7 assertions passed | Pass |
-| FE-18 | Logout button component | Logout button calls the logout flow correctly; 1/1 assertion passed | Pass |
+| FE-18 | Logout button component | Logout button calls the logout flow correctly and leaves DB-backed notification state alone; 2/2 assertions passed | Pass |
 | FE-19 | Chat action card component | Confirm and dismiss behavior for chat action cards passes; 2/2 assertions passed | Pass |
 | FE-20 | Today's tasks dashboard component | Today's tasks widget renders expected task data; 1/1 assertion passed | Pass |
 | FE-21 | Upcoming deadlines dashboard component | Upcoming deadlines widget renders sorted deadline data; 3/3 assertions passed | Pass |
 | FE-22 | Sidebar layout component | Sidebar navigation and active states render correctly; 2/2 assertions passed | Pass |
-| FE-23 | Notification panel component | Notification panel state and display behavior pass; 3/3 assertions passed | Pass |
+| FE-23 | Notification panel component | Notification panel state, DB-backed general notifications, service-worker refresh, and dismiss behavior pass; 4/4 assertions passed | Pass |
 | FE-24 | Profile display-name form | Profile name form validation and save behavior pass; 3/3 assertions passed | Pass |
 | FE-25 | Study reminders component | Reminder controls render and update as expected; 3/3 assertions passed | Pass |
 | FE-26 | Task in-progress button component | Task status button behavior passes; 2/2 assertions passed | Pass |
@@ -340,19 +342,21 @@ We kept our secret API keys in environment variables, making sure that it is in 
 | API-18 | `/api/task/{id}` | Task read/update/delete request | Task route validates IDs, authorization, update fields, and delete behavior; 6/6 assertions passed | Pass |
 | API-19 | `/api/task` | Personal task create/list payload | Task route creates personal tasks and triggers expected service calls; 1/1 assertion passed | Pass |
 | API-20 | `/api/users/me` | Profile read/update/delete payloads | User profile route returns, updates, and deletes only the session user; 4/4 assertions passed | Pass |
-| API-21 | `/api/web-push/send` | Authenticated notification send payload | Web-push send route handles success, stale subscriptions, and auth checks; 5/5 assertions passed | Pass |
-| API-22 | Backend module: chat agent | Chat prompt, context, and draft-tool calls | Chat agent returns text or confirmable actions as expected; 4/4 assertions passed | Pass |
-| API-23 | Backend module: overload detector | Weekly scheduled sessions and unscheduled tasks | Detector returns expected overload severity and fallback behavior; 16/16 assertions passed | Pass |
-| API-24 | Backend module: schedule optimizer | Pending tasks, availability, and study preferences | Optimizer generates schedule-shaped output and handles edge cases; 16/16 assertions passed | Pass |
-| API-25 | Backend module: weight adapter | Completed-task history and current formula weights | Adapter updates, clamps, or preserves weights correctly; 18/18 assertions passed | Pass |
-| API-26 | Backend module: B2 bucket storage | Upload, signed URL, and delete storage inputs | Storage helper calls B2-compatible APIs correctly; 3/3 assertions passed | Pass |
-| API-27 | Backend module: crypto helpers | Plain numeric analytics values | Encryption/decryption helpers preserve metric values; 7/7 assertions passed | Pass |
-| API-28 | Backend module: AI service | Draft, attachment, prompt-safety, and timeout inputs | AI service validates outputs and returns expected draft/error behavior; 9/9 assertions passed | Pass |
-| API-29 | Backend module: project service | Project, member, invite, and task service inputs | Project service enforces ownership and returns expected records/errors; 13/13 assertions passed | Pass |
-| API-30 | Backend module: study session service | Study-session create/update/delete and repeat inputs | Study service persists sessions, repeats, reminders, and membership correctly; 16/16 assertions passed | Pass |
-| API-31 | Backend module: task service | Task create/update/delete service inputs | Task service serializes and mutates task data correctly; 4/4 assertions passed | Pass |
-| API-32 | Backend module: task status analytics | Task completion timing inputs | Analytics counters update for early/on-time/late completions; 3/3 assertions passed | Pass |
-| API-33 | Backend module: user service | User profile and public-user service inputs | User service returns safe user data and profile operations correctly; 4/4 assertions passed | Pass |
+| API-21 | `/api/web-push/send` | Authenticated notification send payload | Web-push send route stores notification rows before push, handles unsubscribed users, stale subscriptions, VAPID errors, and auth checks; 7/7 assertions passed | Pass |
+| API-22 | `/api/notifications` and `/api/notifications/{id}` | Active notification list and dismiss requests | Notification routes enforce authentication, validate dismiss actions, return owned active rows, and reject cross-user dismissal; 6/6 assertions passed | Pass |
+| API-23 | Backend module: notification service | User notification create/list/dismiss inputs | Notification service creates keyed rows, avoids keyed duplicates, lists non-dismissed rows, and soft-dismisses owned rows; 4/4 assertions passed | Pass |
+| API-24 | Backend module: chat agent | Chat prompt, context, and draft-tool calls | Chat agent returns text or confirmable actions as expected; 4/4 assertions passed | Pass |
+| API-25 | Backend module: overload detector | Weekly scheduled sessions and unscheduled tasks | Detector returns expected overload severity and fallback behavior; 16/16 assertions passed | Pass |
+| API-26 | Backend module: schedule optimizer | Pending tasks, availability, and study preferences | Optimizer generates schedule-shaped output and handles edge cases; 16/16 assertions passed | Pass |
+| API-27 | Backend module: weight adapter | Completed-task history and current formula weights | Adapter updates, clamps, or preserves weights correctly; 18/18 assertions passed | Pass |
+| API-28 | Backend module: B2 bucket storage | Upload, signed URL, and delete storage inputs | Storage helper calls B2-compatible APIs correctly; 3/3 assertions passed | Pass |
+| API-29 | Backend module: crypto helpers | Plain numeric analytics values | Encryption/decryption helpers preserve metric values; 7/7 assertions passed | Pass |
+| API-30 | Backend module: AI service | Draft, attachment, prompt-safety, and timeout inputs | AI service validates outputs and returns expected draft/error behavior; 9/9 assertions passed | Pass |
+| API-31 | Backend module: project service | Project, member, invite, and task service inputs | Project service enforces ownership and returns expected records/errors; 13/13 assertions passed | Pass |
+| API-32 | Backend module: study session service | Study-session create/update/delete and repeat inputs | Study service persists sessions, repeats, reminders, and membership correctly; 16/16 assertions passed | Pass |
+| API-33 | Backend module: task service | Task create/update/delete service inputs | Task service serializes and mutates task data correctly; 4/4 assertions passed | Pass |
+| API-34 | Backend module: task status analytics | Task completion timing inputs | Analytics counters update for early/on-time/late completions; 3/3 assertions passed | Pass |
+| API-35 | Backend module: user service | User profile and public-user service inputs | User service returns safe user data and profile operations correctly; 4/4 assertions passed | Pass |
 
 ### 10.3 Security Testing
 | Test Case | Attack Type | Expected Behavior | Result |
@@ -365,52 +369,6 @@ We kept our secret API keys in environment variables, making sure that it is in 
 | SEC-06 | Sensitive analytics data exposure | Analytics numeric counters are encrypted at rest and decrypted only through authenticated service calls | Covered by crypto/service tests |
 
 ### 10.4 AI Functionality Testing (MANDATORY)
-This subsection is intentionally left for the contributor handling AI functionality testing.
-
-**AI Feature: Schedule Optimizer**
-
-| Test Case | Input | Expected Output | Status |
-| :--- | :--- | :--- | :--- |
-| AI-01 | Valid availability + tasks, Gemini returns well-formed sessions | `proposed_sessions` array populated with correct structure; `total_scheduled_minutes` and `total_available_minutes` > 0 | Pass |
-| AI-02 | Valid input with a `behavior_profile` object supplied | Gemini called once; profile influences prompt without breaking output shape | Pass |
-| AI-03 | Empty `tasks` array | Returns empty `proposed_sessions`, `total_scheduled_minutes` = 0 | Pass |
-| AI-04 | Empty `availability` array | Returns empty `proposed_sessions` | Pass |
-| AI-05 | Gemini returns a session referencing a `task_id` not present in input (`999`) | Ghost session filtered out; only valid task IDs remain | Pass |
-| AI-06 | Gemini returns a session with `total_minutes: 0` | Zero-minute session filtered out of result | Pass |
-| AI-07 | Gemini returns a session with `scheduled_at: null` | Session missing a schedule time filtered out | Pass |
-| AI-08 | Single task with deadline only 2 hours away | Function resolves without crashing; sessions array length ≥ 0 | Pass |
-| AI-09 | Gemini call rejects with a network error | Function throws | Pass |
-| AI-10 | Gemini returns malformed JSON string | Function throws | Pass |
-| AI-11 | Gemini response missing `proposed_sessions` field entirely | Falls back to empty array via `?? []`; `warnings` defaults to `[]` | Pass |
-| AI-12 | Gemini returns valid but empty `proposed_sessions` array | Returns empty sessions array gracefully | Pass |
-| AI-13 | Task name containing prompt-injection text (e.g. "Ignore previous instructions...") | Function does not crash; output still validated against schema | Pass |
-| AI-14 | Task with an extreme `project_priority` value (999999) | Function does not crash; sessions array still returned | Pass |
-| AI-15 | Gemini response contains unexpected top-level keys (`hacked`, `admin_override`) | Extra keys stripped from result; not present on returned object | Pass |
-
-**Failure Handling:** If Gemini is unavailable or returns malformed/non-JSON output, `optimizeSchedule` throws rather than silently returning bad data, allowing the calling route to catch the error and surface a controlled failure response. Sessions referencing unknown task IDs, missing schedule times, or zero-minute durations are filtered out before being returned, so a partially malformed Gemini response degrades gracefully instead of corrupting the schedule.
-
-**AI Feature: Overload Detector**
-
-| Test Case | Input | Expected Output | Status |
-| :--- | :--- | :--- | :--- |
-| AI-01 | Light schedule (1 session, 480 min available) | `overload_detected: false`, `severity: "none"`, arrays present | Pass |
-| AI-02 | Heavily overbooked schedule (3 sessions totalling 900 min vs 240 available) | `overload_detected: true`, `severity: "critical"`, `at_risk_tasks` and `warnings` populated | Pass |
-| AI-03 | Schedule with one at-risk task | `at_risk_tasks[0]` contains `task_id`, `task_name`, `risk_level`, `reason`, `recommendation` | Pass |
-| AI-04 | Empty `scheduled_sessions` and empty `unscheduled_tasks` | `overload_detected: false`, `at_risk_tasks` length 0 | Pass |
-| AI-05 | `total_available_minutes: 0` | Function resolves without crashing; `overload_detected` is boolean | Pass |
-| AI-06 | Each of the five valid severity values (`critical`, `high`, `medium`, `low`, `none`) | Returned `severity` matches the value Gemini supplied for each case | Pass |
-| AI-07 | 20 sessions scheduled within the same week | Function resolves; `severity` reflects dense schedule | Pass |
-| AI-08 | Unscheduled task with `estimated_minutes: null` | Function resolves without crashing | Pass |
-| AI-09 | Session with no linked task (`task_id` and `task_name` both null) | Function resolves without crashing | Pass |
-| AI-10 | Gemini call rejects with a network error | Function throws | Pass |
-| AI-11 | Gemini returns completely invalid (non-JSON) text | Function throws | Pass |
-| AI-12 | Gemini response missing `overload_detected` and `severity` fields | Falls back to `false` and `"none"` respectively via nullish coalescing; `at_risk_tasks` defaults to `[]` | Pass |
-| AI-13 | Gemini call rejects simulating a timeout | Function throws with the timeout error message | Pass |
-| AI-14 | Session `task_name` containing a prompt-injection instruction | Function does not crash; `overload_detected` still a boolean | Pass |
-| AI-15 | Gemini response contains injected extra fields (`injected_field`, `admin_mode`) | Extra fields stripped from result; not present on returned object | Pass |
-| AI-16 | Session `task_name` that is 5000 characters long | Function resolves without crashing | Pass |
-
-**Failure Handling:** Network errors and timeouts from Gemini are allowed to propagate as thrown exceptions rather than being swallowed, so the calling layer (the cron job or API route) can decide how to handle the failure — for example, skipping that user for the current run via `Promise.allSettled` rather than failing the entire batch. Missing fields in an otherwise-valid JSON response fall back to safe defaults instead of crashing.
 
 **AI Feature: Weight Adapter**
 
@@ -436,6 +394,27 @@ This subsection is intentionally left for the contributor handling AI functional
 | AI-18 | Completed task `task_name` is itself a raw JSON payload | Function does not crash; `w_impact` remains a number | Pass |
 
 **Failure Handling:** Below the 3-task threshold, Gemini is skipped entirely and the current weights are returned untouched — this is a deliberate cost and stability control, not a failure path. Above the threshold, every weight returned by Gemini is run through `clampWeight()`, which bounds the value against the *current* weights (not hardcoded defaults) within a tier-specific deviation band, and then against the absolute 0.5–8.0 range. This means even an adversarial or malformed Gemini response (extreme values, negative numbers, numeric strings) can never push a weight outside safe bounds or produce `NaN`.
+
+**AI Feature: Task Draft Suggestions**
+
+| Test Case | Input | Expected Output | Status |
+| :--- | :--- | :--- | :--- |
+| AI-01 | Multipart task-draft request with title, description, deadline, priority, and a PDF attachment | Attachment is uploaded as a draft attachment, `generateTaskDraft()` receives normalized form fields plus the signed attachment URL, and the route returns the draft plus attachment IDs | Pass |
+| AI-02 | Task text that triggers `PROMPT_INJECTION_DETECTED` from the draft service | Route returns HTTP 400 with the prompt-injection code and safe user-facing message | Pass |
+| AI-03 | Gemini draft generation timeout through `AI_TIMEOUT` | Route returns HTTP 504 with the timeout code and retry guidance | Pass |
+
+**Failure Handling:** The task-draft route validates the authenticated session first, uploads only the selected draft attachments for that user, and passes normalized task form content into `generateTaskDraft()`. Prompt-injection and timeout errors are returned as controlled JSON responses instead of raw service exceptions, so the frontend can show a safe preview error state without creating a task.
+
+**AI Feature: Study (Session) Track Draft Suggestions**
+
+| Test Case | Input | Expected Output | Status |
+| :--- | :--- | :--- | :--- |
+| AI-01 | Authenticated request with `taskId`, session notes, schedule date/time, pomodoro settings, and task attachment context | Route loads the owned task, study preferences, availability, behavior profile, and task attachments, then calls `generateStudyTrackDraft()` with task-linked planning context | Pass |
+| AI-02 | Authenticated standalone study-session draft request without `taskId` | Route skips task and attachment lookups, calls `generateStudyTrackDraft()` with `task: null`, empty attachments, and the provided session settings | Pass |
+| AI-03 | Study-track draft service raises `PROMPT_INJECTION_DETECTED` | Route returns HTTP 400 with the prompt-injection code and safe user-facing message | Pass |
+| AI-04 | Study-track draft service raises `AI_TIMEOUT` | Route returns HTTP 504 with the timeout code and retry guidance | Pass |
+
+**Failure Handling:** The study-track draft route only loads task data when a `taskId` is supplied, so standalone study-session suggestions remain supported. When a task is supplied, downstream services enforce authenticated task access before attachment or AI context is built. Draft-service safety failures are converted into stable JSON error responses, protecting the planner from prompt-injection text and long-running Gemini calls.
 
 **AI Feature: AI Chat Agent**
 
@@ -479,6 +458,8 @@ API endpoints handled:<br>
 - /api/study/[id]
 - /api/users
 - /api/users/me
+- /api/notifications
+- /api/notifications/[id]
 - /api/web-push/send
 - /api/web-push/subscribe
 - /api/web-push/unsubscribe

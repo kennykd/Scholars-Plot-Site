@@ -51,7 +51,7 @@ describe("LogoutButton", () => {
     });
   });
 
-  it("clears stored web push notifications on logout", async () => {
+  it("does not need to clear general notification inbox storage on logout", async () => {
     localStorage.setItem(
       "scholars-plot:notifications:user-1",
       JSON.stringify([
@@ -76,7 +76,7 @@ describe("LogoutButton", () => {
     await waitFor(() => {
       expect(
         localStorage.getItem("scholars-plot:notifications:user-1"),
-      ).toBeNull();
+      ).not.toBeNull();
     });
   });
 });
