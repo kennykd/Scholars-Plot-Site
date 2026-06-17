@@ -49,6 +49,7 @@ const MAX_DEVIATION = {
   full: 2.0,
 };
 
+// This function determines the magnitude of weight adjustments allowed based on the total number of completed tasks. It categorizes the amount of data available into three levels: "conservative" for fewer than 8 tasks, "moderate" for 8 to 14 tasks, and "full" for 15 or more tasks. The magnitude influences how much the suggested weights can deviate from the current weights, ensuring that adjustments are made cautiously when limited data is available.
 function getAdjustmentMagnitude(
   totalCompleted: number
 ): "conservative" | "moderate" | "full" {
@@ -58,6 +59,7 @@ function getAdjustmentMagnitude(
   return "full";
 }
 
+// This function clamps the suggested weight to a reasonable range based on the current weight and adjustment magnitude. It ensures that the new weight does not deviate too far from the current weight, while also enforcing absolute minimum and maximum limits (0.5 to 8.0). The function rounds the final value to two decimal places for consistency.
 function clampWeight(
   suggested: number,
   current: number,
@@ -69,6 +71,7 @@ function clampWeight(
   return Math.round(Math.min(max, Math.max(min, suggested)) * 100) / 100;
 }
 
+// This function generates personalized formula weight adjustments based on a student's task completion history. It analyzes patterns in completed tasks, such as priority handling, estimation accuracy, and deadline responsiveness, to suggest adjustments to the weights used in the priority formula. The function constructs a prompt for the Gemini AI model, which returns a structured JSON response containing the suggested weight adjustments and reasoning. The function also ensures that the suggested weights are clamped within allowed deviation ranges based on the amount of data available.
 export async function adaptWeights(
   input: WeightAdapterInput
 ): Promise<WeightAdapterResult> {
@@ -170,7 +173,8 @@ export async function adaptWeights(
     "reasoning": "<two to three sentences explaining what patterns were detected and why weights were adjusted>"
   }
   `;
-
+  
+  // Call the Gemini AI model with the constructed prompt to analyze the student's task completion history and generate suggested weight adjustments. The model is instructed to return a structured JSON response containing the new weights, behavior profile, and reasoning for the adjustments.
   const response = await geminiFlash.generateContent({
     model: "gemini-3.1-flash-lite",
     config: {

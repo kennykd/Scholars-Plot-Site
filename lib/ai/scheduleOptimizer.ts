@@ -56,6 +56,7 @@ const DAY_NAMES = [
   "Saturday",
 ];
 
+// This function formats the student's availability slots into a human-readable string for inclusion in the AI prompt. Each slot is represented by the day of the week and the start and end times. If no availability is provided, it returns a message indicating that.
 function formatAvailability(slots: AvailabilitySlot[]): string {
   if (slots.length === 0) return "No availability provided.";
 
@@ -67,6 +68,7 @@ function formatAvailability(slots: AvailabilitySlot[]): string {
     .join("\n");
 }
 
+// This function formats the pending tasks into a human-readable string for inclusion in the AI prompt. Each task is represented by its ID, name, and priority score. If no tasks are provided, it returns a message indicating that.
 function formatTasks(tasks: PendingTask[]): string {
   if (tasks.length === 0) return "No pending tasks.";
 
@@ -81,6 +83,7 @@ function formatTasks(tasks: PendingTask[]): string {
     .join("\n");
 }
 
+// This function generates a study schedule for the given week based on the student's availability, pending tasks, study preferences, and optional behavioral profile. It constructs a prompt for the Gemini AI model, which returns a structured JSON response containing proposed study sessions and any warnings. The function validates the proposed sessions to ensure they reference valid task IDs and have required fields before returning the final result.
 export async function optimizeSchedule(
   availability: AvailabilitySlot[],
   tasks: PendingTask[],
@@ -88,11 +91,14 @@ export async function optimizeSchedule(
   behaviorProfile: object | null,
   targetDate: Date
 ): Promise<ScheduleOptimizerResult> {
+
+  // Calculate the start and end of the week for the given target date to provide context for scheduling. The week starts on Sunday and ends on Saturday.
   const weekStart = new Date(targetDate);
   weekStart.setHours(0, 0, 0, 0);
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekStart.getDate() + 7);
 
+  // Construct the prompt for the Gemini AI model, including the student's availability, pending tasks, study preferences, and behavioral profile. The prompt also includes strict scheduling rules that the model must follow when generating the proposed study sessions. The model is instructed to return a JSON object with a specific structure containing the proposed sessions and any warnings.
   const prompt = `
   Generate a study schedule for the week of ${weekStart.toDateString()} to ${weekEnd.toDateString()}.
 
@@ -148,7 +154,8 @@ export async function optimizeSchedule(
 
   If no sessions can be scheduled, return empty proposed_sessions array with an appropriate warning.
   `;
-
+  
+  // Call the Gemini AI model with the constructed prompt. The model is expected to return a JSON response containing the proposed study sessions and any warnings. The function then parses the response and validates that each proposed session references a valid task ID and includes all required fields before returning the final structured result.
   const response = await geminiFlash.generateContent({
     model: "gemini-3.1-flash-lite",
     config: {
@@ -158,10 +165,11 @@ export async function optimizeSchedule(
     contents: prompt,
   });
 
+  // Validate the parsed response to ensure it contains the expected structure and types
   const raw = response.text;
   const parsed: ScheduleOptimizerResult = JSON.parse(raw ?? "{}");
 
-  // Validate proposed sessions have required fields and valid task IDs
+  // Validate proposed sessions with checking whether there are required fields and valid task IDs
   const validTaskIds = new Set(tasks.map((t) => t.task_id));
   const validSessions = (parsed.proposed_sessions ?? []).filter(
     (s) =>
@@ -170,6 +178,7 @@ export async function optimizeSchedule(
       s.total_minutes > 0
   );
 
+  // Returns the final result containing the validated proposed sessions, any warnings, and the total scheduled and available minutes. If no valid sessions were generated, the proposed_sessions array will be empty, and any warnings from the AI model will be included in the response.
   return {
     proposed_sessions: validSessions,
     warnings: parsed.warnings ?? [],

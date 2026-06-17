@@ -44,6 +44,7 @@ const SYSTEM_PROMPT = `You are a student workload analyst for a productivity app
 Analyze the student's weekly workload and identify overload risks and deadline dangers.
 Return structured JSON only. No preamble, no explanation, no text outside the JSON object.`;
 
+// This function generates a study schedule for the given week based on the student's availability, pending tasks, study preferences, and optional behavioral profile. It constructs a prompt for the Gemini AI model, which returns a structured JSON response containing proposed study sessions and any warnings. The function validates the proposed sessions to ensure they reference valid task IDs and have required fields before returning the final result.
 function formatScheduledSessions(sessions: ScheduledSession[]): string {
   if (sessions.length === 0) return "No sessions scheduled this week.";
 
@@ -58,6 +59,7 @@ function formatScheduledSessions(sessions: ScheduledSession[]): string {
     .join("\n");
 }
 
+// This function formats the unscheduled pending tasks into a human-readable string for inclusion in the AI prompt. Each task is represented by its ID, name, deadline, priority score, and estimated time. If no unscheduled tasks are provided, it returns a message indicating that.
 function formatUnscheduledTasks(tasks: UnscheduledTask[]): string {
   if (tasks.length === 0) return "No unscheduled pending tasks.";
 
@@ -72,6 +74,7 @@ function formatUnscheduledTasks(tasks: UnscheduledTask[]): string {
     .join("\n");
 }
 
+// This function analyzes the student's workload for a given week based on their scheduled study sessions and unscheduled pending tasks. It constructs a prompt for the Gemini AI model, which evaluates the workload according to specific rules and returns a structured JSON response indicating whether overload is detected, the severity level, at-risk tasks, any warnings, and a summary of the overall workload situation. The function then parses and returns this information in a structured format.
 export async function detectOverload(
   input: OverloadDetectorInput
 ): Promise<OverloadDetectorResult> {
@@ -130,6 +133,7 @@ export async function detectOverload(
   If no risks are detected, return overload_detected: false, severity: none, empty at_risk_tasks and warnings arrays, and a positive summary.
   `;
 
+  // Call the Gemini AI model with the constructed prompt. The model is expected to return a JSON response containing the analysis of the student's workload, including any detected overload risks, severity level, at-risk tasks, warnings, and a summary. The function then parses this response and returns it in a structured format.
   const response = await geminiFlash.generateContent({
     model: "gemini-3.1-flash-lite",
     config: {
@@ -139,9 +143,11 @@ export async function detectOverload(
     contents: prompt,
   });
 
+  // Validate the parsed response to ensure it contains the expected structure and types
   const raw = response.text;
   const parsed: OverloadDetectorResult = JSON.parse(raw ?? "{}");
 
+  // Returns the validated result with default values for any missing or incorrectly typed fields
   return {
     overload_detected: parsed.overload_detected ?? false,
     severity: parsed.severity ?? "none",
