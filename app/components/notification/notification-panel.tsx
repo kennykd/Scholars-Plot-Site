@@ -6,6 +6,15 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import {
+  type AppNotification,
+  NOTIFICATIONS_UPDATED_EVENT,
+  notificationFromPushPayload,
+  notificationStorageKey,
+  readStoredNotifications,
+  removeStoredNotification,
+  upsertStoredNotification,
+} from "@/lib/notifications/storage";
 
 type InviteStatus = "pending" | "accepted" | "declined";
 type InviteResponseAction = "accepted" | "declined";
@@ -20,123 +29,26 @@ type ProjectInvite = {
   inviter: { user_name: string };
 };
 
-type AppNotification = {
-  id: string;
-  title: string;
-  body: string;
-  url: string;
-  tag: string;
-  read: boolean;
-  createdAt: string;
-};
-
 interface NotificationPanelProps {
   collapsed?: boolean;
+  userId?: string;
 }
 
-const NOTIFICATION_STORAGE_KEY = "scholars-plot:notifications";
-const NOTIFICATIONS_UPDATED_EVENT = "scholars-plot:notifications-updated";
-const MAX_STORED_NOTIFICATIONS = 30;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function stringValue(value: unknown): string | null {
-  return typeof value === "string" && value.trim().length > 0
-    ? value.trim()
-    : null;
-}
-
-function readStoredNotifications(): AppNotification[] {
-  if (typeof window === "undefined") return [];
-
-  try {
-    const parsed = JSON.parse(
-      window.localStorage.getItem(NOTIFICATION_STORAGE_KEY) ?? "[]",
-    );
-
-    if (!Array.isArray(parsed)) return [];
-
-    return parsed
-      .map((item): AppNotification | null => {
-        if (!isRecord(item)) return null;
-
-        const message = stringValue(item.message);
-        const title = stringValue(item.title) ?? message ?? "Notification";
-        const body = stringValue(item.body) ?? (message !== title ? message : "") ?? "";
-        const url = stringValue(item.url) ?? "/";
-        const tag = stringValue(item.tag) ?? `${url}:${title}`;
-        const id = stringValue(item.id) ?? tag;
-        const createdAt =
-          stringValue(item.createdAt) ??
-          stringValue(item.created_at) ??
-          new Date().toISOString();
-
-        return {
-          id,
-          title,
-          body,
-          url,
-          tag,
-          read: typeof item.read === "boolean" ? item.read : false,
-          createdAt,
-        };
-      })
-      .filter((item): item is AppNotification => item !== null)
-      .slice(0, MAX_STORED_NOTIFICATIONS);
-  } catch {
-    return [];
-  }
-}
-
-function writeStoredNotifications(notifications: AppNotification[]) {
-  window.localStorage.setItem(
-    NOTIFICATION_STORAGE_KEY,
-    JSON.stringify(notifications.slice(0, MAX_STORED_NOTIFICATIONS)),
-  );
-  window.dispatchEvent(new Event(NOTIFICATIONS_UPDATED_EVENT));
-}
-
-function notificationFromPushPayload(payload: unknown): AppNotification | null {
-  if (!isRecord(payload)) return null;
-
-  const data = isRecord(payload.data) ? payload.data : {};
-  const title = stringValue(payload.title) ?? "Notification";
-  const body = stringValue(payload.body) ?? "";
-  const url = stringValue(data.url) ?? stringValue(payload.url) ?? "/";
-  const tag = stringValue(payload.tag) ?? `${url}:${title}`;
-
-  return {
-    id: tag,
-    title,
-    body,
-    url,
-    tag,
-    read: false,
-    createdAt: new Date().toISOString(),
-  };
-}
-
-function upsertStoredNotification(notification: AppNotification) {
-  const existing = readStoredNotifications().filter(
-    (item) => item.tag !== notification.tag && item.id !== notification.id,
-  );
-  const next = [notification, ...existing].slice(0, MAX_STORED_NOTIFICATIONS);
-  writeStoredNotifications(next);
-  return next;
-}
-
-export function NotificationPanel({ collapsed = false }: NotificationPanelProps) {
+export function NotificationPanel({
+  collapsed = false,
+  userId,
+}: NotificationPanelProps) {
   const [open, setOpen] = useState(false);
   const [invites, setInvites] = useState<ProjectInvite[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [respondingId, setRespondingId] = useState<number | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
+  const storageKey = notificationStorageKey(userId);
+
   const refreshNotifications = useCallback(() => {
-    setNotifications(readStoredNotifications());
-  }, []);
+    setNotifications(readStoredNotifications(storageKey));
+  }, [storageKey]);
 
   const refreshInvites = useCallback(async () => {
     try {
@@ -186,7 +98,7 @@ export function NotificationPanel({ collapsed = false }: NotificationPanelProps)
       const notification = notificationFromPushPayload(event.data.notification);
       if (!notification) return;
 
-      setNotifications(upsertStoredNotification(notification));
+      setNotifications(upsertStoredNotification(storageKey, notification));
     };
 
     navigator.serviceWorker.addEventListener(
@@ -200,7 +112,7 @@ export function NotificationPanel({ collapsed = false }: NotificationPanelProps)
         handleServiceWorkerMessage,
       );
     };
-  }, []);
+  }, [storageKey]);
 
   useEffect(() => {
     const handler = (event: MouseEvent) => {
@@ -223,6 +135,13 @@ export function NotificationPanel({ collapsed = false }: NotificationPanelProps)
   const pendingInvites = invites.filter((invite) => invite.status === "pending");
   const totalUnread =
     pendingInvites.length + notifications.filter((notification) => !notification.read).length;
+
+  const dismissNotification = useCallback(
+    (id: string) => {
+      setNotifications(removeStoredNotification(storageKey, id));
+    },
+    [storageKey],
+  );
 
   const respondToInvite = async (
     inviteId: number,
@@ -384,21 +303,31 @@ export function NotificationPanel({ collapsed = false }: NotificationPanelProps)
                     <div
                       key={notification.id}
                       className={cn(
-                        "px-4 py-3",
+                        "flex items-start gap-2 px-4 py-3",
                         !notification.read && "bg-accent/5 border-l-2 border-l-accent",
                       )}
                     >
-                      <p className="text-sm font-medium text-foreground">
-                        {notification.title}
-                      </p>
-                      {notification.body && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {notification.body}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-foreground">
+                          {notification.title}
                         </p>
-                      )}
-                      <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
-                        {new Date(notification.createdAt).toLocaleDateString()}
-                      </p>
+                        {notification.body && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {notification.body}
+                          </p>
+                        )}
+                        <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
+                          {new Date(notification.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        aria-label={`Dismiss ${notification.title}`}
+                        onClick={() => dismissNotification(notification.id)}
+                        className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
                     </div>
                   ))}
                 </div>
