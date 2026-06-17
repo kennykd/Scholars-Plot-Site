@@ -1,9 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  differenceInSeconds,
   format,
   isToday,
   isTomorrow,
@@ -11,13 +10,11 @@ import {
 } from "date-fns";
 import { ChevronRight, Timer } from "lucide-react";
 import type { StudySession } from "@/types";
-import { useAuth } from "@/lib/firebase/auth-context";
 import {
   getCompletedSessions,
   getExpiredSessions,
   getInProgressSessions,
   getUpcomingSessions,
-  getUpcomingSoonSessions,
 } from "@/lib/study/study-session-helper";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -87,35 +84,6 @@ const STATUS_ORDER: Record<StudySectionType, number> = {
   completed: 2,
   expired: 3,
 };
-
-const SENT_REMINDERS_STORAGE_KEY = "scholars-plot:sent-study-reminders";
-
-function readStoredReminderKeys() {
-  if (typeof window === "undefined") return new Set<string>();
-
-  try {
-    const raw = window.localStorage.getItem(SENT_REMINDERS_STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return new Set<string>(Array.isArray(parsed) ? parsed.filter(Boolean) : []);
-  } catch {
-    return new Set<string>();
-  }
-}
-
-function persistReminderKeys(keys: Set<string>) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(
-    SENT_REMINDERS_STORAGE_KEY,
-    JSON.stringify([...keys]),
-  );
-}
-
-function getReminderKey(
-  studySession: StudySession,
-  thresholdSeconds: number,
-) {
-  return `${studySession.id}:${studySession.scheduledAt}:${thresholdSeconds}`;
-}
 
 function getStatusBadge(sectionType: StudySectionType, session: StudySession) {
   if (sectionType === "in-progress") {
@@ -226,7 +194,6 @@ function sortStudyRows(rows: StudySessionRow[], sortMode: StudySort) {
 
 export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
   const router = useRouter();
-  const userIDRef = useRef<string | null>(null);
   const [sessions, setSessions] = useState<StudySession[]>(initialSessions);
   const [nowTick, setNowTick] = useState(new Date());
   const [quickTimerOpen, setQuickTimerOpen] = useState(false);
@@ -252,11 +219,6 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
     return () => clearInterval(interval);
   }, []);
 
-  const { user } = useAuth();
-  useEffect(() => {
-    userIDRef.current = user?.id ?? null;
-  }, [user]);
-
   const inProgressSessions = useMemo(
     () => getInProgressSessions(sessions),
     [sessions],
@@ -275,11 +237,6 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
   const expiredSessions = useMemo(
     () => getExpiredSessions(sessions, nowTick),
     [sessions, nowTick],
-  );
-
-  const upcomingSoon = useMemo(
-    () => getUpcomingSoonSessions(upcomingSessions, nowTick),
-    [upcomingSessions, nowTick],
   );
 
   const allRows = useMemo(
@@ -318,68 +275,6 @@ export function StudyPageClient({ initialSessions }: StudyPageClientProps) {
     () => visibleGroups.flatMap((group) => group.rows),
     [visibleGroups],
   );
-
-  const sentReminders = useRef<Set<string>>(new Set());
-
-  useEffect(() => {
-    sentReminders.current = readStoredReminderKeys();
-  }, []);
-
-  const notifyUpcomingSoon = useCallback(async () => {
-    const userID = userIDRef.current;
-    if (!userID) return;
-
-    for (const studySession of upcomingSoon) {
-      const reminderOffsets = studySession.reminderOffsets ?? [];
-      if (
-        reminderOffsets.length === 0 ||
-        studySession.reminderEnabled === false
-      ) {
-        continue;
-      }
-
-      const secondsAway = differenceInSeconds(
-        parseISO(studySession.scheduledAt),
-        nowTick,
-      );
-      const thresholds = reminderOffsets.map(
-        (offsetMinutes) => Math.max(0, offsetMinutes) * 60,
-      );
-
-      for (const threshold of thresholds) {
-        if (secondsAway <= threshold && secondsAway > threshold - 60) {
-          const reminderKey = getReminderKey(studySession, threshold);
-          if (sentReminders.current.has(reminderKey)) continue;
-
-          sentReminders.current.add(reminderKey);
-          persistReminderKeys(sentReminders.current);
-
-          const minutesLabel = threshold / 60;
-          const title = `Study session: ${studySession.title}`;
-          const body =
-            threshold === 0
-              ? "Starting now"
-              : `Starts in ${minutesLabel} minute${minutesLabel > 1 ? "s" : ""}`;
-
-          await fetch("/api/web-push/send", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              title,
-              body,
-              url: `/study/${studySession.id}`,
-              tag: `study-reminder:${reminderKey}`,
-            }),
-          });
-        }
-      }
-    }
-  }, [nowTick, upcomingSoon]);
-
-  useEffect(() => {
-    if (!upcomingSoon || upcomingSoon.length === 0) return;
-    notifyUpcomingSoon();
-  }, [notifyUpcomingSoon, upcomingSoon]);
 
   const openSession = async (studySession: StudySession) => {
     if (studySession.isTimerOnly) {
