@@ -174,30 +174,38 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
 
 export async function GET() {
   try {
+    // Get the session from the request (assuming request has the session, e.g., from cookies or headers)
     const session = await getSession();
 
+    // If the user is not authenticated, return a 401 Unauthorized response
     if (!session) {
       return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
     }
 
+    // Ensure the user record exists in the database for the authenticated session
     await ensureUserRecordForSession(session);
 
+    // Retrieve the projects visible to the authenticated user
     const projects = await getProjects(session.id);
 
+    // If successful, return a 200 OK response with the retrieved projects
     return NextResponse.json(
       { message: 'Projects retrieved successfully', projects },
       { status: 200 },
     );
   } catch (error) {
+    // Handle specific Project errors and return appropriate responses
     if (error instanceof ProjectServiceError) {
       return NextResponse.json({ message: error.message }, { status: error.status });
     }
 
+    // Handle foreign key errors that may indicate a need for account repair
     if (isPrismaForeignKeyError(error)) {
       console.error('[api/project] Foreign key error while retrieving projects:', error);
       return NextResponse.json({ message: foreignKeyRepairMessage() }, { status: 409 });
     }
 
+    // Log unexpected errors and return a generic error response
     console.error('[api/project] Error retrieving projects:', error);
     return NextResponse.json({ message: 'Error retrieving projects' }, { status: 500 });
   }
@@ -205,12 +213,15 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    // Get the session from the request (assuming request has the session, e.g., from cookies or headers)
     const session = await getSession();
 
+    // If the user is not authenticated, return a 401 Unauthorized response
     if (!session) {
       return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
     }
 
+    // Parse and validate the request body against the createProjectSchema
     let body: unknown;
 
     try {
@@ -221,6 +232,7 @@ export async function POST(request: Request) {
 
     const parsed = createProjectSchema.safeParse(body);
 
+    // If validation fails, return a 400 Bad Request response with validation errors
     if (!parsed.success) {
       return NextResponse.json(
         { message: 'Validation failed', errors: z.flattenError(parsed.error).fieldErrors },
@@ -228,24 +240,30 @@ export async function POST(request: Request) {
       );
     }
 
+    // Ensure the user record exists in the database for the authenticated session
     await ensureUserRecordForSession(session);
 
+    // Call the service function to create a new project owned by the authenticated user
     const project = await createProject(session.id, parsed.data);
 
+    // If successful, return a 201 Created response with the created project data
     return NextResponse.json(
       { message: 'Project created successfully', project },
       { status: 201 },
     );
   } catch (error) {
+    // Handle specific Project errors and return appropriate responses
     if (error instanceof ProjectServiceError) {
       return NextResponse.json({ message: error.message }, { status: error.status });
     }
 
+    // Handle foreign key errors that may indicate a need for account repair
     if (isPrismaForeignKeyError(error)) {
       console.error('[api/project] Foreign key error while creating project:', error);
       return NextResponse.json({ message: foreignKeyRepairMessage() }, { status: 409 });
     }
 
+    // Log unexpected errors and return a generic error response
     console.error('[api/project] Error creating project:', error);
     return NextResponse.json({ message: 'Error creating project' }, { status: 500 });
   }

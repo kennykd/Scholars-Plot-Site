@@ -129,12 +129,15 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
 
 export async function POST(request: Request) {
   try {
+    // Get the session from the request (assuming request has the session, e.g., from cookies or headers)
     const session = await getSession();
 
+    // If the user is not authenticated, return a 401 Unauthorized response
     if (!session) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
+    // Ensure the user record exists in the database for the authenticated session
     await ensureUserRecordForSession(session);
 
     let body: unknown;
