@@ -24,6 +24,7 @@ export interface ChatAgentResult {
   rawResponse: string;
 }
 
+// This constant defines the maximum number of recent messages to include in the Gemini AI model's context. It ensures that the model has enough information to generate relevant responses while avoiding excessive context that could lead to performance issues or irrelevant outputs.
 const MAX_HISTORY_MESSAGES = 20;
 
 const createTaskDraftArgsSchema = z.object({
@@ -44,6 +45,7 @@ const createStudyTrackDraftArgsSchema = z.object({
   task_id: z.coerce.number().int().positive(),
 });
 
+// Function declaration for creating a task draft
 const createTaskDraftDeclaration: FunctionDeclaration = {
   name: "create_task_draft",
   description:
@@ -72,6 +74,7 @@ const createTaskDraftDeclaration: FunctionDeclaration = {
   },
 };
 
+// Function declaration for creating a study track draft
 const createStudyTrackDraftDeclaration: FunctionDeclaration = {
   name: "create_study_track_draft",
   description:
@@ -89,6 +92,7 @@ const createStudyTrackDraftDeclaration: FunctionDeclaration = {
   },
 };
 
+// This constant defines the function calling configuration for the Gemini AI model. It specifies that the model should use the "create_task_draft" and "create_study_track_draft" functions when appropriate, and that it should automatically decide when to call these functions based on the user's input. The configuration ensures that the model can generate structured outputs for task creation and study planning without requiring explicit instructions from the user.
 const STATIC_SYSTEM_PROMPT = `
 You are Ploty, a study planning assistant built into Scholars Plot for university students.
 You help users manage tasks, plan task-linked study sessions, and avoid overload.
@@ -104,6 +108,7 @@ Tool rules:
 - Keep normal text responses concise and direct.
 `.trim();
 
+// This function builds a detailed system prompt for the Gemini AI model by incorporating the user's current context, including pending tasks, availability, scheduled sessions, active overload warnings, study preferences, formula weights, and behavior profile. The prompt is structured to provide the model with all relevant information needed to generate accurate and context-aware responses. It includes clear sections for each aspect of the user's context and formats the information in a human-readable way.
 function buildSystemPrompt(context: ChatContext): string {
   const lines: string[] = [STATIC_SYSTEM_PROMPT, "", "--- USER CONTEXT ---"];
 
@@ -113,6 +118,7 @@ function buildSystemPrompt(context: ChatContext): string {
     "",
   );
 
+  // Format the pending tasks section, including task ID, name, priority score, estimated time, and grade weight percentage. If there are no pending tasks, indicate that as well.
   if (context.pending_tasks.length > 0) {
     lines.push("PENDING TASKS (sorted by priority score, highest first):");
     context.pending_tasks.forEach((task, index) => {
@@ -131,6 +137,7 @@ function buildSystemPrompt(context: ChatContext): string {
   }
   lines.push("");
 
+  // Format the weekly availability section, including day name, start and end times, and total available minutes. If no availability is configured, indicate that as well.
   if (context.availability.length > 0) {
     lines.push("WEEKLY AVAILABILITY:");
     context.availability.forEach((slot) => {
@@ -143,6 +150,7 @@ function buildSystemPrompt(context: ChatContext): string {
   }
   lines.push("");
 
+  // Format the scheduled sessions section, including session name, scheduled time, total minutes, and linked task name if available. If there are no scheduled sessions, indicate that as well.
   if (context.scheduled_sessions.length > 0) {
     lines.push("SCHEDULED SESSIONS THIS WEEK:");
     context.scheduled_sessions.forEach((session) => {
@@ -156,6 +164,7 @@ function buildSystemPrompt(context: ChatContext): string {
   }
   lines.push("");
 
+  // Format the active overload warning section, including severity and summary if present. If there is no active overload warning, indicate that as well.
   if (context.active_overload_warning) {
     lines.push(
       `ACTIVE OVERLOAD WARNING: severity=${context.active_overload_warning.severity}`,
@@ -171,6 +180,7 @@ function buildSystemPrompt(context: ChatContext): string {
     `FORMULA WEIGHTS: impact=${context.formula_weights.w_impact}, ease=${context.formula_weights.w_ease}, urgency=${context.formula_weights.w_urgency}`,
   );
 
+  // Format the behavior profile section, including peak productivity hours, average estimation accuracy, preferred session length, tendency to overcommit, and high-effort subjects if available. If there is no behavior profile, this section will be omitted.
   if (context.behavior_profile) {
     const profile = context.behavior_profile;
     lines.push("BEHAVIOR PROFILE:");
@@ -192,6 +202,7 @@ function buildSystemPrompt(context: ChatContext): string {
   return lines.join("\n");
 }
 
+// This function builds the message history for the Gemini AI model by selecting the most recent messages up to a defined limit. It ensures that the history starts with a user message, filtering out any initial model messages. Each message is formatted into a structure that includes the role (user or model) and the text content, which is necessary for the model to understand the conversation context and generate appropriate responses.
 function buildGeminiHistory(messages: ChatMessage[]) {
   let recent = messages.slice(-MAX_HISTORY_MESSAGES);
 
@@ -234,6 +245,7 @@ function trackToPlan(taskId: number, track: StudyTrackDraftTrack, index: number)
   };
 }
 
+// This function handles the creation of a task draft based on user input. It validates the input against a predefined schema, and if valid, it calls the AI service to generate a task draft. The function then constructs a response that includes the draft details and a message for the user to review. If the input is invalid, it returns an error message indicating that more information is needed.
 async function handleCreateTaskDraft(args: unknown): Promise<ChatAgentResult> {
   const parsed = createTaskDraftArgsSchema.safeParse(args);
   if (!parsed.success) {
@@ -265,6 +277,7 @@ async function handleCreateTaskDraft(args: unknown): Promise<ChatAgentResult> {
   };
 }
 
+// This function handles the creation of a study track draft for an existing task based on user input and the current context. It validates the input to ensure that a valid task ID is provided, checks if the task exists in the user's pending tasks, and then calls the AI service to generate a study track draft. The function constructs a response that includes the draft details and a message for the user to review. If the input is invalid or the task is not found, it returns an appropriate error message.
 async function handleCreateStudyTrackDraft(
   args: unknown,
   context: ChatContext,
@@ -319,6 +332,7 @@ async function handleCreateStudyTrackDraft(
   };
 }
 
+// This function handles the processing of a function call from the Gemini AI model. It checks the name of the function call and delegates to the appropriate handler for creating a task draft or a study track draft. If the function call is recognized and successfully handled, it returns the result; otherwise, it returns null, indicating that no action was taken.
 async function handleFunctionCall(
   functionCall: FunctionCall,
   context: ChatContext,
@@ -334,6 +348,7 @@ async function handleFunctionCall(
   return null;
 }
 
+// This function runs the chat agent, which processes user messages in the context of a conversation. It sends the user's message and the conversation history to the Gemini AI model, along with the current context. The model may return a function call to create a task draft or a study track draft, which is then handled appropriately. If no function call is returned, the function returns a text response generated by the model.
 export async function runChatAgent(
   userMessage: string,
   previousMessages: ChatMessage[],

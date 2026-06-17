@@ -38,6 +38,7 @@ const SUPPORTED_IMAGE_TYPES = [
   "image/gif",
 ];
 
+// This function builds the content parts for the Gemini AI model by combining the main prompt with any attachments provided. It uploads supported attachments (PDFs and images) to obtain URIs that can be included in the content parts. The function ensures that failed uploads do not prevent the overall analysis from proceeding, allowing for robust handling of attachment issues.
 async function buildContentParts(
   prompt: string,
   attachments: TaskAttachment[]
@@ -91,6 +92,7 @@ async function buildContentParts(
   return parts;
 }
 
+// This function analyzes a student's task based on its name, description, deadline, priority, and any attached files. It constructs a detailed prompt for the Gemini AI model, which evaluates the task according to specific rules for confidence scoring, grade weight extraction, and time estimation. The AI's response is expected to be a structured JSON object containing these analyses, which the function then parses and returns in a consistent format. The function also handles attachments by uploading them and including their URIs in the prompt for additional context.
 export async function analyzeTask(
   input: TaskAnalysisInput
 ): Promise<TaskAnalysisResult> {
@@ -147,6 +149,7 @@ export async function analyzeTask(
     Minimum value: 15.
   `;
 
+  // If there are attachments, build content parts including the prompt and uploaded attachment URIs; otherwise, use the prompt directly.
   let contents: object | string;
 
   if (hasAttachments) {
@@ -156,6 +159,7 @@ export async function analyzeTask(
     contents = prompt;
   }
 
+  // Call the Gemini AI model with the constructed prompt to analyze the task. The model is expected to return a structured JSON response containing the confidence score, grade weight percentage, estimated time in minutes, and reasoning for each of these values. The function then parses this response and returns it in a consistent format.
   const response = await geminiFlash.generateContent({
     model: "gemini-3.1-flash-lite",
     config: {
