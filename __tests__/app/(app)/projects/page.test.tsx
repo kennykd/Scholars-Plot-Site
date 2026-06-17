@@ -168,6 +168,7 @@ describe("ProjectsPage", () => {
     expect(
       await screen.findByRole("button", { name: /Pick a date/i }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toHaveClass("overflow-y-auto");
   });
 
   it("uses the task deadline date picker in the edit task dialog", async () => {

@@ -74,10 +74,6 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *                     type: array
  *                     items:
  *                       type: string
- *       400:
- *         description: Invalid project id
- *       400:
- *         description: Invalid member id
  *       401:
  *         description: Unauthorized
  *       403:
@@ -135,9 +131,7 @@ import { foreignKeyRepairMessage, isPrismaForeignKeyError } from '@/lib/services
  *                   type: string
  *                   example: Member removed successfully
  *       400:
- *         description: Invalid project id
- *       400:
- *         description: Invalid member id
+ *         description: Invalid project id or invalid member id
  *       401:
  *         description: Unauthorized
  *       403:

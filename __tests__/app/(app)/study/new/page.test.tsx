@@ -166,7 +166,7 @@ describe("StudyNewPage Component", () => {
         expect(reminderBlocks.length).toBe(4); // 3 original presets + 1 newly appended item
     });
 
-    it("applies AI suggestions to a single linked study session", async () => {
+    it("previews AI suggestions for a single linked study session before applying them", async () => {
         (global.fetch as jest.Mock).mockImplementation((url: string, options?: RequestInit) => {
             if (url === "/api/task") {
                 return Promise.resolve({
@@ -264,8 +264,16 @@ describe("StudyNewPage Component", () => {
         );
 
         expect(
-            screen.getByDisplayValue("Review database normalization"),
+            await screen.findByText("Review database normalization"),
         ).toBeInTheDocument();
+        expect(screen.getByDisplayValue("Database sprint")).toBeInTheDocument();
+        expect(screen.getByDisplayValue("Focus on ERD and normalization")).toBeInTheDocument();
+        expect(screen.queryByDisplayValue("14:30")).not.toBeInTheDocument();
+        expect(toast.success).not.toHaveBeenCalledWith("AI study session applied");
+
+        fireEvent.click(screen.getByRole("button", { name: /Apply study session/i }));
+
+        expect(screen.getByDisplayValue("Review database normalization")).toBeInTheDocument();
         expect(screen.getByDisplayValue("14:30")).toBeInTheDocument();
         expect(screen.getByDisplayValue("50")).toBeInTheDocument();
         expect(screen.getByDisplayValue("10")).toBeInTheDocument();
@@ -276,7 +284,7 @@ describe("StudyNewPage Component", () => {
         expect(toast.success).toHaveBeenCalledWith("AI study session applied");
     });
 
-    it("applies AI suggestions to a standalone study session without a task", async () => {
+    it("previews AI suggestions for a standalone study session without a task before applying them", async () => {
         (global.fetch as jest.Mock).mockImplementation((url: string, options?: RequestInit) => {
             if (url === "/api/task") {
                 return Promise.resolve({
@@ -351,11 +359,17 @@ describe("StudyNewPage Component", () => {
             }),
         );
         expect(payload).not.toHaveProperty("taskId");
-        expect(
-            screen.getByDisplayValue("Standalone calculus practice"),
-        ).toBeInTheDocument();
+        expect(await screen.findByText("Standalone calculus practice")).toBeInTheDocument();
+        expect(screen.getByDisplayValue("Independent calculus review")).toBeInTheDocument();
+        expect(screen.queryByDisplayValue("Standalone calculus practice")).not.toBeInTheDocument();
         expect(toast.error).not.toHaveBeenCalledWith(
             "Choose a linked task before asking AI for session suggestions",
         );
+        expect(toast.success).not.toHaveBeenCalledWith("AI study session applied");
+
+        fireEvent.click(screen.getByRole("button", { name: /Apply study session/i }));
+
+        expect(screen.getByDisplayValue("Standalone calculus practice")).toBeInTheDocument();
+        expect(toast.success).toHaveBeenCalledWith("AI study session applied");
     });
 });
