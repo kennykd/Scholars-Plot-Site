@@ -69,13 +69,13 @@ This application fulfills the AI requirement not by simply sticking one AI featu
 
 ## 4. Tech Stack
 
-Frontend : Next.js<br>
-Backend : Node.js or Next.js<br>
-API REST : API<br>
-Database : PostgreSQL / Firebase (for auth only)<br>
+Frontend         : Next.js<br>
+Backend          : Node.js or Next.js<br>
+API              : REST API<br>
+Database         : PostgreSQL / Firebase (for auth only)<br>
 Containerization : Docker<br>
-Deployment : University Server<br>
-Version Control : GitHub<br>
+Deployment       : University Server<br>
+Version Control  : GitHub<br>
 
 ---
 
@@ -476,7 +476,7 @@ Tests written:<br>
 
 Security work:<br>
 - Authentication and Authorization (session management & timeout control)
-- Encryption of analytcs data
+- Encryption of analytics data
 - Protection of notification endpoints
 
 AI-related work:<br>
@@ -491,6 +491,8 @@ API endpoints handled:<br>
 - /api/project/[id]
 - /api/project/[id]/member
 - /api/project/[id]/member/[memberId]
+- /api/project/[id]/task
+- /api/project/[id]/task/[id]
 - /api/ai
 - /api/ai/weight-adapter
 - /api/chat
@@ -501,10 +503,11 @@ Tests written:<br>
 - /lib/services
 
 Security work:<br>
-- SQL injection
-- Prompt injection
+- Protection against SQL injection
+- Protection of API endpoints
 
 AI-related work:<br>
+- Smart Task Prioritization
 - Schedule Optimization
 - Overload Dectection
 - Weight Adapter + formula weights
@@ -536,7 +539,6 @@ AI-related work:<br>
 - AI Prompts for drafting study session + task
 - Generate content with Gemini to schema
 - Task + Study Session suggestion AI integration
-
 
 ---
 
@@ -583,6 +585,8 @@ We declare that:
 * Barri Nur Pratama
 * Kenny Krixiadi
 * Rafie Mustika Ramasna
+
+---
 
 ## 16. SETUP
 Setting up this automated deployment pipeline requires configuring four local configuration files, preparing your remote server, and linking them together via a GitHub Actions self-hosted runner.
