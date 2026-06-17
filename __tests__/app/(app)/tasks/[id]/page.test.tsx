@@ -8,6 +8,21 @@ import {
 } from "@/lib/services/taskService";
 import { listTaskAttachments } from "@/lib/services/attachmentService";
 
+jest.mock("@/lib/firebase/auth", () => ({
+  getSession: jest.fn(),
+}));
+
+jest.mock("@/lib/services/taskService", () => ({
+  getStudySessionsForTask: jest.fn(),
+  getTaskById: jest.fn(),
+  serializeTask: jest.fn(),
+}));
+
+jest.mock("@/lib/services/attachmentService", () => ({
+  listTaskAttachments: jest.fn(),
+}));
+
+// ---- Component Mocks ----
 jest.mock(
   "@/app/components/tasks/task-delete-button",
   () => ({
@@ -85,23 +100,25 @@ jest.mock("@/lib/services/attachmentService", () => ({
 // ---- Typed mocks ----
 const mockGetSession = getSession as jest.MockedFunction<typeof getSession>;
 const mockGetTaskById = getTaskById as jest.MockedFunction<typeof getTaskById>;
-const mockSerializeTask =
-  serializeTask as jest.MockedFunction<typeof serializeTask>;
-const mockListTaskAttachments =
-  listTaskAttachments as jest.MockedFunction<typeof listTaskAttachments>;
-const mockGetStudySessionsForTask =
-  getStudySessionsForTask as jest.MockedFunction<
-    typeof getStudySessionsForTask
-  >;
+const mockSerializeTask = serializeTask as jest.MockedFunction<typeof serializeTask>;
+const mockListTaskAttachments = listTaskAttachments as jest.MockedFunction<typeof listTaskAttachments>;
+const mockGetStudySessionsForTask = getStudySessionsForTask as jest.MockedFunction<typeof getStudySessionsForTask>;
+
+// Helper types to extract exactly what the real functions resolve to
+type GetSessionResolved = Awaited<ReturnType<typeof getSession>>;
+type GetTaskByIdResolved = Awaited<ReturnType<typeof getTaskById>>;
+type ListTaskAttachmentsResolved = Awaited<ReturnType<typeof listTaskAttachments>>;
+type GetStudySessionsResolved = Awaited<ReturnType<typeof getStudySessionsForTask>>;
+type SerializeTaskReturned = ReturnType<typeof serializeTask>;
 
 describe("TaskDetailPage study-session actions", () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockGetSession.mockResolvedValue({ id: "user-1" } as any);
-    mockGetTaskById.mockResolvedValue({ task_id: 42 } as any);
-    mockListTaskAttachments.mockResolvedValue([]);
-    mockGetStudySessionsForTask.mockResolvedValue([]);
+    mockGetSession.mockResolvedValue({ id: "user-1" } as GetSessionResolved);
+    mockGetTaskById.mockResolvedValue({ task_id: 42 } as GetTaskByIdResolved);
+    mockListTaskAttachments.mockResolvedValue([] as ListTaskAttachmentsResolved);
+    mockGetStudySessionsForTask.mockResolvedValue([] as GetStudySessionsResolved);
 
     mockSerializeTask.mockReturnValue({
       id: 42,
@@ -114,7 +131,7 @@ describe("TaskDetailPage study-session actions", () => {
       createdAt: "2099-03-01T00:00:00.000Z",
       completedAt: null,
       attachments: [],
-    });
+    } as SerializeTaskReturned);
   });
 
   it("does not show a start-study-session action when no sessions are planned", async () => {
@@ -134,6 +151,9 @@ describe("TaskDetailPage study-session actions", () => {
   });
 
   it("shows the AI-readable helper text above task attachments", async () => {
+    // FIXED: Extracted the array element type and allowed partial overrides with a dynamic Date string mock
+    type AttachmentItem = ListTaskAttachmentsResolved[number];
+
     mockListTaskAttachments.mockResolvedValue([
       {
         id: 7,
@@ -144,8 +164,8 @@ describe("TaskDetailPage study-session actions", () => {
         fileType: "application/pdf",
         url: "https://example.com/rubric.pdf",
         uploadedAt: "2099-03-01T00:00:00.000Z",
-      },
-    ] as any);
+      } as Partial<AttachmentItem> as AttachmentItem
+    ]);
 
     render(await TaskDetailPage({ params: Promise.resolve({ id: "42" }) }));
 
@@ -170,7 +190,7 @@ describe("TaskDetailPage study-session actions", () => {
       createdAt: "2099-03-01T00:00:00.000Z",
       completedAt: "2099-03-15T00:00:00.000Z",
       attachments: [],
-    });
+    } as SerializeTaskReturned);
 
     render(await TaskDetailPage({ params: Promise.resolve({ id: "42" }) }));
 
@@ -195,7 +215,7 @@ describe("TaskDetailPage study-session actions", () => {
       createdAt: "2099-03-01T00:00:00.000Z",
       completedAt: null,
       attachments: [],
-    });
+    } as SerializeTaskReturned);
 
     render(await TaskDetailPage({ params: Promise.resolve({ id: "42" }) }));
 

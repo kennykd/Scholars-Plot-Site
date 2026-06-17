@@ -72,8 +72,7 @@ export default function RegisterPage() {
       const result = await createUserWithEmailAndPassword(auth, email, password);
 
       const actionCodeSettings = {
-        // Make sure this matches your Next.js route structure exactly!
-        url: 'http://localhost:3000/register/verify',
+        url: 'https://e2526-wads-b4bc-05.csbihub.id/register/verify',
         handleCodeInApp: true,
       };
 

@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import "@testing-library/jest-dom";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
 import QuickTimerPage from "@/app/(app)/study/quicktimer/page";
 import { useSearchParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -146,27 +146,24 @@ describe("QuickTimerPage Component", () => {
         expect(screen.getByText(/idle/i)).toBeInTheDocument();
     });
 
-    it("should trigger toast and mark status as completed when total session time ends", () => {
+    it("should trigger toast and mark status as completed when total session time ends", async () => { // Add async here
         mockSearchParams.set("total", "1");
         mockSearchParams.set("focus", "1");
 
         render(<QuickTimerPage />);
 
-        // FIX: Match alternative initialized button text state
         fireEvent.click(screen.getByRole("button", { name: /start|resume/i }));
 
-        // Advance past 1 full minute (60 seconds)
+        // Advance 61 seconds to completely exhaust the 1-minute (60s) timer boundary
         act(() => {
-            jest.advanceTimersByTime(60000);
+            jest.advanceTimersByTime(61000);
         });
 
-        // Completion runs through a setTimeout(0) scheduled by an effect once the
-        // countdown hits zero; flush that pending timer so the status/toast apply.
-        act(() => {
-            jest.runOnlyPendingTimers();
+        // Use waitFor to give React a split second to flush the state change to the UI
+        await waitFor(() => {
+            expect(screen.getByText(/completed/i)).toBeInTheDocument();
         });
 
-        expect(screen.getByText(/completed/i)).toBeInTheDocument();
         expect(toast.success).toHaveBeenCalledWith("Session complete: WADS Security Sprint");
     });
 });

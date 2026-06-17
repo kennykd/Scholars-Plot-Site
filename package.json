@@ -9,9 +9,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "jest --config jest.config.mjs",
-    "test:watch": "jest --config jest.config.mjs --watch",
-    "test:coverage": "jest --config jest.config.mjs --coverage"
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1015.0",

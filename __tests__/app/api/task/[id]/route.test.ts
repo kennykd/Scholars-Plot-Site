@@ -6,6 +6,7 @@ import {
   updateTaskById,
   recordTaskCompletion,
 } from "@/lib/services/taskService";
+import { NextRequest } from "next/server";
 
 jest.mock("next/server", () => ({
   NextResponse: {
@@ -56,25 +57,25 @@ jest.mock("@/lib/services/taskService", () => {
   };
 });
 
+// Use explicitly typed Jest mock references
 const mockGetSession = getSession as jest.MockedFunction<typeof getSession>;
-const mockRunWeightAdapter =
-  runWeightAdapter as jest.MockedFunction<typeof runWeightAdapter>;
-const mockEnsureUserRecordForSession =
-  ensureUserRecordForSession as jest.MockedFunction<
-    typeof ensureUserRecordForSession
-  >;
-const mockUpdateTaskById =
-  updateTaskById as jest.MockedFunction<typeof updateTaskById>;
-const mockRecordTaskCompletion =
-  recordTaskCompletion as jest.MockedFunction<typeof recordTaskCompletion>;
+const mockRunWeightAdapter = runWeightAdapter as jest.MockedFunction<typeof runWeightAdapter>;
+const mockEnsureUserRecordForSession = ensureUserRecordForSession as jest.MockedFunction<typeof ensureUserRecordForSession>;
+const mockUpdateTaskById = updateTaskById as jest.MockedFunction<typeof updateTaskById>;
 
-function request(body: unknown) {
+// 1. Type the request helper properly using Partial<NextRequest>
+function createMockRequest(body: unknown): NextRequest {
   return {
     json: async () => body,
-  };
+  } as unknown as NextRequest;
 }
 
-function context(id = "42") {
+// 2. Extract and type the context parameter matching Next.js App Router route signatures
+interface RouteContext {
+  params: Promise<{ id: string }>;
+}
+
+function createMockContext(id = "42"): RouteContext {
   return {
     params: Promise.resolve({ id }),
   };
@@ -84,24 +85,28 @@ describe("PATCH /api/task/[id]", () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockGetSession.mockResolvedValue({ id: "user-1" } as any);
-    mockEnsureUserRecordForSession.mockResolvedValue({ id: "user-1" } as any);
+    // 3. Cast internal return mock values cleanly without naked 'as any'
+    mockGetSession.mockResolvedValue({ id: "user-1" } as ReturnType<typeof getSession> extends Promise<infer U> ? U : never);
+    mockEnsureUserRecordForSession.mockResolvedValue({ id: "user-1" } as ReturnType<typeof ensureUserRecordForSession> extends Promise<infer U> ? U : never);
 
-    mockRunWeightAdapter.mockResolvedValue({} as any);
+    // If runWeightAdapter returns void/Promise<void>, we don't need a cast
+    mockRunWeightAdapter.mockResolvedValue(undefined as never);
   });
 
   it("does NOT run completion side-effects when the task did not transition to Completed", async () => {
+    // 4. Extract the exact return type structure required by your actual updateTaskById function
     mockUpdateTaskById.mockResolvedValue({
       task: { task_id: 42 },
       becameCompleted: false,
-    } as any);
+    } as ReturnType<typeof updateTaskById> extends Promise<infer U> ? U : never);
 
     const response = await PATCH(
-      request({ title: "New name" }) as any,
-      context() as any,
+      createMockRequest({ title: "New name" }),
+      createMockContext(),
     );
 
-    const body = await response.json();
+    // Explicitly casting response json output to expected structure 
+    const body = (await response.json()) as { task: { task_id: number } };
 
     expect(response.status).toBe(200);
 
@@ -109,7 +114,7 @@ describe("PATCH /api/task/[id]", () => {
       title: "New name",
     });
 
-    expect(mockRecordTaskCompletion).not.toHaveBeenCalled();
+    expect(recordTaskCompletion).not.toHaveBeenCalled();
     expect(mockRunWeightAdapter).not.toHaveBeenCalled();
 
     expect(body.task).toEqual({ task_id: 42 });
